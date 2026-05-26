@@ -120,6 +120,7 @@ mod paste_safe;
 mod paste_sanitize;
 mod paste_write;
 mod focus;
+mod focus_encode;
 mod focus_sequence;
 mod focus_write;
 mod mode_report_buffer;

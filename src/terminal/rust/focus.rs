@@ -1,9 +1,6 @@
 use core::ffi::c_int;
-use core::ptr;
 
-use crate::early::*;
-use crate::focus_sequence::*;
-use crate::focus_write::*;
+use crate::focus_encode::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_focus_encode(
@@ -12,19 +9,5 @@ pub unsafe extern "C" fn ghostty_rust_focus_encode(
     out_len: usize,
     out_written: *mut usize,
 ) -> c_int {
-    let seq = focus_sequence(event);
-
-    unsafe {
-        ptr::write(out_written, seq.len());
-    }
-
-    if out.is_null() || out_len < seq.len() {
-        return GHOSTTY_OUT_OF_SPACE;
-    }
-
-    unsafe {
-        write_focus_sequence(out, seq);
-    }
-
-    GHOSTTY_SUCCESS
+    unsafe { focus_encode(event, out, out_len, out_written) }
 }
