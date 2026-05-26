@@ -1,6 +1,4 @@
-use core::ptr;
-
-use crate::key_options::*;
+use crate::key_from_terminal_write::key_from_terminal_write;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_key_encoder_from_terminal(
@@ -19,12 +17,20 @@ pub unsafe extern "C" fn ghostty_rust_key_encoder_from_terminal(
     out_macos_option_as_alt: *mut core::ffi::c_int,
 ) {
     unsafe {
-        ptr::write(out_alt_esc_prefix, alt_esc_prefix);
-        ptr::write(out_cursor_key_application, cursor_key_application);
-        ptr::write(out_keypad_key_application, keypad_key_application);
-        ptr::write(out_backarrow_key_mode, backarrow_key_mode);
-        ptr::write(out_ignore_keypad_with_numlock, ignore_keypad_with_numlock);
-        ptr::write(out_modify_other_keys_state_2, modify_other_keys_state_2);
-        ptr::write(out_macos_option_as_alt, OPTION_AS_ALT_FALSE);
+        key_from_terminal_write(
+            alt_esc_prefix,
+            cursor_key_application,
+            keypad_key_application,
+            backarrow_key_mode,
+            ignore_keypad_with_numlock,
+            modify_other_keys_state_2,
+            out_alt_esc_prefix,
+            out_cursor_key_application,
+            out_keypad_key_application,
+            out_backarrow_key_mode,
+            out_ignore_keypad_with_numlock,
+            out_modify_other_keys_state_2,
+            out_macos_option_as_alt,
+        );
     }
 }
