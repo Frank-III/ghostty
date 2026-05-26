@@ -16,6 +16,30 @@ pub unsafe extern "C" fn ghostty_rust_kitty_rect(
     terminal_cols_minus_one: u16,
     out: *mut GhosttySelection,
 ) -> c_int {
+    unsafe {
+        kitty_rect_impl(
+            start_node,
+            start_x,
+            start_y,
+            end_node,
+            end_y,
+            grid_cols_minus_one,
+            terminal_cols_minus_one,
+            out,
+        )
+    }
+}
+
+pub(crate) unsafe fn kitty_rect_impl(
+    start_node: *mut c_void,
+    start_x: u16,
+    start_y: u16,
+    end_node: *mut c_void,
+    end_y: u16,
+    grid_cols_minus_one: u32,
+    terminal_cols_minus_one: u16,
+    out: *mut GhosttySelection,
+) -> c_int {
     if start_node.is_null() || end_node.is_null() || out.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
