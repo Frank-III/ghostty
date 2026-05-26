@@ -2,6 +2,10 @@ use core::ptr;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_sgr_parser_reset(idx: *mut usize) {
+    unsafe { sgr_parser_reset_impl(idx) }
+}
+
+pub(crate) unsafe fn sgr_parser_reset_impl(idx: *mut usize) {
     if idx.is_null() {
         return;
     }
@@ -13,6 +17,10 @@ pub unsafe extern "C" fn ghostty_rust_sgr_parser_reset(idx: *mut usize) {
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_sgr_params_sep_mask(seps: *const u8, len: usize) -> u32 {
+    unsafe { sgr_params_sep_mask_impl(seps, len) }
+}
+
+pub(crate) unsafe fn sgr_params_sep_mask_impl(seps: *const u8, len: usize) -> u32 {
     if seps.is_null() {
         return 0;
     }
