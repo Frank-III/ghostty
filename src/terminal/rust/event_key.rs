@@ -79,53 +79,6 @@ pub unsafe extern "C" fn ghostty_rust_key_event_get_composing(event: *mut c_void
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_key_event_set_utf8(
-    event: *mut c_void,
-    utf8: *const u8,
-    len: usize,
-) {
-    let ptr = if utf8.is_null() {
-        EMPTY_UTF8.as_ptr()
-    } else {
-        utf8
-    };
-    unsafe {
-        ptr::write(
-            key_event_field::<*const u8>(event, KEY_EVENT_UTF8_PTR_OFFSET),
-            ptr,
-        );
-        ptr::write(
-            key_event_field::<usize>(event, KEY_EVENT_UTF8_LEN_OFFSET),
-            len,
-        );
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_key_event_get_utf8(
-    event: *mut c_void,
-    len: *mut usize,
-) -> *const u8 {
-    let utf8_len = unsafe { ptr::read(key_event_field::<usize>(event, KEY_EVENT_UTF8_LEN_OFFSET)) };
-    if !len.is_null() {
-        unsafe {
-            ptr::write(len, utf8_len);
-        }
-    }
-
-    if utf8_len == 0 {
-        ptr::null()
-    } else {
-        unsafe {
-            ptr::read(key_event_field::<*const u8>(
-                event,
-                KEY_EVENT_UTF8_PTR_OFFSET,
-            ))
-        }
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_key_event_set_unshifted_codepoint(
     event: *mut c_void,
     codepoint: u32,
