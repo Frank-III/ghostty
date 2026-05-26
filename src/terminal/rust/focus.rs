@@ -9,5 +9,14 @@ pub unsafe extern "C" fn ghostty_rust_focus_encode(
     out_len: usize,
     out_written: *mut usize,
 ) -> c_int {
+    unsafe { focus_encode_impl(event, out, out_len, out_written) }
+}
+
+pub(crate) unsafe fn focus_encode_impl(
+    event: c_int,
+    out: *mut u8,
+    out_len: usize,
+    out_written: *mut usize,
+) -> c_int {
     unsafe { focus_encode(event, out, out_len, out_written) }
 }
