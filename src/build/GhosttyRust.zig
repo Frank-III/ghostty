@@ -125,6 +125,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/terminal_get_pointer.rs",
     "src/terminal/rust/terminal_get_selection.rs",
     "src/terminal/rust/terminal_get_scalar.rs",
+    "src/terminal/rust/terminal_get_string.rs",
     "src/terminal/rust/terminal_set.rs",
     "src/terminal/rust/terminal_set_payload.rs",
     "src/terminal/rust/terminal_options.rs",
