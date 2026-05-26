@@ -82,6 +82,7 @@ mod mouse_x10;
 mod simple;
 mod simple_write;
 mod size_report;
+mod size_report_encode;
 mod size_report_len;
 mod size_report_pixels;
 mod size_report_write;
