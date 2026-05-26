@@ -2,6 +2,7 @@ use core::ffi::c_int;
 use core::ptr;
 
 use crate::constants::*;
+use crate::mouse_geometry::*;
 use crate::mouse_suppress::*;
 use crate::mouse_types::*;
 
@@ -105,4 +106,44 @@ pub(crate) unsafe fn mouse_update_tracked_last_cell(
             mouse_write_last_cell_from_cell(cell, out_present, out_x, out_y);
         }
     }
+}
+
+pub(crate) unsafe fn mouse_cell_or_suppress_same_cell_motion(
+    action: c_int,
+    format: c_int,
+    pos: GhosttyMousePosition,
+    size: GhosttyMouseSize,
+    track_last_cell: bool,
+    last_cell_present: bool,
+    last_cell_x: u16,
+    last_cell_y: u32,
+    out_written: *mut usize,
+    next_last_cell_present: *mut bool,
+    next_last_cell_x: *mut u16,
+    next_last_cell_y: *mut u32,
+) -> Result<GhosttyMouseCell, c_int> {
+    let cell = mouse_pos_to_cell(pos, size);
+
+    unsafe {
+        mouse_same_cell_motion_or_suppress(
+            action,
+            format,
+            track_last_cell,
+            last_cell_present,
+            last_cell_x,
+            last_cell_y,
+            cell,
+            out_written,
+        )?;
+
+        mouse_update_tracked_last_cell(
+            track_last_cell,
+            cell,
+            next_last_cell_present,
+            next_last_cell_x,
+            next_last_cell_y,
+        );
+    }
+
+    Ok(cell)
 }

@@ -97,31 +97,25 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         return result;
     }
 
-    let cell = mouse_pos_to_cell(pos, size);
-    if let Err(result) = unsafe {
-        mouse_same_cell_motion_or_suppress(
+    let cell = match unsafe {
+        mouse_cell_or_suppress_same_cell_motion(
             action,
             format,
+            pos,
+            size,
             track_last_cell,
             last_cell_present,
             last_cell_x,
             last_cell_y,
-            cell,
             out_written,
-        )
-    } {
-        return result;
-    }
-
-    unsafe {
-        mouse_update_tracked_last_cell(
-            track_last_cell,
-            cell,
             next_last_cell_present,
             next_last_cell_x,
             next_last_cell_y,
-        );
-    }
+        )
+    } {
+        Ok(cell) => cell,
+        Err(result) => return result,
+    };
 
     let button_code = match unsafe {
         mouse_required_button_code_or_suppress(
