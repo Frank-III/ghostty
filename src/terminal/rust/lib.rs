@@ -127,6 +127,7 @@ mod mode_report_len;
 mod mode_report_state;
 mod mode_report_tag;
 mod mode_report_write;
+mod mode_report_written;
 mod modes;
 mod osc;
 mod osc_command_data;

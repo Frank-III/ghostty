@@ -1,5 +1,4 @@
 use core::ffi::c_int;
-use core::ptr;
 
 use crate::constants::*;
 use crate::early::*;
@@ -8,6 +7,7 @@ use crate::mode_report_len::*;
 use crate::mode_report_state::*;
 use crate::mode_report_tag::*;
 use crate::mode_report_write::*;
+use crate::mode_report_written::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mode_report_encode(
@@ -25,9 +25,7 @@ pub unsafe extern "C" fn ghostty_rust_mode_report_encode(
     let state_value = state as u64;
     let total = mode_report_len(report_tag.value, report_tag.ansi, state_value);
 
-    unsafe {
-        ptr::write(out_written, total);
-    }
+    unsafe { mode_report_written(out_written, total) };
 
     if !mode_report_buffer_ready(out, out_len, total) {
         return GHOSTTY_OUT_OF_SPACE;
