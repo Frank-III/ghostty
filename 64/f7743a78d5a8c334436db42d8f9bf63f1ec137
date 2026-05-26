@@ -1,0 +1,28 @@
+src/terminal/rust/stream_terminal.rs
+  s_036535f8a37cb4::t_218b7f367365f6 14-15
+  s_e3833c1c62536e::t_bddecee2713fd8 1-13,16-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "64f7743a78d5a8c334436db42d8f9bf63f1ec137",
+  "prompts": {},
+  "sessions": {
+    "s_036535f8a37cb4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19b695b2dffenTbSSYtA9EpzF6",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_e3833c1c62536e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a583704ffelYDnCBG3oOxnAE",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
