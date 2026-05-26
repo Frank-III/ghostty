@@ -5,6 +5,7 @@ use crate::constants::*;
 use crate::simple::*;
 use crate::style::*;
 use crate::style_copy::*;
+use crate::style_write::*;
 
 #[repr(C)]
 pub struct GhosttyRenderStateColors {

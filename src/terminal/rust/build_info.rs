@@ -6,6 +6,7 @@ use crate::early::*;
 use crate::simple::*;
 use crate::style::*;
 use crate::style_copy::*;
+use crate::style_write::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_build_info(data: c_int, out: *mut c_void) -> c_int {

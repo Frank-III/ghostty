@@ -8,6 +8,7 @@ use crate::selection_copy::*;
 use crate::simple::*;
 use crate::style::*;
 use crate::style_copy::*;
+use crate::style_write::*;
 use crate::terminal::*;
 
 #[no_mangle]

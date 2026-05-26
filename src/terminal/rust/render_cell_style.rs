@@ -5,6 +5,7 @@ use crate::cell::*;
 use crate::constants::*;
 use crate::style::*;
 use crate::style_copy::*;
+use crate::style_write::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_render_row_cell_get_color(
