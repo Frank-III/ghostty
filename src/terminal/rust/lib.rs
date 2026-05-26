@@ -31,6 +31,7 @@ mod row;
 mod sgr;
 mod color;
 mod allocator;
+mod build_info;
 
 pub(crate) use early::*;
 pub(crate) use constants::*;
@@ -55,6 +56,7 @@ pub(crate) use row::*;
 pub(crate) use sgr::*;
 pub(crate) use color::*;
 pub(crate) use allocator::*;
+pub(crate) use build_info::*;
 
 #[panic_handler]
 fn panic(_: &PanicInfo<'_>) -> ! {
