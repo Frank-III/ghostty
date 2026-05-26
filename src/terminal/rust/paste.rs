@@ -4,6 +4,7 @@ use core::ptr;
 use crate::constants::*;
 use crate::early::*;
 use crate::paste_bytes::*;
+use crate::paste_sanitize::*;
 use crate::simple::*;
 
 #[no_mangle]
@@ -37,22 +38,8 @@ pub unsafe extern "C" fn ghostty_rust_paste_encode(
     let actual_data_len = if data.is_null() { 0 } else { data_len };
 
     if !data.is_null() {
-        let mut offset = 0usize;
-        while offset < actual_data_len {
-            let byte = unsafe { ptr::read(data.add(offset)) };
-            if paste_strip_byte(byte) || (!bracketed && byte == b'\n') {
-                unsafe {
-                    ptr::write(
-                        data.add(offset),
-                        if !bracketed && byte == b'\n' {
-                            b'\r'
-                        } else {
-                            b' '
-                        },
-                    );
-                }
-            }
-            offset += 1;
+        unsafe {
+            sanitize_paste_data(data, actual_data_len, bracketed);
         }
     }
 
