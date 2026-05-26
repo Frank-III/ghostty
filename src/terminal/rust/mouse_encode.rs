@@ -14,6 +14,7 @@ use crate::mouse_output::*;
 use crate::mouse_out_written::*;
 use crate::mouse_size::*;
 use crate::mouse_types::*;
+use crate::mouse_viewport_report::*;
 use crate::mouse_write::*;
 use crate::mouse_x10::*;
 use crate::simple::*;
@@ -81,13 +82,17 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         return GHOSTTY_SUCCESS;
     }
 
-    if action != MOUSE_ACTION_RELEASE && mouse_pos_out_of_viewport(pos, size) {
-        if !mouse_event_sends_motion(tracking_mode) || !any_button_pressed {
-            unsafe {
-                mouse_suppress_output(out_written);
-            }
-            return GHOSTTY_SUCCESS;
+    if mouse_should_suppress_out_of_viewport(
+        action,
+        tracking_mode,
+        any_button_pressed,
+        pos,
+        size,
+    ) {
+        unsafe {
+            mouse_suppress_output(out_written);
         }
+        return GHOSTTY_SUCCESS;
     }
 
     let cell = mouse_pos_to_cell(pos, size);
