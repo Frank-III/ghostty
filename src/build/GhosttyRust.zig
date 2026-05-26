@@ -106,6 +106,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/mouse_types.rs",
     "src/terminal/rust/mouse_setopt.rs",
     "src/terminal/rust/mouse_setopt_bool.rs",
+    "src/terminal/rust/mouse_setopt_bool_write.rs",
     "src/terminal/rust/mouse_setopt_mode.rs",
     "src/terminal/rust/mouse_setopt_size.rs",
     "src/terminal/rust/mouse_setopt_size_write.rs",

@@ -1,7 +1,6 @@
 use core::ffi::c_int;
-use core::ptr;
 
-use crate::constants::*;
+use crate::mouse_setopt_bool_write::mouse_encoder_setopt_bool_write;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mouse_encoder_setopt_bool(
@@ -12,21 +11,12 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encoder_setopt_bool(
     last_cell_present: *mut bool,
 ) {
     unsafe {
-        match option {
-            MOUSE_ENCODER_OPT_ANY_BUTTON_PRESSED => {
-                if !any_button_pressed.is_null() {
-                    ptr::write(any_button_pressed, value);
-                }
-            }
-            MOUSE_ENCODER_OPT_TRACK_LAST_CELL => {
-                if !track_last_cell.is_null() {
-                    ptr::write(track_last_cell, value);
-                }
-                if !value && !last_cell_present.is_null() {
-                    ptr::write(last_cell_present, false);
-                }
-            }
-            _ => {}
-        }
+        mouse_encoder_setopt_bool_write(
+            option,
+            value,
+            any_button_pressed,
+            track_last_cell,
+            last_cell_present,
+        );
     }
 }

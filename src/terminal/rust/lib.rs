@@ -70,6 +70,7 @@ mod mouse_report;
 mod mouse_types;
 mod mouse_setopt;
 mod mouse_setopt_bool;
+mod mouse_setopt_bool_write;
 mod mouse_setopt_mode;
 mod mouse_setopt_size;
 mod mouse_setopt_size_write;
