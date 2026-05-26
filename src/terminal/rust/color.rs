@@ -18,6 +18,15 @@ pub unsafe extern "C" fn ghostty_rust_color_rgb_get(
     g: *mut u8,
     b: *mut u8,
 ) {
+    unsafe { color_rgb_get_impl(color, r, g, b) }
+}
+
+pub(crate) unsafe fn color_rgb_get_impl(
+    color: GhosttyColorRgb,
+    r: *mut u8,
+    g: *mut u8,
+    b: *mut u8,
+) {
     unsafe {
         ptr::write(r, color.r);
         ptr::write(g, color.g);
