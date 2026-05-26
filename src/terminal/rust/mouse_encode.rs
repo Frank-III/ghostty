@@ -143,7 +143,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     };
 
     unsafe {
-        mouse_write_out_written(out_written, required);
+        mouse_commit_output_len(out_written, required);
     }
 
     if mouse_output_needs_space(required, out, out_len) {
