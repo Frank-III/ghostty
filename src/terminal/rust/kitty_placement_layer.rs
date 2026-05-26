@@ -26,6 +26,14 @@ pub unsafe extern "C" fn ghostty_rust_kitty_placement_iterator_set(
     layer: c_int,
     out_layer: *mut c_int,
 ) -> c_int {
+    unsafe { kitty_placement_iterator_set_impl(option, layer, out_layer) }
+}
+
+pub(crate) unsafe fn kitty_placement_iterator_set_impl(
+    option: c_int,
+    layer: c_int,
+    out_layer: *mut c_int,
+) -> c_int {
     if out_layer.is_null() || option != KITTY_PLACEMENT_ITERATOR_OPTION_LAYER {
         return GHOSTTY_INVALID_VALUE;
     }
