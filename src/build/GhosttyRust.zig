@@ -54,6 +54,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/constants.rs",
     "src/terminal/rust/early.rs",
     "src/terminal/rust/event_key.rs",
+    "src/terminal/rust/event_key_action.rs",
     "src/terminal/rust/event_key_codepoint.rs",
     "src/terminal/rust/event_key_field.rs",
     "src/terminal/rust/event_key_utf8.rs",
