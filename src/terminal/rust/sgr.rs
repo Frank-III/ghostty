@@ -17,7 +17,7 @@ use crate::sgr_parse::*;
 use crate::sgr_write::*;
 
 const SGR_UNSET: c_int = 0;
-const SGR_UNKNOWN: c_int = 1;
+pub(crate) const SGR_UNKNOWN: c_int = 1;
 const SGR_BOLD: c_int = 2;
 const SGR_RESET_BOLD: c_int = 3;
 const SGR_ITALIC: c_int = 4;
@@ -249,27 +249,6 @@ pub unsafe extern "C" fn ghostty_rust_sgr_next(
         write_sgr_unknown(result, params, params_len, params.add(start), params_len - start);
     }
     true
-}
-
-unsafe fn write_sgr_unknown(
-    result: *mut GhosttySgrAttribute,
-    full_ptr: *const u16,
-    full_len: usize,
-    partial_ptr: *const u16,
-    partial_len: usize,
-) {
-    unsafe {
-        write_sgr_empty(result, SGR_UNKNOWN);
-        ptr::write(
-            core::ptr::addr_of_mut!((*result).value.unknown),
-            GhosttySgrUnknown {
-                full_ptr,
-                full_len,
-                partial_ptr,
-                partial_len,
-            },
-        );
-    }
 }
 
 #[no_mangle]

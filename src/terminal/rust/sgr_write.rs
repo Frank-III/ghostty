@@ -1,6 +1,7 @@
 use core::ffi::c_int;
 use core::ptr;
 
+use crate::sgr::*;
 use crate::sgr_attr::*;
 use crate::style::*;
 
@@ -54,5 +55,26 @@ pub(crate) unsafe fn write_sgr_rgb(
         ptr::write(core::ptr::addr_of_mut!((*rgb).r), r);
         ptr::write(core::ptr::addr_of_mut!((*rgb).g), g);
         ptr::write(core::ptr::addr_of_mut!((*rgb).b), b);
+    }
+}
+
+pub(crate) unsafe fn write_sgr_unknown(
+    result: *mut GhosttySgrAttribute,
+    full_ptr: *const u16,
+    full_len: usize,
+    partial_ptr: *const u16,
+    partial_len: usize,
+) {
+    unsafe {
+        write_sgr_empty(result, SGR_UNKNOWN);
+        ptr::write(
+            core::ptr::addr_of_mut!((*result).value.unknown),
+            GhosttySgrUnknown {
+                full_ptr,
+                full_len,
+                partial_ptr,
+                partial_len,
+            },
+        );
     }
 }
