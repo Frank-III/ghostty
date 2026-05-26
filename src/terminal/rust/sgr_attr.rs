@@ -27,6 +27,13 @@ pub unsafe extern "C" fn ghostty_rust_sgr_unknown_full(
     unknown: GhosttySgrUnknown,
     ptr_out: *mut *const u16,
 ) -> usize {
+    unsafe { sgr_unknown_full_impl(unknown, ptr_out) }
+}
+
+pub(crate) unsafe fn sgr_unknown_full_impl(
+    unknown: GhosttySgrUnknown,
+    ptr_out: *mut *const u16,
+) -> usize {
     if !ptr_out.is_null() {
         unsafe {
             ptr::write(ptr_out, unknown.full_ptr);
@@ -41,6 +48,13 @@ pub unsafe extern "C" fn ghostty_rust_sgr_unknown_partial(
     unknown: GhosttySgrUnknown,
     ptr_out: *mut *const u16,
 ) -> usize {
+    unsafe { sgr_unknown_partial_impl(unknown, ptr_out) }
+}
+
+pub(crate) unsafe fn sgr_unknown_partial_impl(
+    unknown: GhosttySgrUnknown,
+    ptr_out: *mut *const u16,
+) -> usize {
     if !ptr_out.is_null() {
         unsafe {
             ptr::write(ptr_out, unknown.partial_ptr);
@@ -52,11 +66,21 @@ pub unsafe extern "C" fn ghostty_rust_sgr_unknown_partial(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_sgr_attribute_tag(attr: GhosttySgrAttribute) -> c_int {
+    sgr_attribute_tag_impl(attr)
+}
+
+pub(crate) fn sgr_attribute_tag_impl(attr: GhosttySgrAttribute) -> c_int {
     attr.tag
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_sgr_attribute_value(
+    attr: *mut GhosttySgrAttribute,
+) -> *mut GhosttySgrAttributeValue {
+    unsafe { sgr_attribute_value_impl(attr) }
+}
+
+pub(crate) unsafe fn sgr_attribute_value_impl(
     attr: *mut GhosttySgrAttribute,
 ) -> *mut GhosttySgrAttributeValue {
     unsafe { core::ptr::addr_of_mut!((*attr).value) }
