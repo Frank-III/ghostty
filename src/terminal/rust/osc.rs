@@ -2,17 +2,14 @@ use core::ffi::{c_int, c_void};
 use core::ptr;
 
 use crate::early::*;
+use crate::osc_command_type::*;
 
 pub(crate) const OSC_COMMAND_INVALID: c_int = 0;
 pub(crate) const OSC_DATA_CHANGE_WINDOW_TITLE_STR: c_int = 1;
 
 #[no_mangle]
 pub extern "C" fn ghostty_rust_osc_command_type(has_command: bool, kind: c_int) -> c_int {
-    if has_command {
-        kind
-    } else {
-        OSC_COMMAND_INVALID
-    }
+    osc_command_type(has_command, kind)
 }
 
 #[no_mangle]
