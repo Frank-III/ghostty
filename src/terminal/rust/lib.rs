@@ -115,6 +115,7 @@ mod event_mouse_position;
 mod palette_copy;
 mod paste;
 mod paste_bytes;
+mod paste_encode;
 mod paste_len;
 mod paste_safe;
 mod paste_sanitize;
