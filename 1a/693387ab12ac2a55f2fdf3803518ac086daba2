@@ -1,0 +1,519 @@
+src/terminal/rust/stream_handler.rs
+  s_036535f8a37cb4::t_5f21ee919a351c 16-113
+  s_a7f6561bff6e80::t_20cddfb7c7e41f 1-15,114-210
+src/terminal/rust/stream.zig
+  s_59c980257d4612::t_2620095a39a0af 1-3449
+src/terminal/rust/utf8_decoder.zig
+  s_036535f8a37cb4::t_85e44af4783007 1-142
+src/terminal/rust/lib.rs
+  s_036535f8a37cb4::t_15e3a60ef162e0 40,43-49,54
+  s_d3c11c99d5e897::t_bbe5e74ea992fc 412-413
+  s_036535f8a37cb4::t_c38c175d78e337 244-245,247-248
+  s_036535f8a37cb4::t_3bddb81acc4a45 350
+  s_036535f8a37cb4::t_62c616c6150611 52-53
+  s_036535f8a37cb4::t_2d016ac65ea704 16-17
+  s_fe711435d356ea::t_004c433f3c4821 35
+  s_036535f8a37cb4::t_fb9ce32cbe5666 30-33
+  s_9c5994ade172c8::t_6c3cb018c266bf 63
+  s_036535f8a37cb4::t_da6a0d554a7c94 225
+  s_036535f8a37cb4::t_5fe79dfedb30a4 253,256-262,266
+  s_036535f8a37cb4::t_2cf0d1b36199ac 234-235
+  s_036535f8a37cb4::t_9bd9e2628e8326 41
+  s_c9259c3b2e8147::t_5fa86aad718572 224
+  s_036535f8a37cb4::t_97af353554824b 13-15
+  s_036535f8a37cb4::t_b4a994fb698ef7 254
+  s_c9259c3b2e8147::t_5bf49a70c41d62 414
+  s_036535f8a37cb4::t_be254392339e59 415
+  s_036535f8a37cb4::t_affccf0d384c3c 361
+  s_036535f8a37cb4::t_2ebcff7c12d7d0 21-25
+  s_036535f8a37cb4::t_868b758647d295 264-265
+  s_036535f8a37cb4::t_f828d87df426c6 146,157
+  s_036535f8a37cb4::t_77ef8b717b99ef 249-251
+  s_036535f8a37cb4::t_b3af04050db424 18-20
+  s_036535f8a37cb4::t_c839b600474a30 34,39,50,62,90,246,252,263,274,301
+  s_a03035ab5fbce8::t_36bdf7602647b9 42,255
+  s_e1b3795c1720d6::t_c0bca8976ce80c 51
+  s_036535f8a37cb4::t_6a671d426e6584 26-29,36-38
+  s_036535f8a37cb4::t_cb451668f56343 231-233
+  s_036535f8a37cb4::t_84151b626b124c 236-238
+  s_036535f8a37cb4::t_56060871c0fe9d 239-243
+  s_d3c11c99d5e897::t_d2102f8bd6349c 222-223
+src/terminal/rust/string_map.rs
+  s_036535f8a37cb4::t_4b8f45fee4e005 1-22,24-25,27-40
+  s_036535f8a37cb4::t_455ee8c9f27ce0 23,26
+src/terminal/rust/selection_codepoints.rs
+  s_c41dcc79c512a5::t_b8f6ed9be1e144 6,25-26,30
+  s_c41dcc79c512a5::t_8418994b7bc8cc 1-5,7-24,27-29
+src/terminal/rust/charsets.rs
+  s_036535f8a37cb4::t_354995f793e0f6 1-146
+src/terminal/rust/dcs.zig
+  s_3432255b7294f9::t_03824e41e235c0 1-430
+src/terminal/rust/device_status.rs
+  s_0f413698997e23::t_86b2762662ea52 1-44
+src/terminal/rust/osc_types.rs
+  s_77b4dcc6da5072::t_e08e8b93f30af4 1-160
+src/terminal/rust/csi.zig
+  s_036535f8a37cb4::t_ca756e5d81d8a1 1-55
+src/terminal/rust/hyperlink.rs
+  s_036535f8a37cb4::t_582c6114e0df8a 154,163
+  s_036535f8a37cb4::t_7db2e903b76959 1-28,30-45,48-58,61-62,64-77,79-86,88-94,96-105,108-113,116-152,155-156,158-162,164-166
+  s_036535f8a37cb4::t_b5ddef41ba28a1 47
+  s_036535f8a37cb4::t_697ef017edf113 60,78,87,106-107,114-115
+  s_036535f8a37cb4::t_e8cf7853082847 29,46,59,63,95,153,157
+src/terminal/rust/vt_parser.zig
+  s_036535f8a37cb4::t_85e44af4783007 1-1099
+src/terminal/rust/selection_types.rs
+  s_036535f8a37cb4::t_846e6ecd7b4c0f 6-7,12,14-15,26,28-29,32,34-35,38
+  s_036535f8a37cb4::t_f548c63e54f6a0 104
+  s_036535f8a37cb4::t_ef57b88579f5ed 1-5,8-11,13,16-25,27,30-31,33,36-37,39-103,105-106
+src/terminal/rust/stream_osc_dispatch.rs
+  s_77b4dcc6da5072::t_dd51246bc324ae 1-3,5,9-99
+  s_77b4dcc6da5072::t_e5a65abc486e2b 4,6-8
+src/terminal/rust/bitmap_allocator.zig
+  s_cea167f3ea0743::t_6ccb436d0bb94f 1-297
+src/terminal/rust/highlight.rs
+  s_b6c6719289b2db::t_22e1758decda88 5,7-8,12,15-17,26,37
+  s_b6c6719289b2db::t_ec42ee030214c2 47,55
+  s_b6c6719289b2db::t_8135c1a46d28fa 120,131,143,149
+  s_036535f8a37cb4::t_09591685e4848a 1-4,6,9-11,13-14,18-25,27-36,38-46,48-54,56-119,121-130,132-142,144-148,150-166
+src/terminal/rust/apc.rs
+  s_3432255b7294f9::t_00126bb9f671f3 1-198
+src/terminal/rust/tmux.zig
+  s_c41dcc79c512a5::t_ba1fc0e591ca1b 1-13
+src/terminal/rust/style.zig
+  s_036535f8a37cb4::t_4600f428a25675 1-1078
+src/terminal/rust/page_core.rs
+  s_0e0cdd3bd92615::t_07bc0f9ce8027c 1-3,5-11,13-20,23,32-55,60-70,72-73,76,79,82,85,88,91-113,116,118-134,136-144,151-159,163-177,179-193,197,216-219,225-248,260
+  s_036535f8a37cb4::t_28890ffd8dfa9b 4,12,21-22,25-31,56-59,71,74-75,77-78,80-81,83-84,86-87,89-90,114-115,135,145-150,160-162,194-196,198-215,220,222-224,249-259
+  s_0e0cdd3bd92615::t_661f3cf702a562 24
+  s_036535f8a37cb4::t_dc427e95c8185b 117
+  s_036535f8a37cb4::t_afa18060719155 178
+  s_036535f8a37cb4::t_2a0725dfd7f04e 221
+src/terminal/rust/modes.zig
+  s_036535f8a37cb4::t_ca756e5d81d8a1 1-386
+src/terminal/rust/utf8_decoder.rs
+  s_036535f8a37cb4::t_e0f8006ce8b089 1-90
+src/terminal/rust/x11_color.rs
+  s_c41dcc79c512a5::t_cd78d2bf736d60 1-184
+src/terminal/rust/search.zig
+  s_c41dcc79c512a5::t_ba1fc0e591ca1b 1-22
+src/terminal/rust/page_list_methods.rs
+  s_036535f8a37cb4::t_3e156f08d04caa 593
+  s_fe711435d356ea::t_ea9e414235062e 1-8,10-398,400-592,594-1719
+  s_036535f8a37cb4::t_7916be490a38f1 399
+  s_036535f8a37cb4::t_c9f576e16389d4 9
+src/terminal/rust/screen_methods.rs
+  s_036535f8a37cb4::t_d41bf7c568aebf 14
+  s_036535f8a37cb4::t_c5745baaa1f745 1375
+  s_036535f8a37cb4::t_7f42388179a10a 1408
+  s_036535f8a37cb4::t_c60559d9c20b93 269
+  s_e1b3795c1720d6::t_d7ddd81f460c6d 1-13,15-268,270-1374,1376-1407,1409
+src/terminal/rust/hyperlink.zig
+  s_036535f8a37cb4::t_a832b1555c7027 1-240
+src/terminal/rust/point.rs
+  s_036535f8a37cb4::t_ee46691d39a7df 1-108
+src/terminal/rust/search.rs
+  s_c41dcc79c512a5::t_7bfaab1a24a55c 1-9
+src/terminal/rust/mouse.zig
+  s_0f413698997e23::t_0f454706d9a4da 1-168
+src/terminal/rust/device_status.zig
+  s_0f413698997e23::t_0f454706d9a4da 1-74
+src/terminal/rust/screen_set.rs
+  s_3432255b7294f9::t_aff62962e06c2f 1-90
+src/terminal/rust/tabstops.zig
+  s_036535f8a37cb4::t_008687044d94df 1-271
+src/terminal/rust/size.zig
+  s_036535f8a37cb4::t_a481c2270b5f1e 1-227
+src/terminal/rust/point.zig
+  s_036535f8a37cb4::t_a481c2270b5f1e 1-104
+src/terminal/rust/size_types.rs
+  s_036535f8a37cb4::t_72205c16aec465 1-13,15-26,30-32,36-39,41-56,61-115
+  s_036535f8a37cb4::t_a3f1fdc3fce208 27-29,33-35
+  s_036535f8a37cb4::t_be5f3522d476b0 14
+  s_036535f8a37cb4::t_b0a40d166deeb6 40
+  s_036535f8a37cb4::t_9b9f9417c3d66b 57-60
+src/terminal/rust/ref_counted_set.rs
+  s_eff47d008d6b2b::t_a761acdaad4a1e 3,5-7,10-15,19,21-23,26-29,31-33,51-53,59-60,65,71-73,78-80,84-85,89-90,94-95,101-103,109-111,117-119,125-127,134,136,140,143,145,152,154,160,164,168-170,178-180,197-198,201,218-220,222,228,233,236-237
+  s_a2f14eef632ba2::t_f1817e76f23026 191
+  s_a2f14eef632ba2::t_85c94971c1e297 1-2,4,8-9,16-18,20,24-25,30,34-43,45,47-48,54-58,61-64,66-70,74-77,81-83,86-88,91-93,96-100,104-108,112-116,120-124,128-133,135,137-139,141-142,144,146-151,153,155-159,161-163,165-167,171-177,181-190,192-196,199-200,202-211,213-217,221,223-227,229-232,234-235
+  s_eff47d008d6b2b::t_335395d7b33487 44,46,49-50
+  s_a2f14eef632ba2::t_1eec632bca2090 212
+src/terminal/rust/cursor_style.rs
+  s_036535f8a37cb4::t_0ab0be00af4f1a 2
+  s_036535f8a37cb4::t_4eb8e894dda7a7 1,3-8
+src/terminal/rust/stream_types.rs
+  s_59c980257d4612::t_8f7c3840d04ff6 1-8,11-414,416-454
+  s_036535f8a37cb4::t_e9371d83058537 9-10
+  s_036535f8a37cb4::t_0a543e5e8b599b 415
+src/terminal/rust/hash_map.rs
+  s_036535f8a37cb4::t_bde21505bca984 509
+  s_7ea52f45bf3666::t_94d941ebe135c6 4-8,12,20,22-23,27,35-36,65-68,70-71,84-85,90-91,95,101,106-108,110-111,114-115,120,122,127-143,157-160,162,168,173,210,225,227,230-232,238-239,243-244,248-249,254-255,258-260,263-265,268-270,273-274,279,283-284,286,288-290,292,304,318,320-321,326,330-331,334-335,339,351,355,366,369,373,377,382,387-389,406,408-410,418,422,432-434,447,452,454-455,457,462,471,496-500,502-503,508,525,527,531,536,548-549,558-559,568-569
+  s_a03035ab5fbce8::t_42e1a4635cb691 1-3,9-11,13-19,21,24-26,28-34,37-64,69,72-83,86-89,92-94,96-100,102-105,109,112-113,116-119,121,123-126,144-156,161,163-167,169-172,174-209,211-224,226,228-229,233-237,240-242,245-247,250-253,256-257,261-262,266-267,271-272,275-278,280-282,285,287,291,293-303,305-317,319,322-325,327-329,332-333,336-338,340-350,352-354,356-358,361,364-365,367-368,370-372,374-376,378-381,383-386,390-405,407,411-417,419-421,423-431,435-446,448-451,453,456,458-461,463-470,472-495,501,504-507,510-524,526,528-530,532-535,537-547,550-557,560-567
+  s_a03035ab5fbce8::t_9915f00e348f58 359-360,362-363
+src/terminal/rust/page.zig
+  s_5ef1f971d5d22e::t_fc73b4166d25a7 1-3918
+src/terminal/rust/charsets.zig
+  s_036535f8a37cb4::t_ca756e5d81d8a1 1-115
+src/build/GhosttyRust.zig
+  s_036535f8a37cb4::t_162cb21926c222 117,120-126,131
+  s_e3833c1c62536e::t_3e607d2e469723 110
+  s_036535f8a37cb4::t_2396d159c92471 98-102
+  s_036535f8a37cb4::t_e1e48a8d108895 51,58
+  s_e1b3795c1720d6::t_8b1abcd62dc237 127-128
+  s_036535f8a37cb4::t_38c2912c485f2d 227
+  s_036535f8a37cb4::t_d6e269b0c146e7 200
+  s_036535f8a37cb4::t_d95b8a88175b02 97
+  s_036535f8a37cb4::t_37f3d614414516 129-130
+  s_036535f8a37cb4::t_2b3f5f1e0dd837 103-109
+  s_b6c6719289b2db::t_21f6eb4a1e827e 115
+  s_036535f8a37cb4::t_368c0c807b8642 111-114
+  s_fe711435d356ea::t_3b626d3222d1d6 116
+  s_036535f8a37cb4::t_dd5ea4b7445461 54,57
+  s_036535f8a37cb4::t_b9f62ef5466597 34
+  s_036535f8a37cb4::t_b6ae42a05d4b0a 185
+  s_3c55125c767f0e::t_6037aea8c35308 259
+  s_9c5994ade172c8::t_1080c2e94e3e8b 260
+  s_036535f8a37cb4::t_9ba0326a751fe1 261-262
+  s_036535f8a37cb4::t_438fd7b44c06d6 118-119
+  s_036535f8a37cb4::t_f73581767cd678 224
+src/terminal/rust/selection_codepoints.zig
+  s_c41dcc79c512a5::t_ba1fc0e591ca1b 1-31
+src/terminal/rust/ansi.zig
+  s_036535f8a37cb4::t_a481c2270b5f1e 1-106
+src/terminal/rust/kitty_key.zig
+  s_0f413698997e23::t_0f454706d9a4da 1-169
+src/terminal/rust/page_list_types.rs
+  s_036535f8a37cb4::t_5fc96ff1345664 46
+  s_036535f8a37cb4::t_33ed21e05e6a35 68
+  s_b6c6719289b2db::t_a0520320096917 1-45,47-67,69-93,95-142,144-188
+  s_036535f8a37cb4::t_7e08bf5fc5887e 94
+  s_036535f8a37cb4::t_7fabae1804668e 143
+src/terminal/rust/terminal_methods.rs
+  s_9c5994ade172c8::t_375e5a882b57a2 1-465
+src/terminal/rust/screen_types.rs
+  s_036535f8a37cb4::t_ec3e37dd454bd5 203
+  s_99fccb5b83a0d4::t_d17c7e7e260341 1-60,64-134,136-160,162-202,204-223,230-405
+  s_036535f8a37cb4::t_c80dfd83fa828f 135
+  s_036535f8a37cb4::t_18987bca810ed0 161
+  s_99fccb5b83a0d4::t_262303c69d449b 224-229
+  s_99fccb5b83a0d4::t_88d6ed8009160e 61-63
+src/terminal/rust/csi.rs
+  s_036535f8a37cb4::t_827625e424af9e 1-137
+src/terminal/rust/lib.zig
+  s_036535f8a37cb4::t_a481c2270b5f1e 1-22
+src/terminal/rust/style_types.rs
+  s_036535f8a37cb4::t_2d08c89d068dbf 6
+  s_036535f8a37cb4::t_8cb7f806162d9b 1-5,7-435
+src/terminal/rust/stream_esc_dispatch.rs
+  s_6c7ac72b9f3bb7::t_efb63a4ef64b89 1-8,11-15,18-32,34-38,41-48,50-53,55,57-62,64-67,69-72,74-77,79-82,84-91,93-100,102-105,107-111,113-116,118-121,123-130,132-139,141-148,150-157,159-166,168-173,175-188
+  s_036535f8a37cb4::t_89008bf1eb99f0 49,54,56,63,68,73,78,83,92,101,106,117,122,131,140,149,158,167,174
+  s_036535f8a37cb4::t_85c76d5b23fcfe 33,39-40
+  s_036535f8a37cb4::t_50a0664ebad942 9-10,16-17
+  s_036535f8a37cb4::t_a1f5072e1320b3 112
+src/terminal/rust/sgr_attribute.rs
+  s_77b4dcc6da5072::t_e5a65abc486e2b 3,178-179,234,236-238,245-247,265,267-269,276-278,294,296-298,305-307,328-329,331-333,368-372
+  s_77b4dcc6da5072::t_87be963ccfc0f3 4
+  s_036535f8a37cb4::t_05b84379673daa 330,334-335,339
+  s_77b4dcc6da5072::t_596f84f16d8dca 88-94,155,175,340,342-357,359-365
+  s_77b4dcc6da5072::t_adfa83982dff85 1-2,5-87,95-154,156-174,176-177,180-233,239-244,248-264,270-275,279-293,299-304,308-327,336-338,341,358,366-367,373-380
+  s_036535f8a37cb4::t_523d531906193f 235,266,295
+src/terminal/rust/string_map.zig
+  s_036535f8a37cb4::t_008687044d94df 1-298
+src/terminal/rust/color_palette.rs
+  s_036535f8a37cb4::t_bae054f454c9d5 287-291
+src/terminal/rust/stream_csi_dispatch.rs
+  s_ccdf362b1b59bb::t_c8b54614cdd8b4 1-6,9-62,66-848
+  s_036535f8a37cb4::t_00947463e45d15 7-8
+  s_036535f8a37cb4::t_df522e33587276 63-65
+src/terminal/rust/apc.zig
+  s_3432255b7294f9::t_03824e41e235c0 1-248
+src/terminal/rust/vt_parser.rs
+  s_a7f6561bff6e80::t_2c96b876505283 138-146
+  s_036535f8a37cb4::t_10a05f24ca5299 234
+  s_036535f8a37cb4::t_2f3626cd31af1d 474
+  s_036535f8a37cb4::t_e23a846a2c3154 1-137,147-233,235-473,475-983
+src/terminal/rust/ansi.rs
+  s_036535f8a37cb4::t_a2670d8f920bbf 1-218
+src/terminal/rust/selection_full.zig
+  s_036535f8a37cb4::t_83e860f7942a45 1-1604
+src/terminal/rust/bitmap_allocator.rs
+  s_036535f8a37cb4::t_49f7b56a2d800a 47
+  s_036535f8a37cb4::t_9439fe63f48c98 191
+  s_cea167f3ea0743::t_6d485472110e5f 1-46,48-175,177-190,192-244
+  s_036535f8a37cb4::t_f8153e5c33bd15 176
+src/terminal/rust/highlight.zig
+  s_036535f8a37cb4::t_a832b1555c7027 1-213
+src/terminal/rust/dcs.rs
+  s_3432255b7294f9::t_335bb03559db9b 1-406
+src/terminal/rust/mouse_shape.rs
+  s_0f413698997e23::t_7ee4b1135025e9 1-124
+src/terminal/rust/kitty_key.rs
+  s_0f413698997e23::t_7a2b4505f08821 1-100
+src/terminal/rust/parse_table.zig
+  s_036535f8a37cb4::t_85e44af4783007 1-388
+src/terminal/rust/device_attributes.rs
+  s_0f413698997e23::t_49c3cce1e6b5ed 1-22
+src/terminal/rust/cursor.zig
+  s_036535f8a37cb4::t_4600f428a25675 1-15
+src/terminal/rust/device_attributes.zig
+  s_0f413698997e23::t_0f454706d9a4da 1-227
+src/terminal/rust/mode_def.rs
+  s_036535f8a37cb4::t_975617cd6dd086 1-230
+src/terminal/rust/page_types.rs
+  s_036535f8a37cb4::t_98bc9f31d000dc 30
+  s_5ef1f971d5d22e::t_f61612fe03ffbf 630
+  s_036535f8a37cb4::t_2cb1d9128a0a74 54
+  s_036535f8a37cb4::t_34c6708f32f357 7
+  s_036535f8a37cb4::t_f082718f66a217 98
+  s_5ef1f971d5d22e::t_243524cb52de71 1-6,8-29,31-53,55-76,78-97,99-490,492-502,504-513,515-629,631-655
+  s_036535f8a37cb4::t_3bc6920858ce1c 77
+  s_036535f8a37cb4::t_2b2b7eff0c49ff 514
+  s_036535f8a37cb4::t_6c23f538e498e2 491
+  s_036535f8a37cb4::t_f30855ae503bc1 503
+src/terminal/rust/terminal_types.rs
+  s_3c55125c767f0e::t_99c41d65137106 1-3,5-56,58-286
+  s_3c55125c767f0e::t_1a9d534244cd80 287-320
+  s_3c55125c767f0e::t_c83018d3631f8e 4
+  s_3c55125c767f0e::t_65f2e6bebde0a0 57
+src/terminal/rust/tabstops.rs
+  s_036535f8a37cb4::t_13ba887ec0d62c 90,99,110,127,131,133-136
+  s_036535f8a37cb4::t_3423daf138139b 1-89,91-98,100-109,111-126,128-130,132,137-171
+src/terminal/rust/page_methods.rs
+  s_afe2ae1caed620::t_ab957a4bce79f2 10,38-39,41-42,44,49-52,55,64-67,74,86,88-92,94-95,100-103,105-106,117,121,124-128,130,140-144,146,156-159,162,173-175,179,186,191,197,206,210-212,215,223-224,234,288,294,300,307,311-313,316,330,334-336,339,345,349-350,381,401-402,405,412,454,460-465,470-474,490-491,493-494,499-500,504-505,509,514
+  s_036535f8a37cb4::t_9a84c8e9974dea 11-12
+  s_036535f8a37cb4::t_13b7f7ca7a5794 295-297
+  s_afe2ae1caed620::t_8705bc0b2ed0ae 4,6-9,13-24,27-29,32-33,35-37,47-48,53-54,56-62,68-73,75,77-85,87,96-99,107-116,118-119,122-123,129,131,133-139,145,147,149-155,161,163,165-170,172,176-178,180-185,187-190,195-196,198-205,207,213-214,216-222,225-233,235-261,263,266-278,282-287,292-293,298-299,304-306,308,314-315,317-329,331,337-338,340-344,346-348,351-355,357-369,376-380,382,384-385,387-400,406,409-411,415-427,429-440,449-451,455-458,466-468,478-479,481-482,484-488,497-498,502-503,506-508,510,512-513,515-521,526-532
+  s_036535f8a37cb4::t_13f323bb0474b8 289-291
+  s_afe2ae1caed620::t_de0aa2a5a19857 5,445,447,475-477
+  s_036535f8a37cb4::t_7d1852b3197dbd 301-302
+  s_036535f8a37cb4::t_210882e74a7ecc 303
+  s_036535f8a37cb4::t_c19b0f0f2be883 1-3,25-26,30-31,34,40,43,45-46,63,76,93,104,120,132,148,160,164,171,208-209,262,264-265,279-281,309-310,332-333,356,370-375,383,386,403-404,407-408,413-414,428,441-444,446,448,452-453,459,469,480,483,489,492,495-496,501,511,522-525
+  s_036535f8a37cb4::t_c6b5a2549cb84d 192-194
+src/terminal/rust/x11_color.zig
+  s_c41dcc79c512a5::t_ba1fc0e591ca1b 1-69
+src/terminal/rust/tmux.rs
+  s_c41dcc79c512a5::t_e3d7b7a7aec194 1-11
+src/terminal/rust/screen_set.zig
+  s_3432255b7294f9::t_03824e41e235c0 1-150
+src/terminal/rust/stream_core.rs
+  s_a7f6561bff6e80::t_699173e3ba333c 1-12,14-69,72-77,82-87,89-99,101,103,106-175,177-179,181-182,184-185
+  s_036535f8a37cb4::t_f5df6e9e5b5a2d 13
+  s_036535f8a37cb4::t_d5df1e75571a1a 176,180,183
+  s_a7f6561bff6e80::t_ac1461130e1721 70-71,78-81,88,100,102,104-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a693387ab12ac2a55f2fdf3803518ac086daba2",
+  "prompts": {},
+  "sessions": {
+    "s_036535f8a37cb4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19b695b2dffenTbSSYtA9EpzF6",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_0e0cdd3bd92615": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a6e0ae2ffeqb1bbmIIcCmNoD",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_0f413698997e23": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19ae562dfffenpW21dQaSKBept",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_3432255b7294f9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19aca697effeELlytSXmW3Aajg",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_3c55125c767f0e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a5845cfffer1kyyn8k2MYhVi",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_59c980257d4612": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19ae520d0ffewiBwzH2qRUcS0i",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_5ef1f971d5d22e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a6e34ffffeJ1qQMueB0wM3a7",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_6c7ac72b9f3bb7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19ade3aedffeQl7RKZoiFAia6w",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_77b4dcc6da5072": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19addb89cffe3312i1TzQwLMk4",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_7ea52f45bf3666": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19acab9e5ffezyZcMewrPszuuv",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_99fccb5b83a0d4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a5856fcffentqSLcMLRmUT00",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_9c5994ade172c8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a268065ffez6QLfYNJVTyS6y",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_a03035ab5fbce8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19aa810f8ffeRSvzyc4OFzWuY1",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_a2f14eef632ba2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19aa7cf8cffe5J5w15npz2EZ98",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_a7f6561bff6e80": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19ade87faffenRZWe98fnzb2Q5",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_afe2ae1caed620": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a6ded5affeeuXNFb6ZcDO1T7",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_b6c6719289b2db": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a587198ffemHp3d2x1guhC5x",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_c41dcc79c512a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19aca8414ffe6r0sjLm0ndB0u4",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_c9259c3b2e8147": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a0e52cbffej4K1IQ3Rw4P808",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_ccdf362b1b59bb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19addf211ffeuCNSwCMKjRqeF2",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_cea167f3ea0743": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a6e5b19ffeauSCtG7uBel9zq",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_d3c11c99d5e897": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a0e5f69ffeG9kx41LOffwbVr",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_e1b3795c1720d6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a268c0fffesyqpWhjRtC5Ji2",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_e3833c1c62536e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a583704ffelYDnCBG3oOxnAE",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_eff47d008d6b2b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19acaa2d8ffe5pQ3k1BNCvSKBc",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_fe711435d356ea": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19a26999fffe9KrdL176D7PrBD",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
