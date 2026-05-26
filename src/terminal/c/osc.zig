@@ -1,10 +1,25 @@
 const std = @import("std");
+const build_options = @import("terminal_options");
 const lib = @import("../lib.zig");
 const CAllocator = lib.alloc.Allocator;
 const osc = @import("../osc.zig");
 const Result = @import("result.zig").Result;
 
 const log = std.log.scoped(.osc);
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_osc_command_type(
+        has_command: bool,
+        kind: c_int,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_osc_command_data_string(
+        data: c_int,
+        has_value: bool,
+        value: ?[*:0]const u8,
+        out: ?*anyopaque,
+    ) callconv(.c) bool;
+} else struct {};
 
 /// C: GhosttyOscParser
 pub const Parser = ?*osc.Parser;
@@ -45,6 +60,13 @@ pub fn end(parser_: Parser, terminator: u8) callconv(lib.calling_conv) Command {
 }
 
 pub fn commandType(command_: Command) callconv(lib.calling_conv) osc.Command.Key {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_osc_command_type(
+            command_ != null,
+            if (command_) |command| @intFromEnum(command.*) else @intFromEnum(osc.Command.Key.invalid),
+        ));
+    }
+
     const command = command_ orelse return .invalid;
     return command.*;
 }
@@ -75,6 +97,27 @@ pub fn commandData(
         };
     }
 
+    if (data != .invalid and out == null) return false;
+
+    if (comptime build_options.lib_vt_rust) {
+        switch (data) {
+            .invalid => return false,
+            .change_window_title_str => {
+                const command = command_ orelse return false;
+                const title: ?[:0]const u8 = switch (command.*) {
+                    .change_window_title => |v| v,
+                    else => null,
+                };
+                return rust.ghostty_rust_osc_command_data_string(
+                    @intFromEnum(data),
+                    title != null,
+                    if (title) |v| v.ptr else null,
+                    out,
+                );
+            },
+        }
+    }
+
     return switch (data) {
         .invalid => false,
         inline else => |comptime_data| commandDataTyped(
@@ -90,7 +133,7 @@ fn commandDataTyped(
     comptime data: CommandData,
     out: *data.OutType(),
 ) bool {
-    const command = command_.?;
+    const command = command_ orelse return false;
     switch (data) {
         .invalid => return false,
         .change_window_title_str => switch (command.*) {
@@ -137,4 +180,23 @@ test "change window title" {
     var title: [*:0]const u8 = undefined;
     try testing.expect(commandData(cmd, .change_window_title_str, @ptrCast(&title)));
     try testing.expectEqualStrings("a", std.mem.span(title));
+}
+
+test "command data invalid values" {
+    const testing = std.testing;
+    var title: [*:0]const u8 = undefined;
+    try testing.expect(!commandData(null, .change_window_title_str, @ptrCast(&title)));
+
+    var p: Parser = undefined;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &p,
+    ));
+    defer free(p);
+
+    next(p, '0');
+    next(p, ';');
+    next(p, 'a');
+    const cmd = end(p, 0);
+    try testing.expect(!commandData(cmd, .change_window_title_str, null));
 }

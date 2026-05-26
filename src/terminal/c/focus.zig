@@ -1,7 +1,17 @@
 const std = @import("std");
 const lib = @import("../lib.zig");
+const build_options = @import("terminal_options");
 const terminal_focus = @import("../focus.zig");
 const Result = @import("result.zig").Result;
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_focus_encode(
+        event: c_int,
+        out: ?[*]u8,
+        out_len: usize,
+        out_written: *usize,
+    ) callconv(.c) c_int;
+} else struct {};
 
 pub fn encode(
     event: terminal_focus.Event,
@@ -9,6 +19,15 @@ pub fn encode(
     out_len: usize,
     out_written: *usize,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_focus_encode(
+            @intFromEnum(event),
+            out_,
+            out_len,
+            out_written,
+        ));
+    }
+
     var writer: std.Io.Writer = .fixed(if (out_) |out| out[0..out_len] else &.{});
     terminal_focus.encode(&writer, event) catch |err| switch (err) {
         error.WriteFailed => {

@@ -40,10 +40,21 @@ pub const BuildInfo = enum(c_int) {
     }
 };
 
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_build_info(
+        data: c_int,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+} else struct {};
+
 pub fn get(
     data: BuildInfo,
     out: ?*anyopaque,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_build_info(@intFromEnum(data), out));
+    }
+
     if (comptime std.debug.runtime_safety) {
         _ = std.meta.intToEnum(BuildInfo, @intFromEnum(data)) catch {
             log.warn("build_info invalid data value={d}", .{@intFromEnum(data)});
@@ -163,12 +174,22 @@ test "get version_pre" {
     const testing = std.testing;
     var value: lib.String = undefined;
     try testing.expectEqual(Result.success, get(.version_pre, @ptrCast(&value)));
+    if (build_options.version_pre) |pre| {
+        try testing.expectEqualStrings(pre, value.ptr[0..value.len]);
+    } else {
+        try testing.expectEqual(@as(usize, 0), value.len);
+    }
 }
 
 test "get version_build" {
     const testing = std.testing;
     var value: lib.String = undefined;
     try testing.expectEqual(Result.success, get(.version_build, @ptrCast(&value)));
+    if (build_options.version_build) |build| {
+        try testing.expectEqualStrings(build, value.ptr[0..value.len]);
+    } else {
+        try testing.expectEqual(@as(usize, 0), value.len);
+    }
 }
 
 test "get invalid" {

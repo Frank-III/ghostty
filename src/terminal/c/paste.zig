@@ -1,9 +1,30 @@
 const std = @import("std");
 const lib = @import("../lib.zig");
+const build_options = @import("terminal_options");
 const paste = @import("../../input/paste.zig");
 const Result = @import("result.zig").Result;
 
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_paste_is_safe(
+        data: ?[*]const u8,
+        len: usize,
+    ) callconv(.c) bool;
+
+    extern fn ghostty_rust_paste_encode(
+        data: ?[*]u8,
+        data_len: usize,
+        bracketed: bool,
+        out: ?[*]u8,
+        out_len: usize,
+        out_written: *usize,
+    ) callconv(.c) c_int;
+} else struct {};
+
 pub fn is_safe(data: ?[*]const u8, len: usize) callconv(lib.calling_conv) bool {
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_paste_is_safe(data, len);
+    }
+
     const slice: []const u8 = if (data) |v| v[0..len] else &.{};
     return paste.isSafe(slice);
 }
@@ -16,6 +37,17 @@ pub fn encode(
     out_len: usize,
     out_written: *usize,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_paste_encode(
+            data,
+            data_len,
+            bracketed,
+            out_,
+            out_len,
+            out_written,
+        ));
+    }
+
     const slice: []u8 = if (data) |v| v[0..data_len] else &.{};
     const result = paste.encode(slice, .{ .bracketed = bracketed });
 

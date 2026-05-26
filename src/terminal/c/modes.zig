@@ -1,5 +1,6 @@
 const std = @import("std");
 const lib = @import("../lib.zig");
+const build_options = @import("terminal_options");
 const modes = @import("../modes.zig");
 const Result = @import("result.zig").Result;
 
@@ -15,6 +16,16 @@ pub const ReportState = enum(c_int) {
     }
 };
 
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_mode_report_encode(
+        tag: modes.ModeTag.Backing,
+        state: c_int,
+        out: ?[*]u8,
+        out_len: usize,
+        out_written: *usize,
+    ) callconv(.c) c_int;
+} else struct {};
+
 pub fn report_encode(
     tag: modes.ModeTag.Backing,
     state: ReportState,
@@ -22,6 +33,16 @@ pub fn report_encode(
     out_len: usize,
     out_written: *usize,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_mode_report_encode(
+            tag,
+            @intFromEnum(state),
+            out_,
+            out_len,
+            out_written,
+        ));
+    }
+
     const mode_tag: modes.ModeTag = @bitCast(tag);
     const report: modes.Report = .{
         .tag = mode_tag,

@@ -1,9 +1,14 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const build_options = @import("terminal_options");
 const lib = @import("../lib.zig");
 const CAllocator = lib.alloc.Allocator;
 const terminal_sys = @import("../sys.zig");
 const Result = @import("result.zig").Result;
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_sys_set(option: c_int) callconv(.c) c_int;
+} else struct {};
 
 /// C: GhosttySysImage
 pub const Image = extern struct {
@@ -101,7 +106,10 @@ pub fn set(
     option: Option,
     value: ?*const anyopaque,
 ) callconv(lib.calling_conv) Result {
-    if (comptime std.debug.runtime_safety) {
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_sys_set(@intFromEnum(option)));
+        if (result != .success) return result;
+    } else if (comptime std.debug.runtime_safety) {
         _ = std.meta.intToEnum(Option, @intFromEnum(option)) catch {
             return .invalid_value;
         };

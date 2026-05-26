@@ -1,6 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
 const lib = @import("../lib.zig");
+const build_options = @import("terminal_options");
 const page = @import("../page.zig");
 const Row = page.Row;
 const Result = @import("result.zig").Result;
@@ -62,11 +63,35 @@ pub const RowData = enum(c_int) {
     }
 };
 
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_row_get(
+        row: CRow,
+        data: c_int,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_row_get_multi(
+        row: CRow,
+        count: usize,
+        keys: ?[*]const RowData,
+        values: ?[*]?*anyopaque,
+        out_written: ?*usize,
+    ) callconv(.c) c_int;
+} else struct {};
+
 pub fn get(
     row_: CRow,
     data: RowData,
     out: ?*anyopaque,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_row_get(
+            row_,
+            @intFromEnum(data),
+            out,
+        ));
+    }
+
     if (comptime std.debug.runtime_safety) {
         _ = std.meta.intToEnum(RowData, @intFromEnum(data)) catch {
             return .invalid_value;
@@ -90,6 +115,16 @@ pub fn get_multi(
     values: ?[*]?*anyopaque,
     out_written: ?*usize,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_row_get_multi(
+            row_,
+            count,
+            keys,
+            values,
+            out_written,
+        ));
+    }
+
     const k = keys orelse return .invalid_value;
     const v = values orelse return .invalid_value;
 

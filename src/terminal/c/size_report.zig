@@ -1,5 +1,6 @@
 const std = @import("std");
 const lib = @import("../lib.zig");
+const build_options = @import("terminal_options");
 const terminal_size_report = @import("../size_report.zig");
 const Result = @import("result.zig").Result;
 
@@ -9,6 +10,16 @@ pub const Style = terminal_size_report.Style;
 /// C: GhosttySizeReportSize
 pub const Size = terminal_size_report.Size;
 
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_size_report_encode(
+        style: c_int,
+        size: Size,
+        out: ?[*]u8,
+        out_len: usize,
+        out_written: *usize,
+    ) callconv(.c) c_int;
+} else struct {};
+
 pub fn encode(
     style: Style,
     size: Size,
@@ -16,6 +27,16 @@ pub fn encode(
     out_len: usize,
     out_written: *usize,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_size_report_encode(
+            @intFromEnum(style),
+            size,
+            out_,
+            out_len,
+            out_written,
+        ));
+    }
+
     var writer: std.Io.Writer = .fixed(if (out_) |out| out[0..out_len] else &.{});
     terminal_size_report.encode(&writer, style, size) catch |err| switch (err) {
         error.WriteFailed => {
