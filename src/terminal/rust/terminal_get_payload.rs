@@ -4,6 +4,7 @@ use core::ptr;
 use crate::constants::*;
 use crate::early::*;
 use crate::selection::*;
+use crate::selection_copy::*;
 use crate::simple::*;
 use crate::style::*;
 use crate::style_copy::*;
