@@ -13,6 +13,10 @@ pub struct GhosttyRenderRowSelection {
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_render_row_get_dirty(dirty: bool, out: *mut bool) -> c_int {
+    unsafe { render_row_get_dirty_impl(dirty, out) }
+}
+
+pub(crate) unsafe fn render_row_get_dirty_impl(dirty: bool, out: *mut bool) -> c_int {
     if out.is_null() {
         return RENDER_RESULT_INVALID_VALUE;
     }
@@ -26,6 +30,30 @@ pub unsafe extern "C" fn ghostty_rust_render_row_get_dirty(dirty: bool, out: *mu
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_render_row_get_data(
+    data: c_int,
+    raw: u64,
+    dirty: bool,
+    selection_present: bool,
+    selection_start: u16,
+    selection_end: u16,
+    out_size: usize,
+    out: *mut c_void,
+) -> c_int {
+    unsafe {
+        render_row_get_data_impl(
+            data,
+            raw,
+            dirty,
+            selection_present,
+            selection_start,
+            selection_end,
+            out_size,
+            out,
+        )
+    }
+}
+
+pub(crate) unsafe fn render_row_get_data_impl(
     data: c_int,
     raw: u64,
     dirty: bool,
@@ -66,6 +94,24 @@ pub unsafe extern "C" fn ghostty_rust_render_row_get_data(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_render_row_get_selection(
+    selection_present: bool,
+    selection_start: u16,
+    selection_end: u16,
+    out_size: usize,
+    out: *mut GhosttyRenderRowSelection,
+) -> c_int {
+    unsafe {
+        render_row_get_selection_impl(
+            selection_present,
+            selection_start,
+            selection_end,
+            out_size,
+            out,
+        )
+    }
+}
+
+pub(crate) unsafe fn render_row_get_selection_impl(
     selection_present: bool,
     selection_start: u16,
     selection_end: u16,
