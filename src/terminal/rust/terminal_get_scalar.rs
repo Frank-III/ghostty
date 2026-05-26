@@ -25,6 +25,44 @@ pub unsafe extern "C" fn ghostty_rust_terminal_get_scalar(
     height_px: u32,
     out: *mut c_void,
 ) -> c_int {
+    unsafe {
+        terminal_get_scalar_impl(
+            data,
+            cols,
+            rows,
+            cursor_x,
+            cursor_y,
+            cursor_pending_wrap,
+            active_screen,
+            cursor_visible,
+            kitty_keyboard_flags,
+            mouse_tracking,
+            total_rows,
+            scrollback_rows,
+            width_px,
+            height_px,
+            out,
+        )
+    }
+}
+
+pub(crate) unsafe fn terminal_get_scalar_impl(
+    data: c_int,
+    cols: u16,
+    rows: u16,
+    cursor_x: u16,
+    cursor_y: u16,
+    cursor_pending_wrap: bool,
+    active_screen: c_int,
+    cursor_visible: bool,
+    kitty_keyboard_flags: u8,
+    mouse_tracking: bool,
+    total_rows: usize,
+    scrollback_rows: usize,
+    width_px: u32,
+    height_px: u32,
+    out: *mut c_void,
+) -> c_int {
     if out.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
@@ -69,6 +107,48 @@ pub unsafe extern "C" fn ghostty_rust_terminal_get_scalar_multi(
     width_px: u32,
     height_px: u32,
 ) -> c_int {
+    unsafe {
+        terminal_get_scalar_multi_impl(
+            count,
+            keys,
+            values,
+            out_written,
+            cols,
+            rows,
+            cursor_x,
+            cursor_y,
+            cursor_pending_wrap,
+            active_screen,
+            cursor_visible,
+            kitty_keyboard_flags,
+            mouse_tracking,
+            total_rows,
+            scrollback_rows,
+            width_px,
+            height_px,
+        )
+    }
+}
+
+pub(crate) unsafe fn terminal_get_scalar_multi_impl(
+    count: usize,
+    keys: *const c_int,
+    values: *const *mut c_void,
+    out_written: *mut usize,
+    cols: u16,
+    rows: u16,
+    cursor_x: u16,
+    cursor_y: u16,
+    cursor_pending_wrap: bool,
+    active_screen: c_int,
+    cursor_visible: bool,
+    kitty_keyboard_flags: u8,
+    mouse_tracking: bool,
+    total_rows: usize,
+    scrollback_rows: usize,
+    width_px: u32,
+    height_px: u32,
+) -> c_int {
     if keys.is_null() || values.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
@@ -78,7 +158,7 @@ pub unsafe extern "C" fn ghostty_rust_terminal_get_scalar_multi(
         let key = unsafe { ptr::read(keys.add(i)) };
         let out = unsafe { ptr::read(values.add(i)) };
         let result = unsafe {
-            ghostty_rust_terminal_get_scalar(
+            terminal_get_scalar_impl(
                 key,
                 cols,
                 rows,
