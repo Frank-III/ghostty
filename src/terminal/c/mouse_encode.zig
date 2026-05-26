@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const testing = std.testing;
+const build_options = @import("terminal_options");
 const lib = @import("../lib.zig");
 const CAllocator = lib.alloc.Allocator;
 const input_mouse_encode = @import("../../input/mouse_encode.zig");
@@ -14,6 +15,91 @@ const Terminal = @import("terminal.zig").Terminal;
 const ZigTerminal = @import("../Terminal.zig");
 
 const log = std.log.scoped(.mouse_encode);
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_mouse_encoder_setopt_event(
+        value: c_int,
+        current: c_int,
+        out: *TrackingMode,
+        last_cell_present: *bool,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_mouse_encoder_setopt_format(
+        value: c_int,
+        current: c_int,
+        out: *Format,
+        last_cell_present: *bool,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_mouse_encoder_setopt_size(
+        screen_width: u32,
+        screen_height: u32,
+        cell_width: u32,
+        cell_height: u32,
+        padding_top: u32,
+        padding_bottom: u32,
+        padding_right: u32,
+        padding_left: u32,
+        out_screen_width: *u32,
+        out_screen_height: *u32,
+        out_cell_width: *u32,
+        out_cell_height: *u32,
+        out_padding_top: *u32,
+        out_padding_bottom: *u32,
+        out_padding_right: *u32,
+        out_padding_left: *u32,
+        last_cell_present: *bool,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_mouse_encoder_setopt_bool(
+        option: c_int,
+        value: bool,
+        any_button_pressed: *bool,
+        track_last_cell: *bool,
+        last_cell_present: *bool,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_mouse_encoder_from_terminal(
+        event: c_int,
+        format: c_int,
+        out_event: *TrackingMode,
+        out_format: *Format,
+        last_cell_present: *bool,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_mouse_encoder_reset(
+        last_cell_present: *bool,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_mouse_encode(
+        action: c_int,
+        button_present: bool,
+        button: c_int,
+        mods: u16,
+        pos: mouse_event.Position,
+        tracking_mode: c_int,
+        format: c_int,
+        screen_width: u32,
+        screen_height: u32,
+        cell_width: u32,
+        cell_height: u32,
+        padding_top: u32,
+        padding_bottom: u32,
+        padding_right: u32,
+        padding_left: u32,
+        any_button_pressed: bool,
+        track_last_cell: bool,
+        last_cell_present: bool,
+        last_cell_x: u16,
+        last_cell_y: u32,
+        out: ?[*]u8,
+        out_len: usize,
+        out_written: *usize,
+        next_last_cell_present: *bool,
+        next_last_cell_x: *u16,
+        next_last_cell_y: *u32,
+    ) callconv(.c) c_int;
+} else struct {};
 
 /// Wrapper around mouse encoding options that tracks the allocator for C API usage.
 const MouseEncoderWrapper = struct {
@@ -143,8 +229,19 @@ fn setoptTyped(
                 };
             }
 
-            if (wrapper.opts.event != value.*) wrapper.last_cell = null;
-            wrapper.opts.event = value.*;
+            if (comptime build_options.lib_vt_rust) {
+                var last_cell_present = wrapper.last_cell != null;
+                rust.ghostty_rust_mouse_encoder_setopt_event(
+                    @intFromEnum(value.*),
+                    @intFromEnum(wrapper.opts.event),
+                    &wrapper.opts.event,
+                    &last_cell_present,
+                );
+                if (!last_cell_present) wrapper.last_cell = null;
+            } else {
+                if (wrapper.opts.event != value.*) wrapper.last_cell = null;
+                wrapper.opts.event = value.*;
+            }
         },
 
         .format => {
@@ -155,8 +252,19 @@ fn setoptTyped(
                 };
             }
 
-            if (wrapper.opts.format != value.*) wrapper.last_cell = null;
-            wrapper.opts.format = value.*;
+            if (comptime build_options.lib_vt_rust) {
+                var last_cell_present = wrapper.last_cell != null;
+                rust.ghostty_rust_mouse_encoder_setopt_format(
+                    @intFromEnum(value.*),
+                    @intFromEnum(wrapper.opts.format),
+                    &wrapper.opts.format,
+                    &last_cell_present,
+                );
+                if (!last_cell_present) wrapper.last_cell = null;
+            } else {
+                if (wrapper.opts.format != value.*) wrapper.last_cell = null;
+                wrapper.opts.format = value.*;
+            }
         },
 
         .size => {
@@ -168,19 +276,76 @@ fn setoptTyped(
                 return;
             }
 
-            wrapper.opts.size = value.toRenderer() orelse {
+            const renderer = value.toRenderer() orelse {
                 log.warn("setopt invalid size values (cell width and height must be non-zero)", .{});
                 return;
             };
-            wrapper.last_cell = null;
+
+            if (comptime build_options.lib_vt_rust) {
+                var last_cell_present = wrapper.last_cell != null;
+                rust.ghostty_rust_mouse_encoder_setopt_size(
+                    value.screen_width,
+                    value.screen_height,
+                    value.cell_width,
+                    value.cell_height,
+                    value.padding_top,
+                    value.padding_bottom,
+                    value.padding_right,
+                    value.padding_left,
+                    &wrapper.opts.size.screen.width,
+                    &wrapper.opts.size.screen.height,
+                    &wrapper.opts.size.cell.width,
+                    &wrapper.opts.size.cell.height,
+                    &wrapper.opts.size.padding.top,
+                    &wrapper.opts.size.padding.bottom,
+                    &wrapper.opts.size.padding.right,
+                    &wrapper.opts.size.padding.left,
+                    &last_cell_present,
+                );
+                if (!last_cell_present) wrapper.last_cell = null;
+            } else {
+                wrapper.opts.size = renderer;
+                wrapper.last_cell = null;
+            }
         },
 
-        .any_button_pressed => wrapper.opts.any_button_pressed = value.*,
+        .any_button_pressed => setoptBool(option, value.*, wrapper),
 
         .track_last_cell => {
-            wrapper.track_last_cell = value.*;
-            if (!value.*) wrapper.last_cell = null;
+            if (comptime build_options.lib_vt_rust) {
+                setoptBool(option, value.*, wrapper);
+            } else {
+                wrapper.track_last_cell = value.*;
+                if (!value.*) wrapper.last_cell = null;
+            }
         },
+    }
+}
+
+fn setoptBool(
+    option: Option,
+    value: bool,
+    wrapper: *MouseEncoderWrapper,
+) void {
+    if (comptime build_options.lib_vt_rust) {
+        var last_cell_present = wrapper.last_cell != null;
+        rust.ghostty_rust_mouse_encoder_setopt_bool(
+            @intFromEnum(option),
+            value,
+            &wrapper.opts.any_button_pressed,
+            &wrapper.track_last_cell,
+            &last_cell_present,
+        );
+        if (!last_cell_present) wrapper.last_cell = null;
+    } else {
+        switch (option) {
+            .any_button_pressed => wrapper.opts.any_button_pressed = value,
+            .track_last_cell => {
+                wrapper.track_last_cell = value;
+                if (!value) wrapper.last_cell = null;
+            },
+            else => unreachable,
+        }
     }
 }
 
@@ -190,14 +355,32 @@ pub fn setopt_from_terminal(
 ) callconv(lib.calling_conv) void {
     const wrapper = encoder_ orelse return;
     const t: *ZigTerminal = (terminal_ orelse return).terminal;
-    wrapper.opts.event = t.flags.mouse_event;
-    wrapper.opts.format = t.flags.mouse_format;
-    wrapper.last_cell = null;
+    if (comptime build_options.lib_vt_rust) {
+        var last_cell_present = wrapper.last_cell != null;
+        rust.ghostty_rust_mouse_encoder_from_terminal(
+            @intFromEnum(t.flags.mouse_event),
+            @intFromEnum(t.flags.mouse_format),
+            &wrapper.opts.event,
+            &wrapper.opts.format,
+            &last_cell_present,
+        );
+        if (!last_cell_present) wrapper.last_cell = null;
+    } else {
+        wrapper.opts.event = t.flags.mouse_event;
+        wrapper.opts.format = t.flags.mouse_format;
+        wrapper.last_cell = null;
+    }
 }
 
 pub fn reset(encoder_: Encoder) callconv(lib.calling_conv) void {
     const wrapper = encoder_ orelse return;
-    wrapper.last_cell = null;
+    if (comptime build_options.lib_vt_rust) {
+        var last_cell_present = wrapper.last_cell != null;
+        rust.ghostty_rust_mouse_encoder_reset(&last_cell_present);
+        if (!last_cell_present) wrapper.last_cell = null;
+    } else {
+        wrapper.last_cell = null;
+    }
 }
 
 pub fn encode(
@@ -209,6 +392,55 @@ pub fn encode(
 ) callconv(lib.calling_conv) Result {
     const wrapper = encoder_ orelse return .invalid_value;
     const event = event_ orelse return .invalid_value;
+
+    if (comptime build_options.lib_vt_rust) {
+        const last_cell = wrapper.last_cell;
+        const button_present = event.event.button != null;
+        const button: mouse_event.Button = event.event.button orelse .unknown;
+
+        var next_last_cell_present = last_cell != null;
+        var next_last_cell_x: u16 = if (last_cell) |cell| cell.x else 0;
+        var next_last_cell_y: u32 = if (last_cell) |cell| cell.y else 0;
+
+        const result_int = rust.ghostty_rust_mouse_encode(
+            @intFromEnum(event.event.action),
+            button_present,
+            @intFromEnum(button),
+            @bitCast(event.event.mods),
+            event.event.pos,
+            @intFromEnum(wrapper.opts.event),
+            @intFromEnum(wrapper.opts.format),
+            wrapper.opts.size.screen.width,
+            wrapper.opts.size.screen.height,
+            wrapper.opts.size.cell.width,
+            wrapper.opts.size.cell.height,
+            wrapper.opts.size.padding.top,
+            wrapper.opts.size.padding.bottom,
+            wrapper.opts.size.padding.right,
+            wrapper.opts.size.padding.left,
+            wrapper.opts.any_button_pressed,
+            wrapper.track_last_cell,
+            last_cell != null,
+            if (last_cell) |cell| cell.x else 0,
+            if (last_cell) |cell| cell.y else 0,
+            out_,
+            out_len,
+            out_written,
+            &next_last_cell_present,
+            &next_last_cell_x,
+            &next_last_cell_y,
+        );
+
+        const result: Result = @enumFromInt(result_int);
+        if (result == .success and wrapper.track_last_cell) {
+            wrapper.last_cell = if (next_last_cell_present) .{
+                .x = next_last_cell_x,
+                .y = next_last_cell_y,
+            } else null;
+        }
+
+        return result;
+    }
 
     const prev_last_cell = wrapper.last_cell;
 
@@ -310,6 +542,35 @@ test "setopt" {
     try testing.expect(e.?.track_last_cell);
 }
 
+test "setopt clears last cell state" {
+    var e: Encoder = undefined;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &e,
+    ));
+    defer free(e);
+
+    e.?.last_cell = .{ .x = 1, .y = 2 };
+    const event_mode: TrackingMode = .any;
+    setopt(e, .event, &event_mode);
+    try testing.expect(e.?.last_cell == null);
+
+    e.?.last_cell = .{ .x = 1, .y = 2 };
+    const format_mode: Format = .sgr;
+    setopt(e, .format, &format_mode);
+    try testing.expect(e.?.last_cell == null);
+
+    e.?.last_cell = .{ .x = 1, .y = 2 };
+    const size = testSize();
+    setopt(e, .size, &size);
+    try testing.expect(e.?.last_cell == null);
+
+    e.?.last_cell = .{ .x = 1, .y = 2 };
+    const track_last_cell = false;
+    setopt(e, .track_last_cell, &track_last_cell);
+    try testing.expect(e.?.last_cell == null);
+}
+
 test "setopt_from_terminal" {
     const terminal_c = @import("terminal.zig");
 
@@ -333,9 +594,11 @@ test "setopt_from_terminal" {
     const format_mode: Format = .sgr;
     setopt(e, .format, &format_mode);
 
+    e.?.last_cell = .{ .x = 1, .y = 2 };
     setopt_from_terminal(e, t);
     try testing.expectEqual(TrackingMode.none, e.?.opts.event);
     try testing.expectEqual(Format.x10, e.?.opts.format);
+    try testing.expect(e.?.last_cell == null);
 }
 
 test "setopt_from_terminal null" {
@@ -358,6 +621,20 @@ test "setopt_from_terminal null" {
     ));
     defer free(e);
     setopt_from_terminal(e, null);
+}
+
+test "reset clears last cell" {
+    var e: Encoder = undefined;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &e,
+    ));
+    defer free(e);
+
+    e.?.last_cell = .{ .x = 5, .y = 6 };
+    reset(e);
+    try testing.expect(e.?.last_cell == null);
+    reset(null);
 }
 
 test "encode: sgr press left" {

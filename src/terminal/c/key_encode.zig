@@ -1,5 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const build_options = @import("terminal_options");
 const lib = @import("../lib.zig");
 const CAllocator = lib.alloc.Allocator;
 const key_encode = @import("../../input/key_encode.zig");
@@ -12,6 +13,36 @@ const Terminal = @import("terminal.zig").Terminal;
 const ZigTerminal = @import("../Terminal.zig");
 
 const log = std.log.scoped(.key_encode);
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_key_encoder_setopt_bool(
+        option: c_int,
+        value: bool,
+        out: *bool,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_key_encoder_setopt_option_as_alt(
+        option: c_int,
+        value: c_int,
+        out: *OptionAsAlt,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_key_encoder_from_terminal(
+        alt_esc_prefix: bool,
+        cursor_key_application: bool,
+        keypad_key_application: bool,
+        backarrow_key_mode: bool,
+        ignore_keypad_with_numlock: bool,
+        modify_other_keys_state_2: bool,
+        out_alt_esc_prefix: *bool,
+        out_cursor_key_application: *bool,
+        out_keypad_key_application: *bool,
+        out_backarrow_key_mode: *bool,
+        out_ignore_keypad_with_numlock: *bool,
+        out_modify_other_keys_state_2: *bool,
+        out_macos_option_as_alt: *OptionAsAlt,
+    ) callconv(.c) void;
+} else struct {};
 
 /// Wrapper around key encoding options that tracks the allocator for C API usage.
 const KeyEncoderWrapper = struct {
@@ -102,11 +133,11 @@ fn setoptTyped(
 ) void {
     const opts = &encoder_.?.opts;
     switch (option) {
-        .cursor_key_application => opts.cursor_key_application = value.*,
-        .keypad_key_application => opts.keypad_key_application = value.*,
-        .ignore_keypad_with_numlock => opts.ignore_keypad_with_numlock = value.*,
-        .alt_esc_prefix => opts.alt_esc_prefix = value.*,
-        .modify_other_keys_state_2 => opts.modify_other_keys_state_2 = value.*,
+        .cursor_key_application => setoptBool(option, value.*, &opts.cursor_key_application),
+        .keypad_key_application => setoptBool(option, value.*, &opts.keypad_key_application),
+        .ignore_keypad_with_numlock => setoptBool(option, value.*, &opts.ignore_keypad_with_numlock),
+        .alt_esc_prefix => setoptBool(option, value.*, &opts.alt_esc_prefix),
+        .modify_other_keys_state_2 => setoptBool(option, value.*, &opts.modify_other_keys_state_2),
         .kitty_flags => opts.kitty_flags = flags: {
             const bits: u5 = @truncate(value.*);
             break :flags @bitCast(bits);
@@ -118,9 +149,33 @@ fn setoptTyped(
                     return;
                 };
             }
-            opts.macos_option_as_alt = value.*;
+            if (comptime build_options.lib_vt_rust) {
+                rust.ghostty_rust_key_encoder_setopt_option_as_alt(
+                    @intFromEnum(option),
+                    @intFromEnum(value.*),
+                    &opts.macos_option_as_alt,
+                );
+            } else {
+                opts.macos_option_as_alt = value.*;
+            }
         },
-        .backarrow_key_mode => opts.backarrow_key_mode = value.*,
+        .backarrow_key_mode => setoptBool(option, value.*, &opts.backarrow_key_mode),
+    }
+}
+
+fn setoptBool(
+    option: Option,
+    value: bool,
+    out: *bool,
+) void {
+    if (comptime build_options.lib_vt_rust) {
+        rust.ghostty_rust_key_encoder_setopt_bool(
+            @intFromEnum(option),
+            value,
+            out,
+        );
+    } else {
+        out.* = value;
     }
 }
 
@@ -130,7 +185,27 @@ pub fn setopt_from_terminal(
 ) callconv(lib.calling_conv) void {
     const wrapper = encoder_ orelse return;
     const t: *ZigTerminal = (terminal_ orelse return).terminal;
-    wrapper.opts = .fromTerminal(t);
+    if (comptime build_options.lib_vt_rust) {
+        const opts = &wrapper.opts;
+        rust.ghostty_rust_key_encoder_from_terminal(
+            t.modes.get(.alt_esc_prefix),
+            t.modes.get(.cursor_keys),
+            t.modes.get(.keypad_keys),
+            t.modes.get(.backarrow_key_mode),
+            t.modes.get(.ignore_keypad_with_numlock),
+            t.flags.modify_other_keys_2,
+            &opts.alt_esc_prefix,
+            &opts.cursor_key_application,
+            &opts.keypad_key_application,
+            &opts.backarrow_key_mode,
+            &opts.ignore_keypad_with_numlock,
+            &opts.modify_other_keys_state_2,
+            &opts.macos_option_as_alt,
+        );
+        opts.kitty_flags = t.screens.active.kitty_keyboard.current();
+    } else {
+        wrapper.opts = .fromTerminal(t);
+    }
 }
 
 pub fn encode(
@@ -200,6 +275,31 @@ test "setopt bool" {
     try testing.expect(e.?.opts.keypad_key_application);
 }
 
+test "setopt all bool options" {
+    const testing = std.testing;
+    var e: Encoder = undefined;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &e,
+    ));
+    defer free(e);
+
+    const val_true: bool = true;
+    setopt(e, .cursor_key_application, &val_true);
+    setopt(e, .keypad_key_application, &val_true);
+    setopt(e, .ignore_keypad_with_numlock, &val_true);
+    setopt(e, .alt_esc_prefix, &val_true);
+    setopt(e, .modify_other_keys_state_2, &val_true);
+    setopt(e, .backarrow_key_mode, &val_true);
+
+    try testing.expect(e.?.opts.cursor_key_application);
+    try testing.expect(e.?.opts.keypad_key_application);
+    try testing.expect(e.?.opts.ignore_keypad_with_numlock);
+    try testing.expect(e.?.opts.alt_esc_prefix);
+    try testing.expect(e.?.opts.modify_other_keys_state_2);
+    try testing.expect(e.?.opts.backarrow_key_mode);
+}
+
 test "setopt kitty flags" {
     const testing = std.testing;
     var e: Encoder = undefined;
@@ -243,6 +343,7 @@ test "setopt macos option as alt" {
 test "setopt_from_terminal" {
     const testing = std.testing;
     const terminal_c = @import("terminal.zig");
+    const modes = @import("../modes.zig");
 
     // Create encoder
     var e: Encoder = undefined;
@@ -261,12 +362,30 @@ test "setopt_from_terminal" {
     ));
     defer terminal_c.free(t);
 
+    const cursor_keys: modes.ModeTag.Backing = @bitCast(modes.ModeTag{ .value = 1, .ansi = false });
+    const keypad_keys: modes.ModeTag.Backing = @bitCast(modes.ModeTag{ .value = 66, .ansi = false });
+    const backarrow_key_mode: modes.ModeTag.Backing = @bitCast(modes.ModeTag{ .value = 67, .ansi = false });
+    const ignore_keypad_with_numlock: modes.ModeTag.Backing = @bitCast(modes.ModeTag{ .value = 1035, .ansi = false });
+    try testing.expectEqual(Result.success, terminal_c.mode_set(t, cursor_keys, true));
+    try testing.expectEqual(Result.success, terminal_c.mode_set(t, keypad_keys, true));
+    try testing.expectEqual(Result.success, terminal_c.mode_set(t, backarrow_key_mode, true));
+    try testing.expectEqual(Result.success, terminal_c.mode_set(t, ignore_keypad_with_numlock, false));
+    t.?.terminal.flags.modify_other_keys_2 = true;
+
+    const opt_true: OptionAsAlt = .true;
+    setopt(e, .macos_option_as_alt, &opt_true);
+    try testing.expectEqual(OptionAsAlt.true, e.?.opts.macos_option_as_alt);
+
     // Apply terminal state to encoder
     setopt_from_terminal(e, t);
 
-    // Options should reflect defaults from a fresh terminal
-    try testing.expect(!e.?.opts.cursor_key_application);
+    // Options should reflect terminal state, while config-only values reset.
+    try testing.expect(e.?.opts.cursor_key_application);
+    try testing.expect(e.?.opts.keypad_key_application);
+    try testing.expect(e.?.opts.backarrow_key_mode);
+    try testing.expect(!e.?.opts.ignore_keypad_with_numlock);
     try testing.expect(e.?.opts.alt_esc_prefix);
+    try testing.expect(e.?.opts.modify_other_keys_state_2);
     try testing.expectEqual(KittyFlags.disabled, e.?.opts.kitty_flags);
     try testing.expectEqual(OptionAsAlt.false, e.?.opts.macos_option_as_alt);
 }

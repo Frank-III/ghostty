@@ -1,16 +1,43 @@
 const std = @import("std");
 const testing = std.testing;
+const build_options = @import("terminal_options");
 const lib = @import("../lib.zig");
 const CAllocator = lib.alloc.Allocator;
 const formatterpkg = @import("../formatter.zig");
 const grid_ref = @import("grid_ref.zig");
 const point = @import("../point.zig");
 const selection_codepoints = @import("../selection_codepoints.zig");
+const size = @import("../size.zig");
 const Selection = @import("../Selection.zig");
 const Result = @import("result.zig").Result;
 const terminal_c = @import("terminal.zig");
 
 const log = std.log.scoped(.selection_c);
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_selection_write(
+        has_value: bool,
+        selection: ?*const CSelection,
+        out: ?*CSelection,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_selection_write_order(
+        order: c_int,
+        out: ?*Selection.Order,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_selection_write_bool(
+        value: bool,
+        out: ?*bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_selection_equal(
+        terminal: terminal_c.Terminal,
+        a: ?*const CSelection,
+        b: ?*const CSelection,
+        out: ?*bool,
+    ) callconv(.c) c_int;
+} else struct {};
 
 pub const Adjustment = Selection.Adjustment;
 pub const Order = Selection.Order;
@@ -90,12 +117,10 @@ pub fn word(
 
     const screen = t.screens.active;
     const pin = opts.ref.toPin() orelse return .invalid_value;
-    out.* = .fromZig(screen.selectWord(
+    return writeSelection(out, screen.selectWord(
         pin,
         boundary_codepoints orelse &selection_codepoints.default_word_boundaries,
-    ) orelse
-        return .no_value);
-    return .success;
+    ));
 }
 
 pub fn word_between(
@@ -116,13 +141,11 @@ pub fn word_between(
     const screen = t.screens.active;
     const start = opts.start.toPin() orelse return .invalid_value;
     const end = opts.end.toPin() orelse return .invalid_value;
-    out.* = .fromZig(screen.selectWordBetween(
+    return writeSelection(out, screen.selectWordBetween(
         start,
         end,
         boundary_codepoints orelse &selection_codepoints.default_word_boundaries,
-    ) orelse
-        return .no_value);
-    return .success;
+    ));
 }
 
 pub fn line(
@@ -142,12 +165,11 @@ pub fn line(
 
     const screen = t.screens.active;
     const pin = opts.ref.toPin() orelse return .invalid_value;
-    out.* = .fromZig(screen.selectLine(.{
+    return writeSelection(out, screen.selectLine(.{
         .pin = pin,
         .whitespace = whitespace orelse &selection_codepoints.default_line_whitespace,
         .semantic_prompt_boundary = opts.semantic_prompt_boundary,
-    }) orelse return .no_value);
-    return .success;
+    }));
 }
 
 pub fn all(
@@ -157,8 +179,7 @@ pub fn all(
     const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
     const out = out_selection orelse return .invalid_value;
 
-    out.* = .fromZig(t.screens.active.selectAll() orelse return .no_value);
-    return .success;
+    return writeSelection(out, t.screens.active.selectAll());
 }
 
 pub fn output(
@@ -171,7 +192,23 @@ pub fn output(
 
     const screen = t.screens.active;
     const pin = ref.toPin() orelse return .invalid_value;
-    out.* = .fromZig(screen.selectOutput(pin) orelse return .no_value);
+    return writeSelection(out, screen.selectOutput(pin));
+}
+
+fn writeSelection(
+    out: *CSelection,
+    selection: ?Selection,
+) Result {
+    if (comptime build_options.lib_vt_rust) {
+        const c_selection: ?CSelection = if (selection) |sel| .fromZig(sel) else null;
+        return @enumFromInt(rust.ghostty_rust_selection_write(
+            c_selection != null,
+            if (c_selection) |*sel| sel else null,
+            out,
+        ));
+    }
+
+    out.* = .fromZig(selection orelse return .no_value);
     return .success;
 }
 
@@ -318,8 +355,7 @@ pub fn adjust(
     const sel_ptr = selection orelse return .invalid_value;
     var sel = sel_ptr.toZig() orelse return .invalid_value;
     sel.adjust(t.screens.active, adjustment);
-    sel_ptr.* = .fromZig(sel);
-    return .success;
+    return writeSelection(sel_ptr, sel);
 }
 
 pub fn order(
@@ -332,7 +368,15 @@ pub fn order(
         return .invalid_value;
     const out = out_order orelse return .invalid_value;
 
-    out.* = sel.order(t.screens.active);
+    const value = sel.order(t.screens.active);
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_selection_write_order(
+            @intFromEnum(value),
+            out,
+        ));
+    }
+
+    out.* = value;
     return .success;
 }
 
@@ -354,8 +398,7 @@ pub fn ordered(
         return .invalid_value;
     const out = out_selection orelse return .invalid_value;
 
-    out.* = .fromZig(sel.ordered(t.screens.active, desired));
-    return .success;
+    return writeSelection(out, sel.ordered(t.screens.active, desired));
 }
 
 pub fn contains(
@@ -371,7 +414,12 @@ pub fn contains(
 
     const screen = t.screens.active;
     const pin = screen.pages.pin(.fromC(pt)) orelse return .invalid_value;
-    out.* = sel.contains(screen, pin);
+    const value = sel.contains(screen, pin);
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_selection_write_bool(value, out));
+    }
+
+    out.* = value;
     return .success;
 }
 
@@ -381,6 +429,15 @@ pub fn equal(
     b: ?*const CSelection,
     out_equal: ?*bool,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_selection_equal(
+            terminal,
+            a,
+            b,
+            out_equal,
+        ));
+    }
+
     _ = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
     const sel_a = (a orelse return .invalid_value).toZig() orelse
         return .invalid_value;
@@ -528,4 +585,133 @@ test "selection_format_alloc returns no_value without active selection" {
     ));
     try testing.expect(out_ptr == null);
     try testing.expectEqual(@as(usize, 0), out_len);
+}
+
+test "selection output functions write selections" {
+    var t: terminal_c.Terminal = null;
+    try testing.expectEqual(Result.success, terminal_c.new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{ .cols = 80, .rows = 24, .max_scrollback = 10_000 },
+    ));
+    defer terminal_c.free(t);
+
+    terminal_c.vt_write(t, "git status\r\nnext", 16);
+
+    var git_ref: grid_ref.CGridRef = .{};
+    try testing.expectEqual(Result.success, terminal_c.grid_ref(t, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 1, .y = 0 } },
+    }, &git_ref));
+
+    var status_ref: grid_ref.CGridRef = .{};
+    try testing.expectEqual(Result.success, terminal_c.grid_ref(t, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 6, .y = 0 } },
+    }, &status_ref));
+
+    var out: CSelection = undefined;
+    const word_opts: SelectWordOptions = .{
+        .ref = git_ref,
+    };
+    try testing.expectEqual(Result.success, word(t, &word_opts, &out));
+    try testing.expectEqual(@as(size.CellCountInt, 0), out.start.x);
+    try testing.expectEqual(@as(size.CellCountInt, 2), out.end.x);
+    try testing.expect(!out.rectangle);
+
+    const word_between_opts: SelectWordBetweenOptions = .{
+        .start = git_ref,
+        .end = status_ref,
+    };
+    try testing.expectEqual(Result.success, word_between(t, &word_between_opts, &out));
+    try testing.expectEqual(@as(size.CellCountInt, 0), out.start.x);
+    try testing.expectEqual(@as(size.CellCountInt, 2), out.end.x);
+
+    const line_opts: SelectLineOptions = .{
+        .ref = status_ref,
+    };
+    try testing.expectEqual(Result.success, line(t, &line_opts, &out));
+    try testing.expectEqual(@as(size.CellCountInt, 0), out.start.x);
+    try testing.expect(out.end.x >= 9);
+
+    try testing.expectEqual(Result.success, all(t, &out));
+    try testing.expectEqual(@as(size.CellCountInt, 0), out.start.x);
+}
+
+test "selection output functions preserve no_value and invalid out" {
+    var t: terminal_c.Terminal = null;
+    try testing.expectEqual(Result.success, terminal_c.new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{ .cols = 80, .rows = 24, .max_scrollback = 10_000 },
+    ));
+    defer terminal_c.free(t);
+
+    var ref: grid_ref.CGridRef = .{};
+    try testing.expectEqual(Result.success, terminal_c.grid_ref(t, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 0, .y = 0 } },
+    }, &ref));
+
+    try testing.expectEqual(Result.invalid_value, all(t, null));
+    var no_value_out: CSelection = undefined;
+    try testing.expectEqual(Result.no_value, output(t, ref, &no_value_out));
+}
+
+test "selection operation outputs" {
+    var t: terminal_c.Terminal = null;
+    try testing.expectEqual(Result.success, terminal_c.new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{ .cols = 80, .rows = 24, .max_scrollback = 10_000 },
+    ));
+    defer terminal_c.free(t);
+
+    terminal_c.vt_write(t, "abc", 3);
+
+    var start_ref: grid_ref.CGridRef = .{};
+    try testing.expectEqual(Result.success, terminal_c.grid_ref(t, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 2, .y = 0 } },
+    }, &start_ref));
+
+    var end_ref: grid_ref.CGridRef = .{};
+    try testing.expectEqual(Result.success, terminal_c.grid_ref(t, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 0, .y = 0 } },
+    }, &end_ref));
+
+    const reversed: CSelection = .{
+        .start = start_ref,
+        .end = end_ref,
+    };
+
+    var out_order: Order = undefined;
+    try testing.expectEqual(Result.success, order(t, &reversed, &out_order));
+    try testing.expectEqual(Order.reverse, out_order);
+
+    var out_selection: CSelection = undefined;
+    try testing.expectEqual(Result.success, ordered(t, &reversed, .forward, &out_selection));
+    try testing.expectEqual(@as(size.CellCountInt, 0), out_selection.start.x);
+    try testing.expectEqual(@as(size.CellCountInt, 2), out_selection.end.x);
+
+    var contains_value: bool = false;
+    try testing.expectEqual(Result.success, contains(t, &out_selection, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 1, .y = 0 } },
+    }, &contains_value));
+    try testing.expect(contains_value);
+
+    var adjusted: CSelection = .{
+        .start = end_ref,
+        .end = end_ref,
+    };
+    try testing.expectEqual(Result.success, adjust(t, &adjusted, .right));
+    try testing.expectEqual(@as(size.CellCountInt, 1), adjusted.end.x);
+
+    try testing.expectEqual(Result.invalid_value, order(t, &reversed, null));
+    try testing.expectEqual(Result.invalid_value, contains(t, &reversed, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 1, .y = 0 } },
+    }, null));
 }
