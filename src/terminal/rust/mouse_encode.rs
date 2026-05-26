@@ -121,9 +121,14 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         );
     }
 
-    let Some(button_code) =
-        mouse_button_code(action, button_present, button, mods, tracking_mode, format)
-    else {
+    let Some(button_code) = mouse_required_button_code(
+        action,
+        button_present,
+        button,
+        mods,
+        tracking_mode,
+        format,
+    ) else {
         unsafe {
             mouse_suppress_output(out_written);
         }

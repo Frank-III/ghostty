@@ -27,3 +27,14 @@ pub(crate) fn mouse_button_code(
 
     Some(acc)
 }
+
+pub(crate) fn mouse_required_button_code(
+    action: c_int,
+    button_present: bool,
+    button: c_int,
+    mods: u16,
+    tracking_mode: c_int,
+    format: c_int,
+) -> Option<u8> {
+    mouse_button_code(action, button_present, button, mods, tracking_mode, format)
+}
