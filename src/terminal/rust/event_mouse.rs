@@ -59,28 +59,3 @@ pub unsafe extern "C" fn ghostty_rust_mouse_event_set_mods(event: *mut c_void, m
 pub unsafe extern "C" fn ghostty_rust_mouse_event_get_mods(event: *mut c_void) -> u16 {
     unsafe { ptr::read(mouse_event_field::<u16>(event, MOUSE_EVENT_MODS_OFFSET)) }
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_mouse_event_set_position(
-    event: *mut c_void,
-    pos: GhosttyMousePosition,
-) {
-    unsafe {
-        ptr::write(
-            mouse_event_field::<GhosttyMousePosition>(event, MOUSE_EVENT_POS_OFFSET),
-            pos,
-        );
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_mouse_event_get_position(
-    event: *mut c_void,
-) -> GhosttyMousePosition {
-    unsafe {
-        ptr::read(mouse_event_field::<GhosttyMousePosition>(
-            event,
-            MOUSE_EVENT_POS_OFFSET,
-        ))
-    }
-}
