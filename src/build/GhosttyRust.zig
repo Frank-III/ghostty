@@ -103,6 +103,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/sgr_8color.rs",
     "src/terminal/rust/sgr_attr.rs",
     "src/terminal/rust/sgr_basic.rs",
+    "src/terminal/rust/sgr_basic_write.rs",
     "src/terminal/rust/sgr_color.rs",
     "src/terminal/rust/sgr_constants.rs",
     "src/terminal/rust/sgr_parse.rs",

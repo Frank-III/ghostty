@@ -14,7 +14,7 @@ use crate::color::*;
 use crate::allocator::*;
 use crate::sgr_attr::*;
 use crate::sgr_8color::*;
-use crate::sgr_basic::*;
+use crate::sgr_basic_write::*;
 use crate::sgr_color::*;
 use crate::sgr_constants::*;
 use crate::sgr_parse::*;
@@ -62,23 +62,7 @@ pub unsafe extern "C" fn ghostty_rust_sgr_next(
         }
     }
 
-    if first == 24 {
-        unsafe {
-            ptr::write(idx, i);
-            write_sgr_c_int(result, SGR_UNDERLINE, 0);
-        }
-        return true;
-    }
-
-    if let Some(tag) = basic_sgr_tag(first) {
-        unsafe {
-            ptr::write(idx, i);
-            if tag == SGR_UNDERLINE {
-                write_sgr_c_int(result, tag, 1);
-            } else {
-                write_sgr_empty(result, tag);
-            }
-        }
+    if unsafe { write_sgr_basic(first, i, idx, result) } {
         return true;
     }
 
