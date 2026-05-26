@@ -78,6 +78,7 @@ mod mouse_setopt_size_write;
 mod mouse_sequence_len;
 mod mouse_sequence_write;
 mod mouse_size;
+mod mouse_suppress;
 mod mouse_viewport;
 mod mouse_viewport_report;
 mod mouse_write;

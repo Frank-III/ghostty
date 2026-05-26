@@ -116,6 +116,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/mouse_sequence_len.rs",
     "src/terminal/rust/mouse_sequence_write.rs",
     "src/terminal/rust/mouse_size.rs",
+    "src/terminal/rust/mouse_suppress.rs",
     "src/terminal/rust/mouse_viewport.rs",
     "src/terminal/rust/mouse_viewport_report.rs",
     "src/terminal/rust/mouse_write.rs",
