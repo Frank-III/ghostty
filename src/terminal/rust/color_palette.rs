@@ -51,6 +51,22 @@ pub(crate) fn default_palette() -> Palette {
     result
 }
 
+pub(crate) fn special_osc4(index: u8) -> Option<u16> {
+    if index < 5 {
+        Some(u16::from(index) + 256)
+    } else {
+        None
+    }
+}
+
+pub(crate) fn dynamic_next(dynamic: u8) -> Option<u8> {
+    if (10..19).contains(&dynamic) {
+        Some(dynamic + 1)
+    } else {
+        None
+    }
+}
+
 const fn rgb(r: u8, g: u8, b: u8) -> GhosttyColorRgb {
     GhosttyColorRgb { r, g, b }
 }
