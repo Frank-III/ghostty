@@ -142,6 +142,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/simple_write.rs",
     "src/terminal/rust/size_report.rs",
     "src/terminal/rust/size_report_write.rs",
+    "src/terminal/rust/scrollbar_write.rs",
     "src/terminal/rust/style.rs",
     "src/terminal/rust/style_color.rs",
     "src/terminal/rust/style_color_copy.rs",

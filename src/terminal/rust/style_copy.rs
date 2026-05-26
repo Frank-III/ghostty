@@ -8,7 +8,9 @@ use crate::style::*;
 use crate::style_color::*;
 use crate::style_color_copy::*;
 use crate::style_write::*;
+use crate::scrollbar_write::*;
 
+pub(crate) use crate::scrollbar_write::*;
 pub(crate) use crate::style_color::*;
 pub(crate) use crate::style_color_copy::*;
 
@@ -82,17 +84,4 @@ pub(crate) unsafe fn copy_style(dst: *mut GhosttyStyle, src: *const GhosttyStyle
     }
 
     GHOSTTY_SUCCESS
-}
-
-pub(crate) unsafe fn write_scrollbar(
-    out: *mut GhosttyTerminalScrollbar,
-    total: u64,
-    offset: u64,
-    len: u64,
-) {
-    unsafe {
-        ptr::write(core::ptr::addr_of_mut!((*out).total), total);
-        ptr::write(core::ptr::addr_of_mut!((*out).offset), offset);
-        ptr::write(core::ptr::addr_of_mut!((*out).len), len);
-    }
 }
