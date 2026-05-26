@@ -12,6 +12,181 @@ const terminal_c = @import("terminal.zig");
 const Terminal = @import("../Terminal.zig");
 const Result = @import("result.zig").Result;
 
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_kitty_source_rect(
+        image_width: u32,
+        image_height: u32,
+        source_x: u32,
+        source_y: u32,
+        source_width: u32,
+        source_height: u32,
+        out_x: *u32,
+        out_y: *u32,
+        out_width: *u32,
+        out_height: *u32,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_pixel_size(
+        image_width: u32,
+        image_height: u32,
+        source_width: u32,
+        source_height: u32,
+        placement_columns: u32,
+        placement_rows: u32,
+        terminal_width_px: u32,
+        terminal_height_px: u32,
+        terminal_cols: u16,
+        terminal_rows: u16,
+        out_width: *u32,
+        out_height: *u32,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_grid_size(
+        image_width: u32,
+        image_height: u32,
+        source_width: u32,
+        source_height: u32,
+        placement_columns: u32,
+        placement_rows: u32,
+        x_offset: u32,
+        y_offset: u32,
+        terminal_width_px: u32,
+        terminal_height_px: u32,
+        terminal_cols: u16,
+        terminal_rows: u16,
+        out_cols: *u32,
+        out_rows: *u32,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_viewport_pos(
+        pin_screen_x: i32,
+        pin_screen_y: i32,
+        viewport_screen_y: i32,
+        grid_rows: i32,
+        terminal_rows: u16,
+        out_col: *i32,
+        out_row: *i32,
+        out_visible: *bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_render_info(
+        image_width: u32,
+        image_height: u32,
+        source_x: u32,
+        source_y: u32,
+        source_width: u32,
+        source_height: u32,
+        placement_columns: u32,
+        placement_rows: u32,
+        x_offset: u32,
+        y_offset: u32,
+        terminal_width_px: u32,
+        terminal_height_px: u32,
+        terminal_cols: u16,
+        terminal_rows: u16,
+        viewport_col: i32,
+        viewport_row: i32,
+        viewport_visible: bool,
+        out_pixel_width: *u32,
+        out_pixel_height: *u32,
+        out_grid_cols: *u32,
+        out_grid_rows: *u32,
+        out_viewport_col: *i32,
+        out_viewport_row: *i32,
+        out_viewport_visible: *bool,
+        out_source_x: *u32,
+        out_source_y: *u32,
+        out_source_width: *u32,
+        out_source_height: *u32,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_rect(
+        start_node: *anyopaque,
+        start_x: u16,
+        start_y: u16,
+        end_node: *anyopaque,
+        end_y: u16,
+        grid_cols_minus_one: u32,
+        terminal_cols_minus_one: u16,
+        out: *selection_c.CSelection,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_placement_layer_matches(
+        layer: c_int,
+        z: i32,
+    ) callconv(.c) bool;
+
+    extern fn ghostty_rust_kitty_placement_iterator_set(
+        option: c_int,
+        layer: c_int,
+        out_layer: *c_int,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_image_get(
+        data: c_int,
+        id: u32,
+        number: u32,
+        width: u32,
+        height: u32,
+        format: c_int,
+        compression: c_int,
+        data_ptr: [*]const u8,
+        data_len: usize,
+        out: *anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_image_get_multi(
+        count: usize,
+        keys: [*]const ImageData,
+        values: [*]?*anyopaque,
+        out_written: ?*usize,
+        id: u32,
+        number: u32,
+        width: u32,
+        height: u32,
+        format: c_int,
+        compression: c_int,
+        data_ptr: [*]const u8,
+        data_len: usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_placement_get(
+        data: c_int,
+        image_id: u32,
+        placement_id: u32,
+        is_virtual: bool,
+        x_offset: u32,
+        y_offset: u32,
+        source_x: u32,
+        source_y: u32,
+        source_width: u32,
+        source_height: u32,
+        columns: u32,
+        rows: u32,
+        z: i32,
+        out: *anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_placement_get_multi(
+        count: usize,
+        keys: [*]const PlacementData,
+        values: [*]?*anyopaque,
+        out_written: ?*usize,
+        image_id: u32,
+        placement_id: u32,
+        is_virtual: bool,
+        x_offset: u32,
+        y_offset: u32,
+        source_x: u32,
+        source_y: u32,
+        source_width: u32,
+        source_height: u32,
+        columns: u32,
+        rows: u32,
+        z: i32,
+    ) callconv(.c) c_int;
+} else struct {};
+
 /// C: GhosttyKittyGraphics
 pub const KittyGraphics = if (build_options.kitty_graphics)
     *kitty_storage.ImageStorage
@@ -230,6 +405,33 @@ pub fn image_get_multi(
     const k = keys orelse return .invalid_value;
     const v = values orelse return .invalid_value;
 
+    if (comptime build_options.lib_vt_rust) {
+        if (count == 0) {
+            if (out_written) |w| w.* = count;
+            return .success;
+        }
+
+        const image = image_ orelse {
+            if (out_written) |w| w.* = 0;
+            return .invalid_value;
+        };
+
+        return @enumFromInt(rust.ghostty_rust_kitty_image_get_multi(
+            count,
+            k,
+            v,
+            out_written,
+            image.id,
+            image.number,
+            image.width,
+            image.height,
+            @intFromEnum(image.format),
+            @intFromEnum(image.compression),
+            image.data.ptr,
+            image.data.len,
+        ));
+    }
+
     for (0..count) |i| {
         const result = image_get(image_, k[i], v[i]);
         if (result != .success) {
@@ -247,6 +449,21 @@ fn imageGetTyped(
     out: *data.OutType(),
 ) Result {
     const image = image_ orelse return .invalid_value;
+
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_kitty_image_get(
+            @intFromEnum(data),
+            image.id,
+            image.number,
+            image.width,
+            image.height,
+            @intFromEnum(image.format),
+            @intFromEnum(image.compression),
+            image.data.ptr,
+            image.data.len,
+            @ptrCast(out),
+        ));
+    }
 
     switch (data) {
         .invalid => return .invalid_value,
@@ -294,6 +511,22 @@ pub fn placement_iterator_set(
 ) callconv(lib.calling_conv) Result {
     if (comptime !build_options.kitty_graphics) return .no_value;
 
+    if (comptime build_options.lib_vt_rust) {
+        const iter = iter_ orelse return .invalid_value;
+        const raw_layer: *const c_int = @ptrCast(@alignCast(value orelse return .invalid_value));
+        var layer: c_int = undefined;
+        const result: Result = @enumFromInt(rust.ghostty_rust_kitty_placement_iterator_set(
+            @intFromEnum(option),
+            raw_layer.*,
+            &layer,
+        ));
+        if (result != .success) return result;
+
+        iter.layer_filter = std.meta.intToEnum(PlacementLayer, layer) catch
+            return .invalid_value;
+        return .success;
+    }
+
     if (comptime std.debug.runtime_safety) {
         _ = std.meta.intToEnum(PlacementIteratorOption, @intFromEnum(option)) catch {
             return .invalid_value;
@@ -326,7 +559,15 @@ pub fn placement_iterator_next(iter_: PlacementIterator) callconv(lib.calling_co
 
     const iter = iter_ orelse return false;
     while (iter.inner.next()) |entry| {
-        if (iter.layer_filter.matches(entry.value_ptr.z)) {
+        const matches = if (comptime build_options.lib_vt_rust)
+            rust.ghostty_rust_kitty_placement_layer_matches(
+                @intFromEnum(iter.layer_filter),
+                entry.value_ptr.z,
+            )
+        else
+            iter.layer_filter.matches(entry.value_ptr.z);
+
+        if (matches) {
             iter.entry = entry;
             return true;
         }
@@ -363,6 +604,43 @@ pub fn placement_get_multi(
     const k = keys orelse return .invalid_value;
     const v = values orelse return .invalid_value;
 
+    if (comptime build_options.lib_vt_rust) {
+        if (count == 0) {
+            if (out_written) |w| w.* = count;
+            return .success;
+        }
+
+        const iter = iter_ orelse {
+            if (out_written) |w| w.* = 0;
+            return .invalid_value;
+        };
+        const entry = iter.entry orelse {
+            if (out_written) |w| w.* = 0;
+            return .invalid_value;
+        };
+
+        const key = entry.key_ptr;
+        const val = entry.value_ptr;
+        return @enumFromInt(rust.ghostty_rust_kitty_placement_get_multi(
+            count,
+            k,
+            v,
+            out_written,
+            key.image_id,
+            key.placement_id.id,
+            val.location == .virtual,
+            val.x_offset,
+            val.y_offset,
+            val.source_x,
+            val.source_y,
+            val.source_width,
+            val.source_height,
+            val.columns,
+            val.rows,
+            val.z,
+        ));
+    }
+
     for (0..count) |i| {
         const result = placement_get(iter_, k[i], v[i]);
         if (result != .success) {
@@ -384,6 +662,25 @@ fn placementGetTyped(
 
     const key = entry.key_ptr;
     const val = entry.value_ptr;
+
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_kitty_placement_get(
+            @intFromEnum(data),
+            key.image_id,
+            key.placement_id.id,
+            val.location == .virtual,
+            val.x_offset,
+            val.y_offset,
+            val.source_x,
+            val.source_y,
+            val.source_width,
+            val.source_height,
+            val.columns,
+            val.rows,
+            val.z,
+            @ptrCast(out),
+        ));
+    }
 
     switch (data) {
         .invalid => return .invalid_value,
@@ -416,10 +713,52 @@ pub fn placement_rect(
     const image = image_ orelse return .invalid_value;
     const iter = iter_ orelse return .invalid_value;
     const entry = iter.entry orelse return .invalid_value;
-    const r = entry.value_ptr.rect(
-        image.*,
-        wrapper.terminal,
-    ) orelse return .no_value;
+    const p = entry.value_ptr;
+
+    if (comptime build_options.lib_vt_rust) {
+        var grid_cols: u32 = undefined;
+        var grid_rows: u32 = undefined;
+        const grid_result: Result = @enumFromInt(rust.ghostty_rust_kitty_grid_size(
+            image.width,
+            image.height,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            p.x_offset,
+            p.y_offset,
+            wrapper.terminal.width_px,
+            wrapper.terminal.height_px,
+            wrapper.terminal.cols,
+            wrapper.terminal.rows,
+            &grid_cols,
+            &grid_rows,
+        ));
+        if (grid_result != .success) return grid_result;
+
+        const pin = switch (p.location) {
+            .pin => |pin| pin,
+            .virtual => return .no_value,
+        };
+        const grid_cols_minus_one = grid_cols - 1;
+        const terminal_cols_minus_one = wrapper.terminal.cols - 1;
+        const br = switch (pin.downOverflow(grid_rows - 1)) {
+            .offset => |v| v,
+            .overflow => |v| v.end,
+        };
+        return @enumFromInt(rust.ghostty_rust_kitty_rect(
+            @ptrCast(pin.node),
+            pin.x,
+            pin.y,
+            @ptrCast(br.node),
+            br.y,
+            grid_cols_minus_one,
+            terminal_cols_minus_one,
+            out,
+        ));
+    }
+
+    const r = p.rect(image.*, wrapper.terminal) orelse return .no_value;
 
     out.* = .{
         .start = grid_ref.CGridRef.fromPin(r.top_left),
@@ -443,8 +782,26 @@ pub fn placement_pixel_size(
     const image = image_ orelse return .invalid_value;
     const iter = iter_ orelse return .invalid_value;
     const entry = iter.entry orelse return .invalid_value;
-    const s = entry.value_ptr.pixelSize(image.*, wrapper.terminal);
+    const p = entry.value_ptr;
 
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_kitty_pixel_size(
+            image.width,
+            image.height,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            wrapper.terminal.width_px,
+            wrapper.terminal.height_px,
+            wrapper.terminal.cols,
+            wrapper.terminal.rows,
+            out_width,
+            out_height,
+        ));
+    }
+
+    const s = p.pixelSize(image.*, wrapper.terminal);
     out_width.* = s.width;
     out_height.* = s.height;
 
@@ -464,8 +821,28 @@ pub fn placement_grid_size(
     const image = image_ orelse return .invalid_value;
     const iter = iter_ orelse return .invalid_value;
     const entry = iter.entry orelse return .invalid_value;
-    const s = entry.value_ptr.gridSize(image.*, wrapper.terminal);
+    const p = entry.value_ptr;
 
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_kitty_grid_size(
+            image.width,
+            image.height,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            p.x_offset,
+            p.y_offset,
+            wrapper.terminal.width_px,
+            wrapper.terminal.height_px,
+            wrapper.terminal.cols,
+            wrapper.terminal.rows,
+            out_cols,
+            out_rows,
+        ));
+    }
+
+    const s = p.gridSize(image.*, wrapper.terminal);
     out_cols.* = s.cols;
     out_rows.* = s.rows;
 
@@ -509,6 +886,21 @@ pub fn placement_source_rect(
     const iter = iter_ orelse return .invalid_value;
     const entry = iter.entry orelse return .invalid_value;
     const p = entry.value_ptr;
+
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_kitty_source_rect(
+            image.width,
+            image.height,
+            p.source_x,
+            p.source_y,
+            p.source_width,
+            p.source_height,
+            out_x,
+            out_y,
+            out_width,
+            out_height,
+        ));
+    }
 
     // Apply "0 = full image dimension" convention, then clamp to image bounds.
     const x = @min(p.source_x, image.width);
@@ -556,6 +948,40 @@ pub fn placement_render_info(
     if (out.size < @sizeOf(PlacementRenderInfo)) return .invalid_value;
 
     const p = entry.value_ptr;
+
+    if (comptime build_options.lib_vt_rust) {
+        const vp = computeViewportPos(p, image, wrapper.terminal);
+        return @enumFromInt(rust.ghostty_rust_kitty_render_info(
+            image.width,
+            image.height,
+            p.source_x,
+            p.source_y,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            p.x_offset,
+            p.y_offset,
+            wrapper.terminal.width_px,
+            wrapper.terminal.height_px,
+            wrapper.terminal.cols,
+            wrapper.terminal.rows,
+            vp.col,
+            vp.row,
+            vp.visible,
+            &out.pixel_width,
+            &out.pixel_height,
+            &out.grid_cols,
+            &out.grid_rows,
+            &out.viewport_col,
+            &out.viewport_row,
+            &out.viewport_visible,
+            &out.source_x,
+            &out.source_y,
+            &out.source_width,
+            &out.source_height,
+        ));
+    }
 
     const ps = p.pixelSize(image.*, wrapper.terminal);
     out.pixel_width = ps.width;
@@ -613,6 +1039,45 @@ fn computeViewportPos(
     const vp_tl = pages.getTopLeft(.viewport);
     const vp_screen = pages.pointFromPin(.screen, vp_tl) orelse
         return .{ .col = 0, .row = 0, .visible = false };
+
+    if (comptime build_options.lib_vt_rust) {
+        var grid_cols: u32 = undefined;
+        var grid_rows: u32 = undefined;
+        const grid_result: Result = @enumFromInt(rust.ghostty_rust_kitty_grid_size(
+            image.width,
+            image.height,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            p.x_offset,
+            p.y_offset,
+            t.width_px,
+            t.height_px,
+            t.cols,
+            t.rows,
+            &grid_cols,
+            &grid_rows,
+        ));
+        if (grid_result != .success) return .{ .col = 0, .row = 0, .visible = false };
+
+        var col: i32 = undefined;
+        var row: i32 = undefined;
+        var visible: bool = undefined;
+        const pos_result: Result = @enumFromInt(rust.ghostty_rust_kitty_viewport_pos(
+            @intCast(pin_screen.screen.x),
+            @intCast(pin_screen.screen.y),
+            @intCast(vp_screen.screen.y),
+            @intCast(grid_rows),
+            t.rows,
+            &col,
+            &row,
+            &visible,
+        ));
+        if (pos_result != .success) return .{ .col = 0, .row = 0, .visible = false };
+
+        return .{ .col = col, .row = row, .visible = visible };
+    }
 
     // Subtracting viewport origin from the pin gives us viewport-
     // relative coordinates. The row can be negative when the

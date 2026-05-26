@@ -1,5 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
+const build_options = @import("terminal_options");
 const Allocator = std.mem.Allocator;
 const lib = @import("../lib.zig");
 const CAllocator = lib.alloc.Allocator;
@@ -16,6 +17,225 @@ const row = @import("row.zig");
 const style_c = @import("style.zig");
 
 const log = std.log.scoped(.render_state_c);
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_render_index_next(
+        has_current: bool,
+        current: size.CellCountInt,
+        len: usize,
+        out_next: *size.CellCountInt,
+    ) callconv(.c) bool;
+
+    extern fn ghostty_rust_render_index_select(
+        index: size.CellCountInt,
+        len: usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_cell_selected(
+        selection_present: bool,
+        selection_start: size.CellCountInt,
+        selection_end: size.CellCountInt,
+        x: size.CellCountInt,
+        out: *bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_state_get_primitive(
+        data: c_int,
+        cols: size.CellCountInt,
+        rows: size.CellCountInt,
+        dirty: c_int,
+        cursor_visual_style: c_int,
+        cursor_visible: bool,
+        cursor_blinking: bool,
+        cursor_password_input: bool,
+        cursor_viewport_has_value: bool,
+        cursor_viewport_x: size.CellCountInt,
+        cursor_viewport_y: size.CellCountInt,
+        cursor_viewport_wide_tail: bool,
+        out: *anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_state_get_color(
+        data: c_int,
+        background: colorpkg.RGB.C,
+        foreground: colorpkg.RGB.C,
+        cursor_present: bool,
+        cursor: colorpkg.RGB.C,
+        palette: *const colorpkg.PaletteC,
+        out: *anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_state_get_multi(
+        count: usize,
+        keys: ?[*]const Data,
+        values: ?[*]?*anyopaque,
+        out_written: ?*usize,
+        cols: size.CellCountInt,
+        rows: size.CellCountInt,
+        dirty: c_int,
+        cursor_visual_style: c_int,
+        cursor_visible: bool,
+        cursor_blinking: bool,
+        cursor_password_input: bool,
+        cursor_viewport_has_value: bool,
+        cursor_viewport_x: size.CellCountInt,
+        cursor_viewport_y: size.CellCountInt,
+        cursor_viewport_wide_tail: bool,
+        background: colorpkg.RGB.C,
+        foreground: colorpkg.RGB.C,
+        cursor_present: bool,
+        cursor: colorpkg.RGB.C,
+        palette: *const colorpkg.PaletteC,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_state_set_dirty(
+        value: Dirty,
+        out: *Dirty,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_state_set(
+        has_state: bool,
+        option: c_int,
+        has_value: bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_state_colors_get(
+        out_size: usize,
+        out: *Colors,
+        background: colorpkg.RGB.C,
+        foreground: colorpkg.RGB.C,
+        cursor_present: bool,
+        cursor: colorpkg.RGB.C,
+        palette: *const colorpkg.PaletteC,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_get_dirty(
+        dirty: bool,
+        out: *bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_get_data(
+        data: c_int,
+        raw: row.CRow,
+        dirty: bool,
+        selection_present: bool,
+        selection_start: size.CellCountInt,
+        selection_end: size.CellCountInt,
+        out_size: usize,
+        out: *anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_get_selection(
+        selection_present: bool,
+        selection_start: size.CellCountInt,
+        selection_end: size.CellCountInt,
+        out_size: usize,
+        out: *RowSelection,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_get(
+        has_iterator: bool,
+        has_row: bool,
+        data: c_int,
+        has_out: bool,
+        out_size: usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_get_multi(
+        count: usize,
+        keys: ?[*]const RowData,
+        values: ?[*]?*anyopaque,
+        out_written: ?*usize,
+        raw: row.CRow,
+        dirty: bool,
+        selection_present: bool,
+        selection_start: size.CellCountInt,
+        selection_end: size.CellCountInt,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_set_dirty(
+        value: bool,
+        out: *bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_set(
+        has_iterator: bool,
+        has_row: bool,
+        option: c_int,
+        has_value: bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_cell_get_text(
+        data: c_int,
+        cell: page.Cell.C,
+        extra: ?[*]const u21,
+        extra_len: usize,
+        out: *anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_cell_get(
+        has_cells: bool,
+        has_cell: bool,
+        data: c_int,
+        has_out: bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_cell_get_multi(
+        count: usize,
+        keys: ?[*]const RowCellsData,
+        values: ?[*]?*anyopaque,
+        out_written: ?*usize,
+        cell: page.Cell.C,
+        extra: ?[*]const u21,
+        extra_len: usize,
+        fg_color: *const style_c.Color,
+        bg_color: *const style_c.Color,
+        underline_color: *const style_c.Color,
+        bold: bool,
+        italic: bool,
+        faint: bool,
+        blink: bool,
+        inverse: bool,
+        invisible: bool,
+        strikethrough: bool,
+        overline: bool,
+        underline: c_int,
+        cell_palette_color: colorpkg.RGB.C,
+        fg_palette_color: colorpkg.RGB.C,
+        bg_palette_color: colorpkg.RGB.C,
+        selection_present: bool,
+        selection_start: size.CellCountInt,
+        selection_end: size.CellCountInt,
+        x: size.CellCountInt,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_cell_get_color(
+        data: c_int,
+        cell: page.Cell.C,
+        fg_color: *const style_c.Color,
+        bg_color: *const style_c.Color,
+        cell_palette_color: colorpkg.RGB.C,
+        fg_palette_color: colorpkg.RGB.C,
+        bg_palette_color: colorpkg.RGB.C,
+        out: *anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_render_row_cell_get_style(
+        fg_color: *const style_c.Color,
+        bg_color: *const style_c.Color,
+        underline_color: *const style_c.Color,
+        bold: bool,
+        italic: bool,
+        faint: bool,
+        blink: bool,
+        inverse: bool,
+        invisible: bool,
+        strikethrough: bool,
+        overline: bool,
+        underline: c_int,
+        out: *style_c.Style,
+    ) callconv(.c) c_int;
+} else struct {};
 
 const RenderStateWrapper = struct {
     alloc: std.mem.Allocator,
@@ -219,6 +439,55 @@ pub fn get_multi(
 ) callconv(lib.calling_conv) Result {
     const k = keys orelse return .invalid_value;
     const v = values orelse return .invalid_value;
+    if (count == 0) {
+        if (out_written) |w| w.* = 0;
+        return .success;
+    }
+
+    if (comptime build_options.lib_vt_rust) {
+        var needs_zig = false;
+        for (0..count) |i| {
+            if (k[i] == .row_iterator) {
+                needs_zig = true;
+                break;
+            }
+        }
+
+        if (!needs_zig) {
+            const state = state_ orelse return .invalid_value;
+            const viewport = state.state.cursor.viewport;
+            const colors = state.state.colors;
+            const cursor = if (colors.cursor) |cursor_value| cursor_value.cval() else colorpkg.RGB.C{
+                .r = 0,
+                .g = 0,
+                .b = 0,
+            };
+            const palette = colorpkg.paletteCval(&colors.palette);
+
+            return @enumFromInt(rust.ghostty_rust_render_state_get_multi(
+                count,
+                k,
+                v,
+                out_written,
+                state.state.cols,
+                state.state.rows,
+                @intFromEnum(state.state.dirty),
+                @intFromEnum(state.state.cursor.visual_style),
+                state.state.cursor.visible,
+                state.state.cursor.blinking,
+                state.state.cursor.password_input,
+                viewport != null,
+                if (viewport) |vp| vp.x else 0,
+                if (viewport) |vp| vp.y else 0,
+                if (viewport) |vp| vp.wide_tail else false,
+                colors.background.cval(),
+                colors.foreground.cval(),
+                colors.cursor != null,
+                cursor,
+                &palette,
+            ));
+        }
+    }
 
     for (0..count) |i| {
         const result = get(state_, k[i], v[i]);
@@ -237,6 +506,65 @@ fn getTyped(
     out: *data.OutType(),
 ) Result {
     const state = state_ orelse return .invalid_value;
+
+    if (comptime build_options.lib_vt_rust) {
+        switch (data) {
+            .cols,
+            .rows,
+            .dirty,
+            .cursor_visual_style,
+            .cursor_visible,
+            .cursor_blinking,
+            .cursor_password_input,
+            .cursor_viewport_has_value,
+            .cursor_viewport_x,
+            .cursor_viewport_y,
+            .cursor_viewport_wide_tail,
+            => {
+                const viewport = state.state.cursor.viewport;
+                return @enumFromInt(rust.ghostty_rust_render_state_get_primitive(
+                    @intFromEnum(data),
+                    state.state.cols,
+                    state.state.rows,
+                    @intFromEnum(state.state.dirty),
+                    @intFromEnum(state.state.cursor.visual_style),
+                    state.state.cursor.visible,
+                    state.state.cursor.blinking,
+                    state.state.cursor.password_input,
+                    viewport != null,
+                    if (viewport) |vp| vp.x else 0,
+                    if (viewport) |vp| vp.y else 0,
+                    if (viewport) |vp| vp.wide_tail else false,
+                    @ptrCast(out),
+                ));
+            },
+            .color_background,
+            .color_foreground,
+            .color_cursor,
+            .color_cursor_has_value,
+            .color_palette,
+            => {
+                const colors = state.state.colors;
+                const cursor = if (colors.cursor) |cursor_value| cursor_value.cval() else colorpkg.RGB.C{
+                    .r = 0,
+                    .g = 0,
+                    .b = 0,
+                };
+                const palette = colorpkg.paletteCval(&colors.palette);
+                return @enumFromInt(rust.ghostty_rust_render_state_get_color(
+                    @intFromEnum(data),
+                    colors.background.cval(),
+                    colors.foreground.cval(),
+                    colors.cursor != null,
+                    cursor,
+                    &palette,
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+    }
+
     switch (data) {
         .invalid => return .invalid_value,
         .cols => out.* = state.state.cols,
@@ -290,7 +618,14 @@ pub fn set(
     option: SetOption,
     value: ?*const anyopaque,
 ) callconv(lib.calling_conv) Result {
-    if (comptime std.debug.runtime_safety) {
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_render_state_set(
+            state_ != null,
+            @intFromEnum(option),
+            value != null,
+        ));
+        if (result != .success) return result;
+    } else if (comptime std.debug.runtime_safety) {
         _ = std.meta.intToEnum(SetOption, @intFromEnum(option)) catch {
             log.warn("render_state_set invalid option value={d}", .{@intFromEnum(option)});
             return .invalid_value;
@@ -313,7 +648,16 @@ fn setTyped(
 ) Result {
     const state = state_ orelse return .invalid_value;
     switch (option) {
-        .dirty => state.state.dirty = value.*,
+        .dirty => {
+            if (comptime build_options.lib_vt_rust) {
+                return @enumFromInt(rust.ghostty_rust_render_state_set_dirty(
+                    value.*,
+                    &state.state.dirty,
+                ));
+            }
+
+            state.state.dirty = value.*;
+        },
     }
 
     return .success;
@@ -329,6 +673,24 @@ pub fn colors_get(
     if (out_size < @sizeOf(usize)) return .invalid_value;
 
     const colors = state.state.colors;
+    if (comptime build_options.lib_vt_rust) {
+        const cursor = if (colors.cursor) |cursor| cursor.cval() else colorpkg.RGB.C{
+            .r = 0,
+            .g = 0,
+            .b = 0,
+        };
+        const palette = colorpkg.paletteCval(&colors.palette);
+        return @enumFromInt(rust.ghostty_rust_render_state_colors_get(
+            out_size,
+            out_colors,
+            colors.background.cval(),
+            colors.foreground.cval(),
+            colors.cursor != null,
+            cursor,
+            &palette,
+        ));
+    }
+
     if (lib.structSizedFieldFits(
         Colors,
         out_size,
@@ -407,6 +769,18 @@ pub fn row_iterator_free(iterator_: RowIterator) callconv(lib.calling_conv) void
 
 pub fn row_iterator_next(iterator_: RowIterator) callconv(lib.calling_conv) bool {
     const it = iterator_ orelse return false;
+    if (comptime build_options.lib_vt_rust) {
+        var next_y: size.CellCountInt = undefined;
+        if (!rust.ghostty_rust_render_index_next(
+            it.y != null,
+            it.y orelse 0,
+            it.raws.len,
+            &next_y,
+        )) return false;
+        it.y = next_y;
+        return true;
+    }
+
     const next_y: size.CellCountInt = if (it.y) |y| y + 1 else 0;
     if (next_y >= it.raws.len) return false;
     it.y = next_y;
@@ -437,6 +811,18 @@ pub fn row_cells_new(
 
 pub fn row_cells_next(cells_: RowCells) callconv(lib.calling_conv) bool {
     const cells = cells_ orelse return false;
+    if (comptime build_options.lib_vt_rust) {
+        var next_x: size.CellCountInt = undefined;
+        if (!rust.ghostty_rust_render_index_next(
+            cells.x != null,
+            cells.x orelse 0,
+            cells.raws.len,
+            &next_x,
+        )) return false;
+        cells.x = next_x;
+        return true;
+    }
+
     const next_x: size.CellCountInt = if (cells.x) |x| x + 1 else 0;
     if (next_x >= cells.raws.len) return false;
     cells.x = next_x;
@@ -445,6 +831,16 @@ pub fn row_cells_next(cells_: RowCells) callconv(lib.calling_conv) bool {
 
 pub fn row_cells_select(cells_: RowCells, x: size.CellCountInt) callconv(lib.calling_conv) Result {
     const cells = cells_ orelse return .invalid_value;
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_render_index_select(
+            x,
+            cells.raws.len,
+        ));
+        if (result != .success) return result;
+        cells.x = x;
+        return .success;
+    }
+
     if (x >= cells.raws.len) return .invalid_value;
     cells.x = x;
     return .success;
@@ -493,6 +889,17 @@ pub fn row_cells_get(
         };
     }
 
+    if (comptime build_options.lib_vt_rust) {
+        const has_cell = if (cells_) |cells| cells.x != null else false;
+        const result: Result = @enumFromInt(rust.ghostty_rust_render_row_cell_get(
+            cells_ != null,
+            has_cell,
+            @intFromEnum(data),
+            out != null,
+        ));
+        if (result != .success) return result;
+    }
+
     return switch (data) {
         .invalid => .invalid_value,
         inline else => |comptime_data| rowCellsGetTyped(
@@ -512,6 +919,51 @@ pub fn row_cells_get_multi(
 ) callconv(lib.calling_conv) Result {
     const k = keys orelse return .invalid_value;
     const v = values orelse return .invalid_value;
+    if (count == 0) {
+        if (out_written) |w| w.* = 0;
+        return .success;
+    }
+
+    if (comptime build_options.lib_vt_rust) {
+        const cells = cells_ orelse return .invalid_value;
+        const x = cells.x orelse return .invalid_value;
+        const cell = cells.raws[x];
+        const extra = if (cell.hasGrapheme()) cells.graphemes[x] else &[_]u21{};
+        const s: Style = if (cell.hasStyling()) cells.styles[x] else .{};
+        const fg_color = style_c.Color.fromColor(s.fg_color);
+        const bg_color = style_c.Color.fromColor(s.bg_color);
+        const underline_color = style_c.Color.fromColor(s.underline_color);
+        const sel = cells.selection orelse .{ 0, 0 };
+
+        return @enumFromInt(rust.ghostty_rust_render_row_cell_get_multi(
+            count,
+            k,
+            v,
+            out_written,
+            cell.cval(),
+            if (extra.len > 0) extra.ptr else null,
+            extra.len,
+            &fg_color,
+            &bg_color,
+            &underline_color,
+            s.flags.bold,
+            s.flags.italic,
+            s.flags.faint,
+            s.flags.blink,
+            s.flags.inverse,
+            s.flags.invisible,
+            s.flags.strikethrough,
+            s.flags.overline,
+            @intFromEnum(s.flags.underline),
+            cellPaletteColor(cell, cells.palette),
+            stylePaletteColor(s.fg_color, cells.palette),
+            stylePaletteColor(s.bg_color, cells.palette),
+            cells.selection != null,
+            sel[0],
+            sel[1],
+            x,
+        ));
+    }
 
     for (0..count) |i| {
         const result = row_cells_get(cells_, k[i], v[i]);
@@ -532,13 +984,67 @@ fn rowCellsGetTyped(
     const cells = cells_ orelse return .invalid_value;
     const x = cells.x orelse return .invalid_value;
     const cell = cells.raws[x];
+    const s: Style = if (cell.hasStyling()) cells.styles[x] else .{};
+
+    if (comptime build_options.lib_vt_rust) {
+        switch (data) {
+            .style => {
+                const fg_color = style_c.Color.fromColor(s.fg_color);
+                const bg_color = style_c.Color.fromColor(s.bg_color);
+                const underline_color = style_c.Color.fromColor(s.underline_color);
+                return @enumFromInt(rust.ghostty_rust_render_row_cell_get_style(
+                    &fg_color,
+                    &bg_color,
+                    &underline_color,
+                    s.flags.bold,
+                    s.flags.italic,
+                    s.flags.faint,
+                    s.flags.blink,
+                    s.flags.inverse,
+                    s.flags.invisible,
+                    s.flags.strikethrough,
+                    s.flags.overline,
+                    @intFromEnum(s.flags.underline),
+                    out,
+                ));
+            },
+            .raw,
+            .graphemes_len,
+            .graphemes_buf,
+            => {
+                const extra = if (cell.hasGrapheme()) cells.graphemes[x] else &[_]u21{};
+                return @enumFromInt(rust.ghostty_rust_render_row_cell_get_text(
+                    @intFromEnum(data),
+                    cell.cval(),
+                    if (extra.len > 0) extra.ptr else null,
+                    extra.len,
+                    @ptrCast(out),
+                ));
+            },
+            .bg_color,
+            .fg_color,
+            => {
+                const fg_color = style_c.Color.fromColor(s.fg_color);
+                const bg_color = style_c.Color.fromColor(s.bg_color);
+                return @enumFromInt(rust.ghostty_rust_render_row_cell_get_color(
+                    @intFromEnum(data),
+                    cell.cval(),
+                    &fg_color,
+                    &bg_color,
+                    cellPaletteColor(cell, cells.palette),
+                    stylePaletteColor(s.fg_color, cells.palette),
+                    stylePaletteColor(s.bg_color, cells.palette),
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+    }
+
     switch (data) {
         .invalid => return .invalid_value,
         .raw => out.* = cell.cval(),
-        .style => out.* = if (cell.hasStyling())
-            style_c.Style.fromStyle(cells.styles[x])
-        else
-            style_c.Style.fromStyle(.{}),
+        .style => out.* = style_c.Style.fromStyle(s),
         .graphemes_len => {
             if (!cell.hasText()) {
                 out.* = 0;
@@ -557,23 +1063,48 @@ fn rowCellsGetTyped(
             }
         },
         .bg_color => {
-            const s: Style = if (cell.hasStyling()) cells.styles[x] else .{};
             const bg = s.bg(&cell, cells.palette) orelse return .invalid_value;
             out.* = bg.cval();
         },
         .fg_color => {
-            const s: Style = if (cell.hasStyling()) cells.styles[x] else .{};
             if (s.fg_color == .none) return .invalid_value;
             const fg = s.fg(.{ .default = .{}, .palette = cells.palette });
             out.* = fg.cval();
         },
-        .selected => out.* = if (cells.selection) |sel|
-            x >= sel[0] and x <= sel[1]
-        else
-            false,
+        .selected => {
+            if (comptime build_options.lib_vt_rust) {
+                const sel = cells.selection orelse .{ 0, 0 };
+                return @enumFromInt(rust.ghostty_rust_render_row_cell_selected(
+                    cells.selection != null,
+                    sel[0],
+                    sel[1],
+                    x,
+                    out,
+                ));
+            }
+
+            out.* = if (cells.selection) |sel|
+                x >= sel[0] and x <= sel[1]
+            else
+                false;
+        },
     }
 
     return .success;
+}
+
+fn cellPaletteColor(cell: page.Cell, palette: *const colorpkg.Palette) colorpkg.RGB.C {
+    return switch (cell.content_tag) {
+        .bg_color_palette => palette[cell.content.color_palette].cval(),
+        else => .{ .r = 0, .g = 0, .b = 0 },
+    };
+}
+
+fn stylePaletteColor(style_color: Style.Color, palette: *const colorpkg.Palette) colorpkg.RGB.C {
+    return switch (style_color) {
+        .palette => |idx| palette[idx].cval(),
+        else => .{ .r = 0, .g = 0, .b = 0 },
+    };
 }
 
 /// C: GhosttyRenderStateRowData
@@ -620,6 +1151,22 @@ pub fn row_get(
         };
     }
 
+    if (comptime build_options.lib_vt_rust) {
+        const has_row = if (iterator_) |it| it.y != null else false;
+        const out_size = if (data == .selection and out != null)
+            @as(*const RowSelection, @ptrCast(@alignCast(out))).size
+        else
+            0;
+        const result: Result = @enumFromInt(rust.ghostty_rust_render_row_get(
+            iterator_ != null,
+            has_row,
+            @intFromEnum(data),
+            out != null,
+            out_size,
+        ));
+        if (result != .success) return result;
+    }
+
     return switch (data) {
         .invalid => .invalid_value,
         inline else => |comptime_data| rowGetTyped(
@@ -640,6 +1187,34 @@ pub fn row_get_multi(
     const k = keys orelse return .invalid_value;
     const v = values orelse return .invalid_value;
 
+    if (comptime build_options.lib_vt_rust) {
+        const it = iterator_ orelse return .invalid_value;
+        const y = it.y orelse return .invalid_value;
+
+        var has_cells = false;
+        for (0..count) |i| {
+            if (k[i] == .cells) {
+                has_cells = true;
+                break;
+            }
+        }
+
+        if (!has_cells) {
+            const sel = it.selection[y] orelse .{ 0, 0 };
+            return @enumFromInt(rust.ghostty_rust_render_row_get_multi(
+                count,
+                k,
+                v,
+                out_written,
+                it.raws[y].cval(),
+                it.dirty[y],
+                it.selection[y] != null,
+                sel[0],
+                sel[1],
+            ));
+        }
+    }
+
     for (0..count) |i| {
         const result = row_get(iterator_, k[i], v[i]);
         if (result != .success) {
@@ -658,6 +1233,29 @@ fn rowGetTyped(
 ) Result {
     const it = iterator_ orelse return .invalid_value;
     const y = it.y orelse return .invalid_value;
+
+    if (comptime build_options.lib_vt_rust) {
+        switch (data) {
+            .dirty,
+            .raw,
+            .selection,
+            => {
+                const sel = it.selection[y] orelse .{ 0, 0 };
+                return @enumFromInt(rust.ghostty_rust_render_row_get_data(
+                    @intFromEnum(data),
+                    it.raws[y].cval(),
+                    it.dirty[y],
+                    it.selection[y] != null,
+                    sel[0],
+                    sel[1],
+                    if (data == .selection) out.size else 0,
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+    }
+
     switch (data) {
         .invalid => return .invalid_value,
         .dirty => out.* = it.dirty[y],
@@ -700,6 +1298,17 @@ pub fn row_set(
         };
     }
 
+    if (comptime build_options.lib_vt_rust) {
+        const has_row = if (iterator_) |it| it.y != null else false;
+        const result: Result = @enumFromInt(rust.ghostty_rust_render_row_set(
+            iterator_ != null,
+            has_row,
+            @intFromEnum(option),
+            value != null,
+        ));
+        if (result != .success) return result;
+    }
+
     return switch (option) {
         inline else => |comptime_option| rowSetTyped(
             iterator_,
@@ -717,7 +1326,16 @@ fn rowSetTyped(
     const it = iterator_ orelse return .invalid_value;
     const y = it.y orelse return .invalid_value;
     switch (option) {
-        .dirty => it.dirty[y] = value.*,
+        .dirty => {
+            if (comptime build_options.lib_vt_rust) {
+                return @enumFromInt(rust.ghostty_rust_render_row_set_dirty(
+                    value.*,
+                    &it.dirty[y],
+                ));
+            }
+
+            it.dirty[y] = value.*;
+        },
     }
 
     return .success;
@@ -811,6 +1429,34 @@ test "render: get/set dirty" {
     try testing.expectEqual(Result.success, set(state, .dirty, @ptrCast(&dirty_full)));
     try testing.expectEqual(Result.success, get(state, .dirty, @ptrCast(&dirty)));
     try testing.expectEqual(Dirty.full, dirty);
+}
+
+test "render: get colors" {
+    var state: RenderState = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &state,
+    ));
+    defer free(state);
+
+    var background: colorpkg.RGB.C = undefined;
+    try testing.expectEqual(Result.success, get(state, .color_background, @ptrCast(&background)));
+    try testing.expectEqualDeep(colorpkg.RGB.C{ .r = 0, .g = 0, .b = 0 }, background);
+
+    var foreground: colorpkg.RGB.C = undefined;
+    try testing.expectEqual(Result.success, get(state, .color_foreground, @ptrCast(&foreground)));
+    try testing.expectEqualDeep(colorpkg.RGB.C{ .r = 0xff, .g = 0xff, .b = 0xff }, foreground);
+
+    var cursor_has_value: bool = undefined;
+    try testing.expectEqual(Result.success, get(state, .color_cursor_has_value, @ptrCast(&cursor_has_value)));
+    try testing.expect(!cursor_has_value);
+
+    var cursor: colorpkg.RGB.C = undefined;
+    try testing.expectEqual(Result.invalid_value, get(state, .color_cursor, @ptrCast(&cursor)));
+
+    var palette: colorpkg.PaletteC = undefined;
+    try testing.expectEqual(Result.success, get(state, .color_palette, @ptrCast(&palette)));
+    try testing.expectEqualDeep(colorpkg.paletteCval(&colorpkg.default), palette);
 }
 
 test "render: set null value" {
@@ -998,6 +1644,47 @@ test "render: row get before iteration" {
     try testing.expectEqual(Result.invalid_value, row_get(iterator, .dirty, @ptrCast(&dirty)));
 }
 
+test "render: row get raw and scalar multi" {
+    var raw_rows = [_]page.Row{@bitCast(@as(u64, 0))};
+    raw_rows[0].wrap = true;
+    var dirty_rows = [_]bool{true};
+    var selection_rows = [_]?[2]size.CellCountInt{.{ 1, 3 }};
+    var palette: colorpkg.Palette = undefined;
+
+    var wrapper: RowIteratorWrapper = .{
+        .alloc = lib.alloc.default(&lib.alloc.test_allocator),
+        .y = 0,
+        .raws = &raw_rows,
+        .cells = undefined,
+        .selection = &selection_rows,
+        .dirty = &dirty_rows,
+        .palette = &palette,
+    };
+    const it: RowIterator = &wrapper;
+
+    var raw_value: row.CRow = 0;
+    try testing.expectEqual(Result.success, row_get(it, .raw, @ptrCast(&raw_value)));
+    try testing.expectEqual(raw_rows[0].cval(), raw_value);
+
+    var dirty = false;
+    var selection: RowSelection = .{};
+    const keys = [_]RowData{ .dirty, .raw, .selection };
+    var values = [_]?*anyopaque{
+        @ptrCast(&dirty),
+        @ptrCast(&raw_value),
+        @ptrCast(&selection),
+    };
+    var written: usize = 0;
+
+    raw_value = 0;
+    try testing.expectEqual(Result.success, row_get_multi(it, keys.len, &keys, &values, &written));
+    try testing.expectEqual(keys.len, written);
+    try testing.expect(dirty);
+    try testing.expectEqual(raw_rows[0].cval(), raw_value);
+    try testing.expectEqual(@as(size.CellCountInt, 1), selection.start_x);
+    try testing.expectEqual(@as(size.CellCountInt, 3), selection.end_x);
+}
+
 test "render: row get/set dirty" {
     var terminal: terminal_c.Terminal = null;
     try testing.expectEqual(Result.success, terminal_c.new(
@@ -1105,9 +1792,35 @@ test "render: row get selection" {
     try testing.expectEqual(@as(u16, 2), sel.start_x);
     try testing.expectEqual(@as(u16, 4), sel.end_x);
 
+    sel.size = @sizeOf(usize) - 1;
+    try testing.expectEqual(Result.invalid_value, row_get(it, .selection, @ptrCast(&sel)));
+
     try testing.expect(row_iterator_next(it));
     sel = .{};
     try testing.expectEqual(Result.no_value, row_get(it, .selection, @ptrCast(&sel)));
+}
+
+test "render: row cells get invalid value" {
+    var selected = false;
+    try testing.expectEqual(Result.invalid_value, row_cells_get(null, .selected, @ptrCast(&selected)));
+
+    const raw_cells = [_]page.Cell{};
+    const graphemes = [_][]const u21{};
+    const styles = [_]Style{};
+    var palette: colorpkg.Palette = undefined;
+    var wrapper: RowCellsWrapper = .{
+        .alloc = lib.alloc.default(&lib.alloc.test_allocator),
+        .x = null,
+        .raws = &raw_cells,
+        .graphemes = &graphemes,
+        .styles = &styles,
+        .selection = null,
+        .palette = &palette,
+    };
+    const cells: RowCells = &wrapper;
+
+    try testing.expectEqual(Result.invalid_value, row_cells_get(cells, .invalid, @ptrCast(&selected)));
+    try testing.expectEqual(Result.invalid_value, row_cells_get(cells, .selected, @ptrCast(&selected)));
 }
 
 test "render: row cells get selected" {
@@ -1193,6 +1906,241 @@ test "render: row cells get selected" {
     try testing.expect(selected);
 }
 
+test "render: row cells text metadata" {
+    var raw = [_]page.Cell{
+        page.Cell.init('e'),
+        page.Cell.init('x'),
+        @bitCast(@as(u64, 0)),
+    };
+    raw[0].content_tag = .codepoint_grapheme;
+
+    const extra0 = [_]u21{0x0301};
+    const extra_empty = [_]u21{};
+    const graphemes = [_][]const u21{
+        &extra0,
+        &extra_empty,
+        &extra_empty,
+    };
+    const styles = [_]Style{ .{}, .{}, .{} };
+    var palette: colorpkg.Palette = undefined;
+
+    var wrapper: RowCellsWrapper = .{
+        .alloc = lib.alloc.default(&lib.alloc.test_allocator),
+        .x = null,
+        .raws = &raw,
+        .graphemes = &graphemes,
+        .styles = &styles,
+        .selection = null,
+        .palette = &palette,
+    };
+    const cells: RowCells = &wrapper;
+
+    try testing.expectEqual(Result.success, row_cells_select(cells, 0));
+
+    var raw_value: page.Cell.C = 0;
+    try testing.expectEqual(Result.success, row_cells_get(cells, .raw, @ptrCast(&raw_value)));
+    try testing.expectEqual(raw[0].cval(), raw_value);
+
+    var len: u32 = 0;
+    try testing.expectEqual(Result.success, row_cells_get(cells, .graphemes_len, @ptrCast(&len)));
+    try testing.expectEqual(@as(u32, 2), len);
+
+    var buf = [_]u32{ 0, 0 };
+    try testing.expectEqual(Result.success, row_cells_get(cells, .graphemes_buf, @ptrCast(&buf)));
+    try testing.expectEqualSlices(u32, &.{ 'e', 0x0301 }, &buf);
+
+    try testing.expectEqual(Result.success, row_cells_select(cells, 2));
+    len = 99;
+    try testing.expectEqual(Result.success, row_cells_get(cells, .graphemes_len, @ptrCast(&len)));
+    try testing.expectEqual(@as(u32, 0), len);
+}
+
+test "render: row cells palette colors" {
+    var raw = [_]page.Cell{
+        page.Cell.init('A'),
+        @bitCast(@as(u64, 0)),
+    };
+    raw[0].style_id = 1;
+    raw[1].content_tag = .bg_color_palette;
+    raw[1].content = .{ .color_palette = 3 };
+
+    const extra_empty = [_]u21{};
+    const graphemes = [_][]const u21{
+        &extra_empty,
+        &extra_empty,
+    };
+    const styles = [_]Style{
+        .{
+            .fg_color = .{ .palette = 1 },
+            .bg_color = .{ .palette = 2 },
+        },
+        .{},
+    };
+    var palette = colorpkg.default;
+    palette[1] = .{ .r = 10, .g = 20, .b = 30 };
+    palette[2] = .{ .r = 40, .g = 50, .b = 60 };
+    palette[3] = .{ .r = 70, .g = 80, .b = 90 };
+
+    var wrapper: RowCellsWrapper = .{
+        .alloc = lib.alloc.default(&lib.alloc.test_allocator),
+        .x = null,
+        .raws = &raw,
+        .graphemes = &graphemes,
+        .styles = &styles,
+        .selection = null,
+        .palette = &palette,
+    };
+    const cells: RowCells = &wrapper;
+
+    try testing.expectEqual(Result.success, row_cells_select(cells, 0));
+
+    var fg: colorpkg.RGB.C = undefined;
+    try testing.expectEqual(Result.success, row_cells_get(cells, .fg_color, @ptrCast(&fg)));
+    try testing.expectEqual(@as(u8, 10), fg.r);
+    try testing.expectEqual(@as(u8, 20), fg.g);
+    try testing.expectEqual(@as(u8, 30), fg.b);
+
+    var bg: colorpkg.RGB.C = undefined;
+    try testing.expectEqual(Result.success, row_cells_get(cells, .bg_color, @ptrCast(&bg)));
+    try testing.expectEqual(@as(u8, 40), bg.r);
+    try testing.expectEqual(@as(u8, 50), bg.g);
+    try testing.expectEqual(@as(u8, 60), bg.b);
+
+    try testing.expectEqual(Result.success, row_cells_select(cells, 1));
+    try testing.expectEqual(Result.success, row_cells_get(cells, .bg_color, @ptrCast(&bg)));
+    try testing.expectEqual(@as(u8, 70), bg.r);
+    try testing.expectEqual(@as(u8, 80), bg.g);
+    try testing.expectEqual(@as(u8, 90), bg.b);
+}
+
+test "render: row cells style" {
+    var raw = [_]page.Cell{
+        page.Cell.init('A'),
+        page.Cell.init('B'),
+    };
+    raw[0].style_id = 1;
+
+    const extra_empty = [_]u21{};
+    const graphemes = [_][]const u21{
+        &extra_empty,
+        &extra_empty,
+    };
+    const styles = [_]Style{
+        .{
+            .fg_color = .{ .palette = 42 },
+            .bg_color = .{ .rgb = .{ .r = 255, .g = 128, .b = 64 } },
+            .underline_color = .none,
+            .flags = .{
+                .bold = true,
+                .italic = true,
+                .underline = .curly,
+            },
+        },
+        .{},
+    };
+    var palette: colorpkg.Palette = undefined;
+
+    var wrapper: RowCellsWrapper = .{
+        .alloc = lib.alloc.default(&lib.alloc.test_allocator),
+        .x = null,
+        .raws = &raw,
+        .graphemes = &graphemes,
+        .styles = &styles,
+        .selection = null,
+        .palette = &palette,
+    };
+    const cells: RowCells = &wrapper;
+
+    try testing.expectEqual(Result.success, row_cells_select(cells, 0));
+
+    var styled: style_c.Style = undefined;
+    try testing.expectEqual(Result.success, row_cells_get(cells, .style, @ptrCast(&styled)));
+    try testing.expectEqual(@sizeOf(style_c.Style), styled.size);
+    try testing.expectEqual(style_c.ColorTag.palette, styled.fg_color.tag);
+    try testing.expectEqual(@as(u8, 42), styled.fg_color.value.palette);
+    try testing.expectEqual(style_c.ColorTag.rgb, styled.bg_color.tag);
+    try testing.expectEqual(@as(u8, 255), styled.bg_color.value.rgb.r);
+    try testing.expectEqual(@as(u8, 128), styled.bg_color.value.rgb.g);
+    try testing.expectEqual(@as(u8, 64), styled.bg_color.value.rgb.b);
+    try testing.expectEqual(style_c.ColorTag.none, styled.underline_color.tag);
+    try testing.expect(styled.bold);
+    try testing.expect(styled.italic);
+    try testing.expect(!styled.faint);
+    try testing.expectEqual(@as(c_int, 3), styled.underline);
+    try testing.expect(!style_c.style_is_default(&styled));
+
+    try testing.expectEqual(Result.success, row_cells_select(cells, 1));
+    var default_style: style_c.Style = undefined;
+    try testing.expectEqual(Result.success, row_cells_get(cells, .style, @ptrCast(&default_style)));
+    try testing.expect(style_c.style_is_default(&default_style));
+}
+
+test "render: row cells get_multi mixed data" {
+    var raw = [_]page.Cell{page.Cell.init('A')};
+    raw[0].style_id = 1;
+    raw[0].content_tag = .codepoint_grapheme;
+
+    const extra0 = [_]u21{0x0301};
+    const graphemes = [_][]const u21{&extra0};
+    const styles = [_]Style{.{
+        .fg_color = .{ .rgb = .{ .r = 10, .g = 20, .b = 30 } },
+        .bg_color = .{ .rgb = .{ .r = 40, .g = 50, .b = 60 } },
+        .flags = .{ .bold = true },
+    }};
+    var palette: colorpkg.Palette = undefined;
+
+    var wrapper: RowCellsWrapper = .{
+        .alloc = lib.alloc.default(&lib.alloc.test_allocator),
+        .x = null,
+        .raws = &raw,
+        .graphemes = &graphemes,
+        .styles = &styles,
+        .selection = .{ 0, 0 },
+        .palette = &palette,
+    };
+    const cells: RowCells = &wrapper;
+
+    try testing.expectEqual(Result.success, row_cells_select(cells, 0));
+
+    var raw_value: page.Cell.C = 0;
+    var styled: style_c.Style = undefined;
+    var len: u32 = 0;
+    var fg: colorpkg.RGB.C = undefined;
+    var bg: colorpkg.RGB.C = undefined;
+    var selected = false;
+    const keys = [_]RowCellsData{
+        .raw,
+        .style,
+        .graphemes_len,
+        .fg_color,
+        .bg_color,
+        .selected,
+    };
+    var values = [_]?*anyopaque{
+        @ptrCast(&raw_value),
+        @ptrCast(&styled),
+        @ptrCast(&len),
+        @ptrCast(&fg),
+        @ptrCast(&bg),
+        @ptrCast(&selected),
+    };
+    var written: usize = 0;
+
+    try testing.expectEqual(Result.success, row_cells_get_multi(cells, keys.len, &keys, &values, &written));
+    try testing.expectEqual(keys.len, written);
+    try testing.expectEqual(raw[0].cval(), raw_value);
+    try testing.expectEqual(@as(u32, 2), len);
+    try testing.expectEqual(style_c.ColorTag.rgb, styled.fg_color.tag);
+    try testing.expect(styled.bold);
+    try testing.expectEqual(@as(u8, 10), fg.r);
+    try testing.expectEqual(@as(u8, 20), fg.g);
+    try testing.expectEqual(@as(u8, 30), fg.b);
+    try testing.expectEqual(@as(u8, 40), bg.r);
+    try testing.expectEqual(@as(u8, 50), bg.g);
+    try testing.expectEqual(@as(u8, 60), bg.b);
+    try testing.expect(selected);
+}
+
 test "render: row iterator next" {
     var terminal: terminal_c.Terminal = null;
     try testing.expectEqual(Result.success, terminal_c.new(
@@ -1274,6 +2222,55 @@ test "render: update" {
     try testing.expectEqual(Result.success, get(state, .rows, @ptrCast(&rows_val)));
     try testing.expectEqual(@as(size.CellCountInt, 80), cols);
     try testing.expectEqual(@as(size.CellCountInt, 24), rows_val);
+}
+
+test "render: cursor primitive getters" {
+    var terminal: terminal_c.Terminal = null;
+    try testing.expectEqual(Result.success, terminal_c.new(
+        &lib.alloc.test_allocator,
+        &terminal,
+        .{
+            .cols = 10,
+            .rows = 2,
+            .max_scrollback = 10_000,
+        },
+    ));
+    defer terminal_c.free(terminal);
+
+    terminal_c.vt_write(terminal, "A\r\nB\r\nC\r\nD\r\n", 12);
+
+    var state: RenderState = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &state,
+    ));
+    defer free(state);
+
+    try testing.expectEqual(Result.success, update(state, terminal));
+
+    var has_viewport: bool = false;
+    try testing.expectEqual(Result.success, get(state, .cursor_viewport_has_value, @ptrCast(&has_viewport)));
+    try testing.expect(has_viewport);
+
+    var x: size.CellCountInt = 99;
+    var y: size.CellCountInt = 99;
+    var wide_tail = true;
+    try testing.expectEqual(Result.success, get(state, .cursor_viewport_x, @ptrCast(&x)));
+    try testing.expectEqual(Result.success, get(state, .cursor_viewport_y, @ptrCast(&y)));
+    try testing.expectEqual(Result.success, get(state, .cursor_viewport_wide_tail, @ptrCast(&wide_tail)));
+    try testing.expectEqual(@as(size.CellCountInt, 0), x);
+    try testing.expectEqual(@as(size.CellCountInt, 1), y);
+    try testing.expect(!wide_tail);
+
+    terminal.?.terminal.scrollViewport(.top);
+    try testing.expectEqual(Result.success, update(state, terminal));
+
+    has_viewport = true;
+    try testing.expectEqual(Result.success, get(state, .cursor_viewport_has_value, @ptrCast(&has_viewport)));
+    try testing.expect(!has_viewport);
+    try testing.expectEqual(Result.invalid_value, get(state, .cursor_viewport_x, @ptrCast(&x)));
+    try testing.expectEqual(Result.invalid_value, get(state, .cursor_viewport_y, @ptrCast(&y)));
+    try testing.expectEqual(Result.invalid_value, get(state, .cursor_viewport_wide_tail, @ptrCast(&wide_tail)));
 }
 
 test "render: colors get" {
@@ -1645,6 +2642,33 @@ test "render: get_multi null returns invalid_value" {
     var cols: u16 = 0;
     var values = [_]?*anyopaque{@ptrCast(&cols)};
     try testing.expectEqual(Result.invalid_value, get_multi(null, 1, null, &values, null));
+}
+
+test "render: get_multi colors" {
+    var state: RenderState = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &state,
+    ));
+    defer free(state);
+
+    var background: colorpkg.RGB.C = undefined;
+    var foreground: colorpkg.RGB.C = undefined;
+    var cursor_has_value = true;
+    var written: usize = 0;
+
+    const keys = [_]Data{ .color_background, .color_foreground, .color_cursor_has_value };
+    var values = [_]?*anyopaque{
+        @ptrCast(&background),
+        @ptrCast(&foreground),
+        @ptrCast(&cursor_has_value),
+    };
+
+    try testing.expectEqual(Result.success, get_multi(state, keys.len, &keys, &values, &written));
+    try testing.expectEqual(keys.len, written);
+    try testing.expectEqualDeep(colorpkg.RGB.C{ .r = 0, .g = 0, .b = 0 }, background);
+    try testing.expectEqualDeep(colorpkg.RGB.C{ .r = 0xff, .g = 0xff, .b = 0xff }, foreground);
+    try testing.expect(!cursor_has_value);
 }
 
 test "render: row_get_multi success" {
