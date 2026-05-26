@@ -60,6 +60,7 @@ mod mouse_button_default;
 mod mouse_button_motion;
 mod mouse_button_mods;
 mod mouse_encoder_state;
+mod mouse_encode_size;
 mod mouse_geometry;
 mod mouse_encode;
 mod mouse_last_cell;

@@ -8,6 +8,7 @@ use crate::input::*;
 use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_button::*;
+use crate::mouse_encode_size::*;
 use crate::mouse_geometry::*;
 use crate::mouse_last_cell::*;
 use crate::mouse_output::*;
@@ -49,7 +50,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     next_last_cell_x: *mut u16,
     next_last_cell_y: *mut u32,
 ) -> c_int {
-    let size = mouse_size_from_parts(
+    let size = match mouse_encode_size(
         screen_width,
         screen_height,
         cell_width,
@@ -58,11 +59,10 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         padding_bottom,
         padding_right,
         padding_left,
-    );
-
-    if !mouse_size_has_cell_size(size) {
-        return GHOSTTY_INVALID_VALUE;
-    }
+    ) {
+        Ok(size) => size,
+        Err(err) => return err,
+    };
 
     unsafe {
         mouse_carry_forward_last_cell(
