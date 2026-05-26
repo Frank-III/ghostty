@@ -197,12 +197,40 @@ pub(crate) fn rgb_perceived_luminance(color: GhosttyColorRgb) -> f64 {
     0.299 * r + 0.587 * g + 0.114 * b
 }
 
+pub(crate) fn rgb_from_hex_component(value: &[u8]) -> Option<u8> {
+    let divisor = match value.len() {
+        1 => 0x000fusize,
+        2 => 0x00ffusize,
+        3 => 0x0fffusize,
+        4 => 0xffffusize,
+        _ => return None,
+    };
+
+    let mut color = 0usize;
+    let mut index = 0usize;
+    while index < value.len() {
+        color = (color << 4) | usize::from(hex_digit(value[index])?);
+        index += 1;
+    }
+
+    Some(((color * 0xff) / divisor) as u8)
+}
+
 fn rgb_component_luminance(component: u8) -> f64 {
     let normalized = f64::from(component) / 255.0;
     if normalized <= 0.03928 {
         normalized / 12.92
     } else {
         ((normalized + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+fn hex_digit(value: u8) -> Option<u8> {
+    match value {
+        b'0'..=b'9' => Some(value - b'0'),
+        b'a'..=b'f' => Some(value - b'a' + 10),
+        b'A'..=b'F' => Some(value - b'A' + 10),
+        _ => None,
     }
 }
 
