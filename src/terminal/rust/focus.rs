@@ -3,6 +3,7 @@ use core::ptr;
 
 use crate::early::*;
 use crate::focus_sequence::*;
+use crate::focus_write::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_focus_encode(
@@ -22,7 +23,7 @@ pub unsafe extern "C" fn ghostty_rust_focus_encode(
     }
 
     unsafe {
-        ptr::copy_nonoverlapping(seq.as_ptr(), out, seq.len());
+        write_focus_sequence(out, seq);
     }
 
     GHOSTTY_SUCCESS
