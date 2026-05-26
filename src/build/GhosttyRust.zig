@@ -71,6 +71,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/input.rs",
     "src/terminal/rust/key_bool_option.rs",
     "src/terminal/rust/key_options.rs",
+    "src/terminal/rust/key_option_as_alt_value.rs",
     "src/terminal/rust/key_option_as_alt.rs",
     "src/terminal/rust/key_setopt_bool.rs",
     "src/terminal/rust/key_from_terminal.rs",

@@ -1,6 +1,7 @@
 use core::ffi::c_int;
 use core::ptr;
 
+use crate::key_option_as_alt_value::key_option_as_alt_value;
 use crate::key_options::*;
 
 #[no_mangle]
@@ -13,10 +14,9 @@ pub unsafe extern "C" fn ghostty_rust_key_encoder_setopt_option_as_alt(
         return;
     }
 
-    match value {
-        OPTION_AS_ALT_FALSE | OPTION_AS_ALT_TRUE | OPTION_AS_ALT_LEFT | OPTION_AS_ALT_RIGHT => unsafe {
+    if key_option_as_alt_value(value) {
+        unsafe {
             ptr::write(out, value);
-        },
-        _ => {}
+        }
     }
 }
