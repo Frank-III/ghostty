@@ -76,6 +76,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/kitty_rect.rs",
     "src/terminal/rust/kitty_placement_get.rs",
     "src/terminal/rust/kitty_placement.rs",
+    "src/terminal/rust/kitty_placement_layer.rs",
     "src/terminal/rust/lib.rs",
     "src/terminal/rust/modes.rs",
     "src/terminal/rust/mouse_button.rs",
