@@ -5,6 +5,7 @@ use crate::cell::*;
 use crate::constants::*;
 use crate::render_cell_text::*;
 use crate::style::*;
+use crate::style_copy::*;
 
 #[no_mangle]
 pub extern "C" fn ghostty_rust_render_row_cell_get(

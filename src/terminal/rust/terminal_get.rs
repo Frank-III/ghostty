@@ -6,6 +6,7 @@ use crate::early::*;
 use crate::selection::*;
 use crate::simple::*;
 use crate::style::*;
+use crate::style_copy::*;
 use crate::terminal::*;
 use crate::terminal_get_scalar::*;
 

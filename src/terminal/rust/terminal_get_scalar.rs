@@ -4,6 +4,7 @@ use core::ptr;
 use crate::constants::*;
 use crate::early::*;
 use crate::style::*;
+use crate::style_copy::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_terminal_get_scalar(

@@ -5,6 +5,7 @@ use crate::constants::*;
 use crate::early::*;
 use crate::simple::*;
 use crate::style::*;
+use crate::style_copy::*;
 use crate::terminal::*;
 
 #[no_mangle]
