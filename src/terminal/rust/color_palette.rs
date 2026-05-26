@@ -216,6 +216,16 @@ pub(crate) fn rgb_from_hex_component(value: &[u8]) -> Option<u8> {
     Some(((color * 0xff) / divisor) as u8)
 }
 
+pub(crate) fn rgb_from_intensity_component(value: &[u8]) -> Option<u8> {
+    let value = core::str::from_utf8(value).ok()?;
+    let intensity = value.parse::<f64>().ok()?;
+    if !(0.0..=1.0).contains(&intensity) {
+        return None;
+    }
+
+    Some((intensity * f64::from(u8::MAX)) as u8)
+}
+
 pub(crate) fn rgb_parse(value: &[u8]) -> Option<GhosttyColorRgb> {
     if value.is_empty() {
         return None;
