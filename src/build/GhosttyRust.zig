@@ -48,17 +48,28 @@ pub fn libVtObject(
 
 const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/allocator.rs",
+    "src/terminal/rust/cell.rs",
     "src/terminal/rust/color.rs",
     "src/terminal/rust/constants.rs",
     "src/terminal/rust/early.rs",
+    "src/terminal/rust/event.rs",
+    "src/terminal/rust/focus.rs",
+    "src/terminal/rust/grid_ref.rs",
     "src/terminal/rust/input.rs",
+    "src/terminal/rust/key_encode.rs",
     "src/terminal/rust/kitty_graphics.rs",
+    "src/terminal/rust/lib.rs",
+    "src/terminal/rust/modes.rs",
     "src/terminal/rust/mouse_encode.rs",
+    "src/terminal/rust/osc.rs",
+    "src/terminal/rust/paste.rs",
     "src/terminal/rust/render.rs",
+    "src/terminal/rust/row.rs",
     "src/terminal/rust/selection.rs",
     "src/terminal/rust/sgr.rs",
     "src/terminal/rust/simple.rs",
     "src/terminal/rust/style.rs",
+    "src/terminal/rust/sys.rs",
     "src/terminal/rust/terminal.rs",
 };
 
