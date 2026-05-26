@@ -29,6 +29,54 @@ pub unsafe extern "C" fn ghostty_rust_render_state_get_multi(
     cursor: GhosttyColorRgb,
     palette: *const GhosttyColorRgb,
 ) -> c_int {
+    unsafe {
+        render_state_get_multi_impl(
+            count,
+            keys,
+            values,
+            out_written,
+            cols,
+            rows,
+            dirty,
+            cursor_visual_style,
+            cursor_visible,
+            cursor_blinking,
+            cursor_password_input,
+            cursor_viewport_has_value,
+            cursor_viewport_x,
+            cursor_viewport_y,
+            cursor_viewport_wide_tail,
+            background,
+            foreground,
+            cursor_present,
+            cursor,
+            palette,
+        )
+    }
+}
+
+pub(crate) unsafe fn render_state_get_multi_impl(
+    count: usize,
+    keys: *const c_int,
+    values: *const *mut c_void,
+    out_written: *mut usize,
+    cols: u16,
+    rows: u16,
+    dirty: c_int,
+    cursor_visual_style: c_int,
+    cursor_visible: bool,
+    cursor_blinking: bool,
+    cursor_password_input: bool,
+    cursor_viewport_has_value: bool,
+    cursor_viewport_x: u16,
+    cursor_viewport_y: u16,
+    cursor_viewport_wide_tail: bool,
+    background: GhosttyColorRgb,
+    foreground: GhosttyColorRgb,
+    cursor_present: bool,
+    cursor: GhosttyColorRgb,
+    palette: *const GhosttyColorRgb,
+) -> c_int {
     if keys.is_null() || values.is_null() {
         return RENDER_RESULT_INVALID_VALUE;
     }

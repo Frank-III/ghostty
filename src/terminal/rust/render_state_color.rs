@@ -28,6 +28,28 @@ pub unsafe extern "C" fn ghostty_rust_render_state_get_color(
     palette: *const GhosttyColorRgb,
     out: *mut c_void,
 ) -> c_int {
+    unsafe {
+        render_state_get_color_impl(
+            data,
+            background,
+            foreground,
+            cursor_present,
+            cursor,
+            palette,
+            out,
+        )
+    }
+}
+
+pub(crate) unsafe fn render_state_get_color_impl(
+    data: c_int,
+    background: GhosttyColorRgb,
+    foreground: GhosttyColorRgb,
+    cursor_present: bool,
+    cursor: GhosttyColorRgb,
+    palette: *const GhosttyColorRgb,
+    out: *mut c_void,
+) -> c_int {
     if out.is_null() {
         return RENDER_RESULT_INVALID_VALUE;
     }
@@ -61,6 +83,28 @@ pub unsafe extern "C" fn ghostty_rust_render_state_get_color(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_render_state_colors_get(
+    out_size: usize,
+    out: *mut GhosttyRenderStateColors,
+    background: GhosttyColorRgb,
+    foreground: GhosttyColorRgb,
+    cursor_present: bool,
+    cursor: GhosttyColorRgb,
+    palette: *const GhosttyColorRgb,
+) -> c_int {
+    unsafe {
+        render_state_colors_get_impl(
+            out_size,
+            out,
+            background,
+            foreground,
+            cursor_present,
+            cursor,
+            palette,
+        )
+    }
+}
+
+pub(crate) unsafe fn render_state_colors_get_impl(
     out_size: usize,
     out: *mut GhosttyRenderStateColors,
     background: GhosttyColorRgb,
