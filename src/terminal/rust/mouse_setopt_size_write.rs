@@ -1,6 +1,5 @@
-use core::ptr;
-
 use crate::mouse_last_cell::*;
+use crate::mouse_write::*;
 
 pub(crate) unsafe fn mouse_encoder_setopt_size_write(
     screen_width: u32,
@@ -22,30 +21,14 @@ pub(crate) unsafe fn mouse_encoder_setopt_size_write(
     last_cell_present: *mut bool,
 ) {
     unsafe {
-        if !out_screen_width.is_null() {
-            ptr::write(out_screen_width, screen_width);
-        }
-        if !out_screen_height.is_null() {
-            ptr::write(out_screen_height, screen_height);
-        }
-        if !out_cell_width.is_null() {
-            ptr::write(out_cell_width, cell_width);
-        }
-        if !out_cell_height.is_null() {
-            ptr::write(out_cell_height, cell_height);
-        }
-        if !out_padding_top.is_null() {
-            ptr::write(out_padding_top, padding_top);
-        }
-        if !out_padding_bottom.is_null() {
-            ptr::write(out_padding_bottom, padding_bottom);
-        }
-        if !out_padding_right.is_null() {
-            ptr::write(out_padding_right, padding_right);
-        }
-        if !out_padding_left.is_null() {
-            ptr::write(out_padding_left, padding_left);
-        }
+        mouse_write_ptr_if_present(out_screen_width, screen_width);
+        mouse_write_ptr_if_present(out_screen_height, screen_height);
+        mouse_write_ptr_if_present(out_cell_width, cell_width);
+        mouse_write_ptr_if_present(out_cell_height, cell_height);
+        mouse_write_ptr_if_present(out_padding_top, padding_top);
+        mouse_write_ptr_if_present(out_padding_bottom, padding_bottom);
+        mouse_write_ptr_if_present(out_padding_right, padding_right);
+        mouse_write_ptr_if_present(out_padding_left, padding_left);
         mouse_clear_last_cell_present(last_cell_present);
     }
 }

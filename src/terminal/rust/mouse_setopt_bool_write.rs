@@ -1,8 +1,8 @@
 use core::ffi::c_int;
-use core::ptr;
 
 use crate::constants::*;
 use crate::mouse_last_cell::*;
+use crate::mouse_write::*;
 
 pub(crate) unsafe fn mouse_encoder_setopt_bool_write(
     option: c_int,
@@ -14,14 +14,10 @@ pub(crate) unsafe fn mouse_encoder_setopt_bool_write(
     unsafe {
         match option {
             MOUSE_ENCODER_OPT_ANY_BUTTON_PRESSED => {
-                if !any_button_pressed.is_null() {
-                    ptr::write(any_button_pressed, value);
-                }
+                mouse_write_ptr_if_present(any_button_pressed, value);
             }
             MOUSE_ENCODER_OPT_TRACK_LAST_CELL => {
-                if !track_last_cell.is_null() {
-                    ptr::write(track_last_cell, value);
-                }
+                mouse_write_ptr_if_present(track_last_cell, value);
                 if !value {
                     mouse_clear_last_cell_present(last_cell_present);
                 }
