@@ -13,6 +13,7 @@ use crate::style::*;
 use crate::color::*;
 use crate::allocator::*;
 use crate::sgr_attr::*;
+use crate::sgr_basic::*;
 use crate::sgr_constants::*;
 use crate::sgr_parse::*;
 use crate::sgr_write::*;
@@ -64,38 +65,15 @@ pub unsafe extern "C" fn ghostty_rust_sgr_next(
         }
     }
 
-    let tag = match first {
-        0 => Some(SGR_UNSET),
-        1 => Some(SGR_BOLD),
-        2 => Some(SGR_FAINT),
-        3 => Some(SGR_ITALIC),
-        5 | 6 => Some(SGR_BLINK),
-        7 => Some(SGR_INVERSE),
-        8 => Some(SGR_INVISIBLE),
-        9 => Some(SGR_STRIKETHROUGH),
-        21 => Some(SGR_UNDERLINE),
-        22 => Some(SGR_RESET_BOLD),
-        23 => Some(SGR_RESET_ITALIC),
-        24 => {
-            unsafe {
-                ptr::write(idx, i);
-                write_sgr_c_int(result, SGR_UNDERLINE, 0);
-            }
-            return true;
+    if first == 24 {
+        unsafe {
+            ptr::write(idx, i);
+            write_sgr_c_int(result, SGR_UNDERLINE, 0);
         }
-        25 => Some(SGR_RESET_BLINK),
-        27 => Some(SGR_RESET_INVERSE),
-        28 => Some(SGR_RESET_INVISIBLE),
-        29 => Some(SGR_RESET_STRIKETHROUGH),
-        39 => Some(SGR_RESET_FG),
-        49 => Some(SGR_RESET_BG),
-        53 => Some(SGR_OVERLINE),
-        55 => Some(SGR_RESET_OVERLINE),
-        59 => Some(SGR_RESET_UNDERLINE_COLOR),
-        _ => None,
-    };
+        return true;
+    }
 
-    if let Some(tag) = tag {
+    if let Some(tag) = basic_sgr_tag(first) {
         unsafe {
             ptr::write(idx, i);
             if tag == SGR_UNDERLINE {
