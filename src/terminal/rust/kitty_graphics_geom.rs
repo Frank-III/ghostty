@@ -157,6 +157,42 @@ pub unsafe extern "C" fn ghostty_rust_kitty_grid_size(
     out_cols: *mut u32,
     out_rows: *mut u32,
 ) -> c_int {
+    unsafe {
+        kitty_grid_size_impl(
+            image_width,
+            image_height,
+            source_width,
+            source_height,
+            placement_columns,
+            placement_rows,
+            x_offset,
+            y_offset,
+            terminal_width_px,
+            terminal_height_px,
+            terminal_cols,
+            terminal_rows,
+            out_cols,
+            out_rows,
+        )
+    }
+}
+
+pub(crate) unsafe fn kitty_grid_size_impl(
+    image_width: u32,
+    image_height: u32,
+    source_width: u32,
+    source_height: u32,
+    placement_columns: u32,
+    placement_rows: u32,
+    x_offset: u32,
+    y_offset: u32,
+    terminal_width_px: u32,
+    terminal_height_px: u32,
+    terminal_cols: u16,
+    terminal_rows: u16,
+    out_cols: *mut u32,
+    out_rows: *mut u32,
+) -> c_int {
     if out_cols.is_null() || out_rows.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
