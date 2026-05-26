@@ -3,6 +3,7 @@ use core::ffi::c_int;
 use crate::constants::*;
 use crate::input::*;
 use crate::mouse_geometry::*;
+use crate::mouse_types::*;
 use crate::simple::*;
 
 pub(crate) fn mouse_sequence_len(

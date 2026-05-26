@@ -4,6 +4,7 @@ use core::ptr;
 use crate::constants::*;
 use crate::input::*;
 use crate::mouse_encode::*;
+use crate::mouse_types::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mouse_event_init(event: *mut c_void) {

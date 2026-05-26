@@ -9,6 +9,7 @@ use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_button::*;
 use crate::mouse_geometry::*;
+use crate::mouse_types::*;
 use crate::mouse_write::*;
 use crate::simple::*;
 use crate::style::*;
