@@ -118,6 +118,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/paste_len.rs",
     "src/terminal/rust/paste_safe.rs",
     "src/terminal/rust/paste_sanitize.rs",
+    "src/terminal/rust/paste_write.rs",
     "src/terminal/rust/render_index.rs",
     "src/terminal/rust/render_row_data.rs",
     "src/terminal/rust/render_row_set.rs",

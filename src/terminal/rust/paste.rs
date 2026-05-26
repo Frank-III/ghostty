@@ -7,7 +7,7 @@ use crate::paste_bytes::*;
 use crate::paste_len::*;
 use crate::paste_safe::*;
 use crate::paste_sanitize::*;
-use crate::simple::*;
+use crate::paste_write::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_paste_is_safe(data: *const u8, len: usize) -> bool {
@@ -45,21 +45,8 @@ pub unsafe extern "C" fn ghostty_rust_paste_encode(
         return GHOSTTY_OUT_OF_SPACE;
     }
 
-    let mut out_offset = 0usize;
-    if bracketed {
-        unsafe {
-            write_bytes(out, &mut out_offset, PASTE_START);
-        }
-    }
-    if actual_data_len > 0 {
-        unsafe {
-            copy_data_bytes(out, &mut out_offset, data, actual_data_len);
-        }
-    }
-    if bracketed {
-        unsafe {
-            write_bytes(out, &mut out_offset, PASTE_END);
-        }
+    unsafe {
+        write_paste(out, data, actual_data_len, bracketed);
     }
 
     GHOSTTY_SUCCESS
