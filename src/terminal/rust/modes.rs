@@ -4,7 +4,7 @@ use core::ptr;
 use crate::constants::*;
 use crate::early::*;
 use crate::mode_report_len::*;
-use crate::simple::*;
+use crate::mode_report_write::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mode_report_encode(
@@ -36,18 +36,4 @@ pub unsafe extern "C" fn ghostty_rust_mode_report_encode(
     }
 
     GHOSTTY_SUCCESS
-}
-
-pub(crate) unsafe fn write_mode_report(out: *mut u8, value: u64, ansi: bool, state: u64) {
-    let mut offset = 0usize;
-    unsafe {
-        write_bytes(out, &mut offset, b"\x1B[");
-        if !ansi {
-            write_bytes(out, &mut offset, b"?");
-        }
-        write_decimal(out, &mut offset, value);
-        write_bytes(out, &mut offset, b";");
-        write_decimal(out, &mut offset, state);
-        write_bytes(out, &mut offset, b"$y");
-    }
 }
