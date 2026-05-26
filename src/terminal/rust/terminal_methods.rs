@@ -542,6 +542,12 @@ impl Terminal {
             }
             EraseDisplay::ScrollComplete => {
                 self.erase_display(EraseDisplay::Complete, protected_req);
+                let screen = self.active();
+                if !screen.is_null() {
+                    unsafe {
+                        (*screen).erase_history(None);
+                    }
+                }
             }
         }
     }
@@ -558,14 +564,45 @@ impl Terminal {
         if cols == 0 || rows == 0 {
             return;
         }
+        let old_rows = self.rows;
         if self.cols != cols && !alloc.is_null() {
             unsafe {
                 self.tabstops.deinit(alloc);
             }
-            // TODO: re-init tabstops with new cols via alloc
+            if let Some(ts) = unsafe { crate::tabstops::Tabstops::init(alloc, cols as usize, TABSTOP_INTERVAL as usize) } {
+                self.tabstops = ts;
+            }
         }
-        // TODO: resize primary screen (with reflow if wraparound mode)
-        // TODO: resize alternate screen without reflow
+        let wraparound = self.modes.get_by_tag(ModeTag::from_u16(MODE_WRAPAROUND));
+        let prompt_redraw = if old_rows != rows {
+            crate::screen_types::PromptRedraw::True
+        } else {
+            crate::screen_types::PromptRedraw::False
+        };
+        let primary = self.screens.get(ScreenKey::Primary);
+        if !primary.is_null() {
+            let opts = crate::screen_types::ScreenResize {
+                cols,
+                rows,
+                reflow: wraparound,
+                prompt_redraw,
+            };
+            unsafe {
+                let _ = (*primary.cast::<Screen>()).resize(opts);
+            }
+        }
+        let alternate = self.screens.get(ScreenKey::Alternate);
+        if !alternate.is_null() {
+            let alt_opts = crate::screen_types::ScreenResize {
+                cols,
+                rows,
+                reflow: false,
+                prompt_redraw: crate::screen_types::PromptRedraw::False,
+            };
+            unsafe {
+                let _ = (*alternate.cast::<Screen>()).resize(alt_opts);
+            }
+        }
         self.flags.dirty.clear = true;
         self.cols = cols;
         self.rows = rows;
@@ -597,7 +634,15 @@ impl Terminal {
         } else {
             TerminalScrollingRegion::default()
         };
-        // TODO: screen.reset(), pwd.clear(), title.clear()
+        // TODO: pwd.clear(), title.clear() (require allocator)
+        let primary = self.screens.get(ScreenKey::Primary);
+        if !primary.is_null() {
+            unsafe { (*primary.cast::<Screen>()).reset(); }
+        }
+        let alternate = self.screens.get(ScreenKey::Alternate);
+        if !alternate.is_null() {
+            unsafe { (*alternate.cast::<Screen>()).reset(); }
+        }
         self.flags.dirty.clear = true;
     }
 

@@ -786,11 +786,17 @@ impl Screen {
 
             // If we have a hyperlink, release it from the old page so the
             // resize doesn't invalidate it.
-            let had_hyperlink = !self.cursor.hyperlink.is_null();
+            let hyperlink_saved: Option<(*const u8, usize)> = if self.cursor.hyperlink.is_null() {
+                None
+            } else {
+                Some(((*self.cursor.hyperlink).uri_ptr, (*self.cursor.hyperlink).uri_len))
+            };
             if self.cursor.hyperlink_id != 0 {
                 let node = (*self.cursor.page_pin).node;
                 if !node.is_null() {
-                    // TODO: (*node).data.hyperlink_set.release((*node).data.memory, self.cursor.hyperlink_id);
+                    let set: *mut crate::ref_counted_set::RefCountedSet =
+                        &mut (*node).data.hyperlink_set;
+                    (*set).release((*node).data.memory, self.cursor.hyperlink_id);
                 }
                 self.cursor.hyperlink_id = 0;
                 self.cursor.hyperlink = ptr::null_mut();
@@ -835,16 +841,22 @@ impl Screen {
 
             self.cursor_reload();
 
-            // TODO: if saved_cursor_pin was created, update saved_cursor x/y
-            // and fix up pending_wrap if needed.
+            // TODO: update saved_cursor x/y by tracking a pin through resize
+            // (requires page_list pin tracking, which depends on allocator).
+            // The Zig version creates a tracked pin before resize and reads
+            // its post-resize active coordinates via pointFromPin. For now
+            // saved_cursor coordinates may be off after reflow.
 
             // Restore the cursor style.
             self.cursor.style = cursor_style;
             let _ = self.manual_style_update();
 
-            // TODO: fix up hyperlink if we had one.
-            if had_hyperlink {
-                // TODO: re-add hyperlink via self.start_hyperlink(...)
+            // Re-add our hyperlink if we had one before resize.
+            if let Some((uri_ptr, uri_len)) = hyperlink_saved {
+                if !uri_ptr.is_null() && uri_len > 0 {
+                    let uri_slice = core::slice::from_raw_parts(uri_ptr, uri_len);
+                    let _ = self.start_hyperlink(uri_slice, None);
+                }
             }
         }
         Ok(())
@@ -1094,7 +1106,8 @@ impl Screen {
                 }
             } else {
                 let old_pin = *self.cursor.page_pin;
-                // TODO: self.pages.grow()
+                let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                let _ = pl.grow();
                 ptr::write(self.cursor.page_pin, pin_down(old_pin, 1));
                 let row_cell = pin_row_and_cell(self.cursor.page_pin);
                 self.cursor.page_row = row_cell.0;
@@ -1110,7 +1123,18 @@ impl Screen {
             }
 
             if self.cursor.style_id != DEFAULT_ID {
-                // TODO: style newly created line per cursor.style.bg_cell
+                let blank = self.blank_cell();
+                if blank.0 != Cell::default().0 {
+                    let page = &mut (*node).data;
+                    let row = self.cursor.page_row;
+                    let cells = page.row_cells_ptr(row);
+                    let cols = page.size.cols as usize;
+                    let mut i = 0usize;
+                    while i < cols {
+                        ptr::write(cells.add(i), blank);
+                        i += 1;
+                    }
+                }
             }
         }
         Ok(())
@@ -1410,7 +1434,9 @@ impl Screen {
                 if let Some(old) = self.selection.take() {
                     old.deinit();
                 }
-                // TODO: if untracked, convert to tracked via sel.track(self)
+                // TODO: if untracked, convert to tracked via sel.track(self).
+                // track() requires an allocator (for tracked pin arrays) which
+                // the Rust port does not yet expose on Screen.
                 self.selection = Some(new_sel);
                 self.dirty.selection = true;
             }
@@ -1430,20 +1456,26 @@ impl Screen {
             // our cursor pin, which should be at the top-left.
             if !self.cursor.page_pin.is_null() {
                 let cursor_rac = pin_row_and_cell(self.cursor.page_pin);
-                // TODO: cursor.deinit(alloc) -- free hyperlink
+                // Release hyperlink from the page set; freeing the allocated
+                // Hyperlink struct and its URI bytes requires an allocator
+                // (left as a TODO matching the Zig cursor.deinit(alloc) path).
+                if self.cursor.hyperlink_id != 0 {
+                    self.end_hyperlink();
+                }
                 self.cursor.pending_wrap = false;
                 self.cursor.protected = false;
                 self.cursor.style = Style::default();
                 self.cursor.style_id = DEFAULT_ID;
-                self.cursor.hyperlink_id = 0;
-                self.cursor.hyperlink = ptr::null_mut();
                 self.cursor.semantic_content = SemanticContent::Output;
                 self.cursor.semantic_content_clear_eol = false;
                 self.cursor.page_row = cursor_rac.0;
                 self.cursor.page_cell = cursor_rac.1;
             }
         }
-        // TODO: kitty_images.deinit + reset to default
+        // TODO: kitty_images.deinit + reset to default.
+        // kitty_images is an opaque *mut c_void pointing to the KittyGraphics
+        // struct. Calling methods on it requires exposing the KittyImage type
+        // to the Rust port (not yet done).
         self.saved_cursor = None;
         self.charset = ScreenCharsetState::default();
         self.kitty_keyboard = KittyKeyFlagStack::default();
@@ -1904,11 +1936,28 @@ impl Screen {
         _node: *mut crate::page_list_types::PageListNode,
         _adjustment: Option<PageCapacityAdjustment>,
     ) -> Result<*mut crate::page_list_types::PageListNode, ScreenIncreaseCapacityError> {
-        // TODO: delegate to self.pages.increase_capacity(node, adjustment).
-        // If the node being modified is our cursor page, we need to re-add the
-        // cursor style and hyperlink after the capacity change, and reload
-        // the cursor information.
+        // The full implementation delegates to PageList.increase_capacity which
+        // allocates a new page with larger subsystem capacity and clones rows.
+        // As a simplified approach, we rehash the relevant RefCountedSet to
+        // reclaim dead slots; this can free capacity without allocation.
         unsafe {
+            if !_node.is_null() {
+                let page = &mut (*_node).data;
+                let memory = page.memory;
+                match _adjustment {
+                    Some(PageCapacityAdjustment::Styles)
+                    | Some(PageCapacityAdjustment::Rehash) => {
+                        page.styles.rehash::<Style, StyleContext>(memory);
+                    }
+                    Some(PageCapacityAdjustment::HyperlinkBytes)
+                    | Some(PageCapacityAdjustment::StringBytes) => {
+                        page.hyperlink_set.rehash::<Style, StyleContext>(memory);
+                    }
+                    Some(PageCapacityAdjustment::GraphemeBytes) | None => {}
+                }
+            }
+            // If the node being modified is our cursor page, re-add the
+            // cursor style and hyperlink after the capacity change.
             self.cursor_reload();
         }
         Ok(_node)
@@ -1916,12 +1965,18 @@ impl Screen {
 
     /// Cleanly shut down the screen, releasing pages and cursor resources.
     pub fn deinit(&mut self) {
-        // TODO: free cursor.hyperlink via allocator
+        // TODO: free cursor.hyperlink (the Hyperlink struct and its uri_ptr)
+        // via the screen allocator. Requires an allocator-capable destroy
+        // which the Rust port does not yet have.
         if !self.cursor.hyperlink.is_null() {
-            // self.alloc.destroy(self.cursor.hyperlink);
             self.cursor.hyperlink = ptr::null_mut();
         }
-        // TODO: self.pages.deinit()
+        if !self.pages.is_null() {
+            unsafe {
+                let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                pl.deinit_pages();
+            }
+        }
         self.pages = ptr::null_mut();
     }
 }
