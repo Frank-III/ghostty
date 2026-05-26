@@ -2,6 +2,7 @@ use core::ffi::{c_int, c_void};
 use core::ptr;
 
 use crate::constants::*;
+use crate::event_mouse_field::*;
 use crate::input::*;
 use crate::mouse_encode::*;
 use crate::mouse_types::*;
@@ -139,14 +140,5 @@ pub unsafe extern "C" fn ghostty_rust_mouse_event_get_position(
             event,
             MOUSE_EVENT_POS_OFFSET,
         ))
-    }
-}
-
-pub(crate) unsafe fn mouse_event_field<T>(event: *mut c_void, offset: usize) -> *mut T {
-    unsafe {
-        event
-            .cast::<u8>()
-            .add(MOUSE_EVENT_EVENT_OFFSET + offset)
-            .cast::<T>()
     }
 }
