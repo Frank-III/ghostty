@@ -5,13 +5,13 @@ use crate::key_option_as_alt_value::key_option_as_alt_value;
 use crate::key_options::*;
 
 pub(crate) unsafe fn key_option_as_alt_write(option: c_int, value: c_int, out: *mut c_int) {
-    if option != KEY_ENCODER_OPT_MACOS_OPTION_AS_ALT || out.is_null() {
+    if option != KEY_ENCODER_OPT_MACOS_OPTION_AS_ALT {
         return;
     }
 
     if key_option_as_alt_value(value) {
         unsafe {
-            key_write_ptr(out, value);
+            key_write_ptr_if_present(out, value);
         }
     }
 }
