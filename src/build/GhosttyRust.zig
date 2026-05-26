@@ -147,6 +147,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/style_attrs_copy.rs",
     "src/terminal/rust/style_color.rs",
     "src/terminal/rust/style_color_copy.rs",
+    "src/terminal/rust/style_color_none.rs",
     "src/terminal/rust/style_copy.rs",
     "src/terminal/rust/style_size_copy.rs",
     "src/terminal/rust/style_write.rs",

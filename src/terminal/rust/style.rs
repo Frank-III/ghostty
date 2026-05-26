@@ -8,6 +8,7 @@ use crate::input::*;
 use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
+use crate::style_color_none::*;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -88,12 +89,5 @@ pub unsafe extern "C" fn ghostty_rust_style_is_default(style: *const GhosttyStyl
             && !ptr::read(core::ptr::addr_of!((*style).strikethrough))
             && !ptr::read(core::ptr::addr_of!((*style).overline))
             && ptr::read(core::ptr::addr_of!((*style).underline)) == 0
-    }
-}
-
-pub(crate) unsafe fn write_style_color_none(color: *mut GhosttyStyleColor) {
-    unsafe {
-        ptr::write(core::ptr::addr_of_mut!((*color).tag), STYLE_COLOR_NONE);
-        ptr::write(core::ptr::addr_of_mut!((*color).value.padding), 0);
     }
 }
