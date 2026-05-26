@@ -1,6 +1,4 @@
 use core::ffi::{c_int, c_void};
-use core::ptr;
-
 use crate::constants::*;
 use crate::early::*;
 use crate::selection::*;
@@ -51,29 +49,6 @@ pub unsafe extern "C" fn ghostty_rust_terminal_get_scrollbar(
             write_scrollbar(out.cast::<GhosttyTerminalScrollbar>(), total, offset, len)
         },
         _ => return GHOSTTY_INVALID_VALUE,
-    }
-
-    GHOSTTY_SUCCESS
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_terminal_get_pointer(
-    data: c_int,
-    has_value: bool,
-    value: *mut c_void,
-    out: *mut c_void,
-) -> c_int {
-    match data {
-        TERMINAL_DATA_KITTY_GRAPHICS => {}
-        _ => return GHOSTTY_INVALID_VALUE,
-    }
-
-    if !has_value {
-        return GHOSTTY_NO_VALUE;
-    }
-
-    unsafe {
-        ptr::write(out.cast::<*mut c_void>(), value);
     }
 
     GHOSTTY_SUCCESS
