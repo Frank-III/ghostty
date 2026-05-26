@@ -1,7 +1,21 @@
 const std = @import("std");
 const testing = std.testing;
+const build_options = @import("terminal_options");
 const lib = @import("../lib.zig");
 const CAllocator = lib.alloc.Allocator;
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_alloc_alloc(
+        alloc_: *const CAllocator,
+        len: usize,
+    ) callconv(.c) ?[*]u8;
+
+    extern fn ghostty_rust_alloc_free(
+        alloc_: *const CAllocator,
+        ptr: ?[*]u8,
+        len: usize,
+    ) callconv(.c) void;
+} else struct {};
 
 /// Allocate a buffer of `len` bytes using the given allocator
 /// (or the default allocator if NULL).
@@ -12,6 +26,10 @@ pub fn alloc(
     alloc_: ?*const CAllocator,
     len: usize,
 ) callconv(lib.calling_conv) ?[*]u8 {
+    if (comptime build_options.lib_vt_rust) {
+        if (alloc_) |c_alloc| return rust.ghostty_rust_alloc_alloc(c_alloc, len);
+    }
+
     const allocator = lib.alloc.default(alloc_);
     const buf = allocator.alloc(u8, len) catch return null;
     return buf.ptr;
@@ -27,6 +45,10 @@ pub fn free(
     ptr: ?[*]u8,
     len: usize,
 ) callconv(lib.calling_conv) void {
+    if (comptime build_options.lib_vt_rust) {
+        if (alloc_) |c_alloc| return rust.ghostty_rust_alloc_free(c_alloc, ptr, len);
+    }
+
     const mem = ptr orelse return;
     const allocator = lib.alloc.default(alloc_);
     allocator.free(mem[0..len]);

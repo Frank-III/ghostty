@@ -47,6 +47,7 @@ pub fn libVtObject(
 }
 
 const lib_vt_modules = [_][]const u8{
+    "src/terminal/rust/allocator.rs",
     "src/terminal/rust/color.rs",
     "src/terminal/rust/constants.rs",
     "src/terminal/rust/early.rs",
