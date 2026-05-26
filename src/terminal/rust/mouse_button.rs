@@ -2,6 +2,7 @@ use core::ffi::c_int;
 
 use crate::constants::*;
 
+pub(crate) use crate::mouse_button_mods::*;
 pub(crate) use crate::mouse_report::*;
 
 pub(crate) fn mouse_button_code(
@@ -35,15 +36,7 @@ pub(crate) fn mouse_button_code(
     };
 
     if tracking_mode != MOUSE_TRACKING_X10 {
-        if (mods & MOD_SHIFT) != 0 {
-            acc = acc.wrapping_add(4);
-        }
-        if (mods & MOD_ALT) != 0 {
-            acc = acc.wrapping_add(8);
-        }
-        if (mods & MOD_CTRL) != 0 {
-            acc = acc.wrapping_add(16);
-        }
+        acc = mouse_button_apply_mods(acc, mods);
     }
 
     if action == MOUSE_ACTION_MOTION {
