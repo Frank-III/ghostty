@@ -4,6 +4,7 @@ use core::ptr;
 use crate::constants::*;
 use crate::early::*;
 use crate::mode_report_len::*;
+use crate::mode_report_state::*;
 use crate::mode_report_write::*;
 
 #[no_mangle]
@@ -14,7 +15,7 @@ pub unsafe extern "C" fn ghostty_rust_mode_report_encode(
     out_len: usize,
     out_written: *mut usize,
 ) -> c_int {
-    if !(0..=4).contains(&state) {
+    if !mode_report_state_valid(state) {
         return GHOSTTY_INVALID_VALUE;
     }
 
