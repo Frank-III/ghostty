@@ -231,6 +231,30 @@ pub unsafe extern "C" fn ghostty_rust_kitty_viewport_pos(
     out_row: *mut i32,
     out_visible: *mut bool,
 ) -> c_int {
+    unsafe {
+        kitty_viewport_pos_impl(
+            pin_screen_x,
+            pin_screen_y,
+            viewport_screen_y,
+            grid_rows,
+            terminal_rows,
+            out_col,
+            out_row,
+            out_visible,
+        )
+    }
+}
+
+pub(crate) unsafe fn kitty_viewport_pos_impl(
+    pin_screen_x: i32,
+    pin_screen_y: i32,
+    viewport_screen_y: i32,
+    grid_rows: i32,
+    terminal_rows: u16,
+    out_col: *mut i32,
+    out_row: *mut i32,
+    out_visible: *mut bool,
+) -> c_int {
     if out_col.is_null() || out_row.is_null() || out_visible.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
