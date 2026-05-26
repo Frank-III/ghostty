@@ -55,6 +55,10 @@ pub struct GhosttyStyle {
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_style_default(result: *mut GhosttyStyle) {
+    unsafe { style_default_impl(result) }
+}
+
+pub(crate) unsafe fn style_default_impl(result: *mut GhosttyStyle) {
     unsafe {
         write_style_default(result);
     }
@@ -62,6 +66,10 @@ pub unsafe extern "C" fn ghostty_rust_style_default(result: *mut GhosttyStyle) {
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_style_is_default(style: *const GhosttyStyle) -> bool {
+    unsafe { style_is_default_impl(style) }
+}
+
+pub(crate) unsafe fn style_is_default_impl(style: *const GhosttyStyle) -> bool {
     unsafe {
         style_is_default(style)
     }
