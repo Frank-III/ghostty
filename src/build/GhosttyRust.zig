@@ -56,6 +56,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/event_key.rs",
     "src/terminal/rust/event_key_field.rs",
     "src/terminal/rust/event_mouse.rs",
+    "src/terminal/rust/event_mouse_button.rs",
     "src/terminal/rust/event_mouse_field.rs",
     "src/terminal/rust/focus.rs",
     "src/terminal/rust/grid_ref.rs",
