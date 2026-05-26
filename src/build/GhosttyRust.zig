@@ -92,6 +92,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/style_copy.rs",
     "src/terminal/rust/sys.rs",
     "src/terminal/rust/terminal_get.rs",
+    "src/terminal/rust/terminal_get_payload.rs",
     "src/terminal/rust/terminal_get_scalar.rs",
     "src/terminal/rust/terminal_set.rs",
     "src/terminal/rust/terminal.rs",
