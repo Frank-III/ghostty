@@ -71,6 +71,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/render.rs",
     "src/terminal/rust/row.rs",
     "src/terminal/rust/selection.rs",
+    "src/terminal/rust/sgr_attr.rs",
     "src/terminal/rust/sgr.rs",
     "src/terminal/rust/simple.rs",
     "src/terminal/rust/size_report.rs",

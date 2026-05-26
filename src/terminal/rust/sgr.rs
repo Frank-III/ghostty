@@ -12,27 +12,7 @@ use crate::simple::*;
 use crate::style::*;
 use crate::color::*;
 use crate::allocator::*;
-
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct GhosttySgrUnknown {
-    pub(crate) full_ptr: *const u16,
-    pub(crate) full_len: usize,
-    pub(crate) partial_ptr: *const u16,
-    pub(crate) partial_len: usize,
-}
-
-#[repr(C)]
-pub union GhosttySgrAttributeValue {
-    unknown: GhosttySgrUnknown,
-    padding: [u64; 8],
-}
-
-#[repr(C)]
-pub struct GhosttySgrAttribute {
-    pub(crate) tag: c_int,
-    pub(crate) value: GhosttySgrAttributeValue,
-}
+use crate::sgr_attr::*;
 
 const SGR_UNSET: c_int = 0;
 const SGR_UNKNOWN: c_int = 1;
@@ -424,44 +404,3 @@ pub unsafe extern "C" fn ghostty_rust_sgr_params_sep_mask(seps: *const u8, len: 
     }
     mask
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_sgr_unknown_full(
-    unknown: GhosttySgrUnknown,
-    ptr_out: *mut *const u16,
-) -> usize {
-    if !ptr_out.is_null() {
-        unsafe {
-            ptr::write(ptr_out, unknown.full_ptr);
-        }
-    }
-
-    unknown.full_len
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_sgr_unknown_partial(
-    unknown: GhosttySgrUnknown,
-    ptr_out: *mut *const u16,
-) -> usize {
-    if !ptr_out.is_null() {
-        unsafe {
-            ptr::write(ptr_out, unknown.partial_ptr);
-        }
-    }
-
-    unknown.partial_len
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_sgr_attribute_tag(attr: GhosttySgrAttribute) -> c_int {
-    attr.tag
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_sgr_attribute_value(
-    attr: *mut GhosttySgrAttribute,
-) -> *mut GhosttySgrAttributeValue {
-    unsafe { core::ptr::addr_of_mut!((*attr).value) }
-}
-
