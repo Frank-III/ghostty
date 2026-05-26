@@ -216,6 +216,29 @@ pub(crate) fn rgb_from_hex_component(value: &[u8]) -> Option<u8> {
     Some(((color * 0xff) / divisor) as u8)
 }
 
+pub(crate) fn rgb_parse_hash(value: &[u8]) -> Option<GhosttyColorRgb> {
+    if value.first().copied()? != b'#' {
+        return None;
+    }
+
+    let digits_per_component = match value.len() {
+        4 => 1,
+        7 => 2,
+        10 => 3,
+        13 => 4,
+        _ => return None,
+    };
+
+    let r_start = 1;
+    let g_start = r_start + digits_per_component;
+    let b_start = g_start + digits_per_component;
+    Some(rgb(
+        rgb_from_hex_component(&value[r_start..g_start])?,
+        rgb_from_hex_component(&value[g_start..b_start])?,
+        rgb_from_hex_component(&value[b_start..])?,
+    ))
+}
+
 fn rgb_component_luminance(component: u8) -> f64 {
     let normalized = f64::from(component) / 255.0;
     if normalized <= 0.03928 {
