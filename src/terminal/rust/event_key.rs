@@ -7,6 +7,12 @@ use crate::event_key_field::*;
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_key_event_init(event: *mut c_void) {
     unsafe {
+        key_event_init_impl(event);
+    }
+}
+
+pub(crate) unsafe fn key_event_init_impl(event: *mut c_void) {
+    unsafe {
         ptr::write(key_event_field::<*const u8>(event, KEY_EVENT_UTF8_PTR_OFFSET), b"".as_ptr());
         ptr::write(key_event_field::<usize>(event, KEY_EVENT_UTF8_LEN_OFFSET), 0);
         ptr::write(key_event_field::<c_int>(event, KEY_EVENT_ACTION_OFFSET), 1);

@@ -10,6 +10,12 @@ use crate::mouse_types::*;
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mouse_event_init(event: *mut c_void) {
     unsafe {
+        mouse_event_init_impl(event);
+    }
+}
+
+pub(crate) unsafe fn mouse_event_init_impl(event: *mut c_void) {
+    unsafe {
         ptr::write(
             mouse_event_field::<c_int>(event, MOUSE_EVENT_ACTION_OFFSET),
             MOUSE_ACTION_PRESS,
