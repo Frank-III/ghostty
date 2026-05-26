@@ -19,6 +19,16 @@ pub extern "C" fn ghostty_rust_render_row_get(
     has_out: bool,
     out_size: usize,
 ) -> c_int {
+    render_row_get_impl(has_iterator, has_row, data, has_out, out_size)
+}
+
+pub(crate) fn render_row_get_impl(
+    has_iterator: bool,
+    has_row: bool,
+    data: c_int,
+    has_out: bool,
+    out_size: usize,
+) -> c_int {
     if !has_iterator || !has_row || !has_out {
         return RENDER_RESULT_INVALID_VALUE;
     }
@@ -40,6 +50,32 @@ pub extern "C" fn ghostty_rust_render_row_get(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_render_row_get_multi(
+    count: usize,
+    keys: *const c_int,
+    values: *const *mut c_void,
+    out_written: *mut usize,
+    raw: u64,
+    dirty: bool,
+    selection_present: bool,
+    selection_start: u16,
+    selection_end: u16,
+) -> c_int {
+    unsafe {
+        render_row_get_multi_impl(
+            count,
+            keys,
+            values,
+            out_written,
+            raw,
+            dirty,
+            selection_present,
+            selection_start,
+            selection_end,
+        )
+    }
+}
+
+pub(crate) unsafe fn render_row_get_multi_impl(
     count: usize,
     keys: *const c_int,
     values: *const *mut c_void,
