@@ -2,6 +2,8 @@ use crate::constants::*;
 use crate::input::*;
 use crate::mouse_types::*;
 
+pub(crate) use crate::mouse_pixels::*;
+
 pub(crate) fn mouse_pos_out_of_viewport(pos: GhosttyMousePosition, size: GhosttyMouseSize) -> bool {
     pos.x < 0.0
         || pos.y < 0.0
@@ -40,19 +42,4 @@ pub(crate) fn mouse_pos_to_cell(pos: GhosttyMousePosition, size: GhosttyMouseSiz
 
 pub(crate) fn nonzero_u32_div(numerator: u32, denominator: u32) -> u32 {
     numerator.checked_div(denominator).unwrap_or(0)
-}
-
-pub(crate) fn mouse_pos_to_pixels(pos: GhosttyMousePosition, size: GhosttyMouseSize) -> GhosttyMousePixels {
-    GhosttyMousePixels {
-        x: round_f32_to_i32(pos.x - size.padding_left as f32),
-        y: round_f32_to_i32(pos.y - size.padding_top as f32),
-    }
-}
-
-pub(crate) fn round_f32_to_i32(value: f32) -> i32 {
-    if value >= 0.0 {
-        (value + 0.5) as i32
-    } else {
-        (value - 0.5) as i32
-    }
 }
