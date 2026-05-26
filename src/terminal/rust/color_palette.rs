@@ -169,6 +169,43 @@ pub(crate) fn dynamic_next(dynamic: u8) -> Option<u8> {
     }
 }
 
+pub(crate) fn rgb_equal(a: GhosttyColorRgb, b: GhosttyColorRgb) -> bool {
+    a.r == b.r && a.g == b.g && a.b == b.b
+}
+
+pub(crate) fn rgb_contrast(a: GhosttyColorRgb, b: GhosttyColorRgb) -> f64 {
+    let a_luminance = rgb_luminance(a);
+    let b_luminance = rgb_luminance(b);
+    let (lighter, darker) = if a_luminance > b_luminance {
+        (a_luminance, b_luminance)
+    } else {
+        (b_luminance, a_luminance)
+    };
+    (lighter + 0.05) / (darker + 0.05)
+}
+
+pub(crate) fn rgb_luminance(color: GhosttyColorRgb) -> f64 {
+    0.2126 * rgb_component_luminance(color.r)
+        + 0.7152 * rgb_component_luminance(color.g)
+        + 0.0722 * rgb_component_luminance(color.b)
+}
+
+pub(crate) fn rgb_perceived_luminance(color: GhosttyColorRgb) -> f64 {
+    let r = f64::from(color.r) / 255.0;
+    let g = f64::from(color.g) / 255.0;
+    let b = f64::from(color.b) / 255.0;
+    0.299 * r + 0.587 * g + 0.114 * b
+}
+
+fn rgb_component_luminance(component: u8) -> f64 {
+    let normalized = f64::from(component) / 255.0;
+    if normalized <= 0.03928 {
+        normalized / 12.92
+    } else {
+        ((normalized + 0.055) / 1.055).powf(2.4)
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct DynamicRgb {
     override_color: Option<GhosttyColorRgb>,
