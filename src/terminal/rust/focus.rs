@@ -2,9 +2,7 @@ use core::ffi::c_int;
 use core::ptr;
 
 use crate::early::*;
-
-pub(crate) const FOCUS_GAINED: &[u8; 3] = b"\x1B[I";
-pub(crate) const FOCUS_LOST: &[u8; 3] = b"\x1B[O";
+use crate::focus_sequence::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_focus_encode(
@@ -13,11 +11,7 @@ pub unsafe extern "C" fn ghostty_rust_focus_encode(
     out_len: usize,
     out_written: *mut usize,
 ) -> c_int {
-    let seq = if event == GHOSTTY_FOCUS_LOST {
-        FOCUS_LOST
-    } else {
-        FOCUS_GAINED
-    };
+    let seq = focus_sequence(event);
 
     unsafe {
         ptr::write(out_written, seq.len());
