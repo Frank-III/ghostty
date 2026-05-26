@@ -1,0 +1,40 @@
+src/terminal/rust/screen_methods.rs
+  s_ba155405bd5627::t_4410956cafdb5b 1126,1128-1137
+  s_ba155405bd5627::t_12a2c5cb9c1fa5 844-848,854-859
+  s_ba155405bd5627::t_e3ce0b2f3966c2 1939-1942,1944-1960
+  s_ba155405bd5627::t_0b12e1a77f98bd 1968-1970,1974-1979
+  s_ba155405bd5627::t_b15b5ce08ec5be 1127
+  s_ba155405bd5627::t_c1a65feaab1c71 1109-1110
+  s_ba155405bd5627::t_dbad90f771c490 1475-1478
+  s_ba155405bd5627::t_7912bb48c76eef 789-793,797-799
+  s_ba155405bd5627::t_9d019d87ab1bde 1437-1439
+  s_ba155405bd5627::t_d8b1435b994b26 1459-1464
+src/terminal/rust/terminal_methods.rs
+  s_5eb4af1c82976e::t_9afff86d646b68 567,572-604
+  s_5eb4af1c82976e::t_8562c4e41efef4 545-550
+  s_5eb4af1c82976e::t_6e621fbf3607cf 637-645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2a1450ff73d335291b4c41b67a7c010aeb83cb10",
+  "prompts": {},
+  "sessions": {
+    "s_5eb4af1c82976e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_199835de7ffexY6X7dJeeq9Br5",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_ba155405bd5627": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1998342efffey7AUtw9F1LKT1A",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
