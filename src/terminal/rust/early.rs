@@ -54,8 +54,6 @@ pub(crate) const TERMINAL_OPT_KITTY_IMAGE_MEDIUM_SHARED_MEM: c_int = 18;
 pub(crate) const TERMINAL_OPT_APC_MAX_BYTES: c_int = 19;
 pub(crate) const TERMINAL_OPT_APC_MAX_BYTES_KITTY: c_int = 20;
 pub(crate) const TERMINAL_OPT_SELECTION: c_int = 21;
-pub(crate) const FOCUS_GAINED: &[u8; 3] = b"\x1B[I";
-pub(crate) const FOCUS_LOST: &[u8; 3] = b"\x1B[O";
 #[no_mangle]
 pub extern "C" fn ghostty_rust_terminal_new(cols: u16, rows: u16) -> c_int {
     if cols == 0 || rows == 0 {
@@ -68,34 +66,6 @@ pub extern "C" fn ghostty_rust_terminal_new(cols: u16, rows: u16) -> c_int {
 #[no_mangle]
 pub extern "C" fn ghostty_rust_terminal_reset(has_terminal: bool) -> bool {
     has_terminal
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_focus_encode(
-    event: c_int,
-    out: *mut u8,
-    out_len: usize,
-    out_written: *mut usize,
-) -> c_int {
-    let seq = if event == GHOSTTY_FOCUS_LOST {
-        FOCUS_LOST
-    } else {
-        FOCUS_GAINED
-    };
-
-    unsafe {
-        ptr::write(out_written, seq.len());
-    }
-
-    if out.is_null() || out_len < seq.len() {
-        return GHOSTTY_OUT_OF_SPACE;
-    }
-
-    unsafe {
-        ptr::copy_nonoverlapping(seq.as_ptr(), out, seq.len());
-    }
-
-    GHOSTTY_SUCCESS
 }
 
 #[no_mangle]
@@ -882,4 +852,3 @@ pub unsafe extern "C" fn ghostty_rust_terminal_set_usize_optional(
 
     GHOSTTY_SUCCESS
 }
-
