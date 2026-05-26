@@ -10,6 +10,7 @@ use crate::kitty_graphics::*;
 use crate::mouse_button::*;
 use crate::mouse_geometry::*;
 use crate::mouse_last_cell::*;
+use crate::mouse_output::*;
 use crate::mouse_out_written::*;
 use crate::mouse_size::*;
 use crate::mouse_types::*;
@@ -74,7 +75,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
 
     if !mouse_should_report(action, button_present, button, tracking_mode) {
         unsafe {
-            mouse_write_out_written(out_written, 0);
+            mouse_suppress_output(out_written);
         }
         return GHOSTTY_SUCCESS;
     }
@@ -82,7 +83,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     if action != MOUSE_ACTION_RELEASE && mouse_pos_out_of_viewport(pos, size) {
         if !mouse_event_sends_motion(tracking_mode) || !any_button_pressed {
             unsafe {
-                mouse_write_out_written(out_written, 0);
+                mouse_suppress_output(out_written);
             }
             return GHOSTTY_SUCCESS;
         }
@@ -97,7 +98,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         && last_cell_y == cell.y
     {
         unsafe {
-            mouse_write_out_written(out_written, 0);
+            mouse_suppress_output(out_written);
         }
         return GHOSTTY_SUCCESS;
     }
@@ -117,14 +118,14 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         mouse_button_code(action, button_present, button, mods, tracking_mode, format)
     else {
         unsafe {
-            mouse_write_out_written(out_written, 0);
+            mouse_suppress_output(out_written);
         }
         return GHOSTTY_SUCCESS;
     };
 
     if format == MOUSE_FORMAT_X10 && (cell.x > 222 || cell.y > 222) {
         unsafe {
-            mouse_write_out_written(out_written, 0);
+            mouse_suppress_output(out_written);
         }
         return GHOSTTY_SUCCESS;
     }
