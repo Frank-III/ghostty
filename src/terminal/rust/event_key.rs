@@ -79,29 +79,6 @@ pub unsafe extern "C" fn ghostty_rust_key_event_get_composing(event: *mut c_void
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_key_event_set_unshifted_codepoint(
-    event: *mut c_void,
-    codepoint: u32,
-) {
-    unsafe {
-        ptr::write(
-            key_event_field::<u32>(event, KEY_EVENT_UNSHIFTED_CODEPOINT_OFFSET),
-            codepoint & 0x001f_ffff,
-        );
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_key_event_get_unshifted_codepoint(event: *mut c_void) -> u32 {
-    unsafe {
-        ptr::read(key_event_field::<u32>(
-            event,
-            KEY_EVENT_UNSHIFTED_CODEPOINT_OFFSET,
-        ))
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_key_event_init(event: *mut c_void) {
     unsafe {
         ptr::write(key_event_field::<*const u8>(event, KEY_EVENT_UTF8_PTR_OFFSET), b"".as_ptr());
