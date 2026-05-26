@@ -9,11 +9,21 @@ use crate::style_write::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_cell_get(cell: u64, data: c_int, out: *mut c_void) -> c_int {
-    unsafe { cell_get(cell, data, out) }
+    unsafe { cell_get_impl(cell, data, out) }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_cell_get_multi(
+    cell: u64,
+    count: usize,
+    keys: *const c_int,
+    values: *const *mut c_void,
+    out_written: *mut usize,
+) -> c_int {
+    unsafe { cell_get_multi_impl(cell, count, keys, values, out_written) }
+}
+
+pub(crate) unsafe fn cell_get_multi_impl(
     cell: u64,
     count: usize,
     keys: *const c_int,
@@ -28,7 +38,7 @@ pub unsafe extern "C" fn ghostty_rust_cell_get_multi(
     while i < count {
         let key = unsafe { ptr::read(keys.add(i)) };
         let out = unsafe { ptr::read(values.add(i)) };
-        let result = unsafe { cell_get(cell, key, out) };
+        let result = unsafe { cell_get_impl(cell, key, out) };
         if result != GHOSTTY_SUCCESS {
             if !out_written.is_null() {
                 unsafe {
@@ -50,7 +60,7 @@ pub unsafe extern "C" fn ghostty_rust_cell_get_multi(
     GHOSTTY_SUCCESS
 }
 
-pub(crate) unsafe fn cell_get(cell: u64, data: c_int, out: *mut c_void) -> c_int {
+pub(crate) unsafe fn cell_get_impl(cell: u64, data: c_int, out: *mut c_void) -> c_int {
     match data {
         CELL_DATA_CODEPOINT => unsafe { write_out(out, cell_codepoint(cell)) },
         CELL_DATA_CONTENT_TAG => unsafe { write_out(out, cell_content_tag(cell) as c_int) },
