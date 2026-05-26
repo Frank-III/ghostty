@@ -8,7 +8,7 @@ use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
 use crate::simple::*;
-use crate::event_cell_style::*;
+use crate::style::*;
 
 pub(crate) const GHOSTTY_SUCCESS: c_int = 0;
 pub(crate) const GHOSTTY_INVALID_VALUE: c_int = -2;

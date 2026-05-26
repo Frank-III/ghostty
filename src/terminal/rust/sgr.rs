@@ -9,7 +9,7 @@ use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
 use crate::simple::*;
-use crate::event_cell_style::*;
+use crate::style::*;
 use crate::color::*;
 use crate::allocator::*;
 

@@ -3,7 +3,7 @@ use core::ptr;
 
 use crate::constants::*;
 use crate::early::*;
-use crate::event_cell_style::*;
+use crate::style::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_row_get(row: u64, data: c_int, out: *mut c_void) -> c_int {

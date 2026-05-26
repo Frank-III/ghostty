@@ -51,7 +51,6 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/color.rs",
     "src/terminal/rust/constants.rs",
     "src/terminal/rust/early.rs",
-    "src/terminal/rust/event_cell_style.rs",
     "src/terminal/rust/input.rs",
     "src/terminal/rust/kitty_graphics.rs",
     "src/terminal/rust/mouse_encode.rs",
@@ -59,6 +58,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/selection.rs",
     "src/terminal/rust/sgr.rs",
     "src/terminal/rust/simple.rs",
+    "src/terminal/rust/style.rs",
     "src/terminal/rust/terminal.rs",
 };
 

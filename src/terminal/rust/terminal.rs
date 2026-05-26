@@ -8,7 +8,7 @@ use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
 use crate::simple::*;
-use crate::event_cell_style::*;
+use crate::style::*;
 
 pub(crate) const TERMINAL_OPT_USERDATA: c_int = 0;
 pub(crate) const TERMINAL_OPT_WRITE_PTY: c_int = 1;

@@ -8,7 +8,7 @@ use crate::input::*;
 use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::simple::*;
-use crate::event_cell_style::*;
+use crate::style::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mouse_encode(
