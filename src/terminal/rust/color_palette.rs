@@ -284,7 +284,11 @@ fn rgb_component_luminance(component: u8) -> f64 {
     if normalized <= 0.03928 {
         normalized / 12.92
     } else {
-        ((normalized + 0.055) / 1.055).powf(2.4)
+        extern "C" {
+            fn log2(x: f64) -> f64;
+            fn exp2(x: f64) -> f64;
+        }
+        unsafe { exp2(2.4 * log2((normalized + 0.055) / 1.055)) }
     }
 }
 
