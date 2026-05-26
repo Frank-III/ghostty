@@ -10,6 +10,15 @@ pub unsafe extern "C" fn ghostty_rust_render_index_next(
     len: usize,
     out_next: *mut u16,
 ) -> bool {
+    unsafe { render_index_next_impl(has_current, current, len, out_next) }
+}
+
+pub(crate) unsafe fn render_index_next_impl(
+    has_current: bool,
+    current: u16,
+    len: usize,
+    out_next: *mut u16,
+) -> bool {
     if out_next.is_null() {
         return false;
     }
@@ -35,6 +44,10 @@ pub unsafe extern "C" fn ghostty_rust_render_index_next(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_render_index_select(index: u16, len: usize) -> c_int {
+    render_index_select_impl(index, len)
+}
+
+pub(crate) fn render_index_select_impl(index: u16, len: usize) -> c_int {
     if usize::from(index) >= len {
         return RENDER_RESULT_INVALID_VALUE;
     }
