@@ -15,8 +15,6 @@ pub(crate) const GHOSTTY_INVALID_VALUE: c_int = -2;
 pub(crate) const GHOSTTY_OUT_OF_SPACE: c_int = -3;
 pub(crate) const GHOSTTY_NO_VALUE: c_int = -4;
 
-pub(crate) const OSC_COMMAND_INVALID: c_int = 0;
-pub(crate) const OSC_DATA_CHANGE_WINDOW_TITLE_STR: c_int = 1;
 pub(crate) const KEY_ENCODER_OPT_CURSOR_KEY_APPLICATION: c_int = 0;
 pub(crate) const KEY_ENCODER_OPT_KEYPAD_KEY_APPLICATION: c_int = 1;
 pub(crate) const KEY_ENCODER_OPT_IGNORE_KEYPAD_WITH_NUMLOCK: c_int = 2;
@@ -66,33 +64,6 @@ pub extern "C" fn ghostty_rust_terminal_new(cols: u16, rows: u16) -> c_int {
 #[no_mangle]
 pub extern "C" fn ghostty_rust_terminal_reset(has_terminal: bool) -> bool {
     has_terminal
-}
-
-#[no_mangle]
-pub extern "C" fn ghostty_rust_osc_command_type(has_command: bool, kind: c_int) -> c_int {
-    if has_command {
-        kind
-    } else {
-        OSC_COMMAND_INVALID
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_osc_command_data_string(
-    data: c_int,
-    has_value: bool,
-    value: *const u8,
-    out: *mut c_void,
-) -> bool {
-    if data != OSC_DATA_CHANGE_WINDOW_TITLE_STR || !has_value || value.is_null() || out.is_null() {
-        return false;
-    }
-
-    unsafe {
-        ptr::write(out.cast::<*const u8>(), value);
-    }
-
-    true
 }
 
 #[no_mangle]
