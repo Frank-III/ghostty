@@ -3,6 +3,7 @@ use core::ptr;
 
 use crate::constants::*;
 use crate::early::*;
+use crate::size_report_len::*;
 use crate::size_report_write::*;
 
 #[no_mangle]
