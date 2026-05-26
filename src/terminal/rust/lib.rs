@@ -72,6 +72,7 @@ mod mouse_setopt;
 mod mouse_setopt_bool;
 mod mouse_setopt_mode;
 mod mouse_setopt_size;
+mod mouse_setopt_size_write;
 mod mouse_sequence_len;
 mod mouse_sequence_write;
 mod mouse_size;

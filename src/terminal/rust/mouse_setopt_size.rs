@@ -1,4 +1,4 @@
-use core::ptr;
+use crate::mouse_setopt_size_write::mouse_encoder_setopt_size_write;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mouse_encoder_setopt_size(
@@ -21,32 +21,24 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encoder_setopt_size(
     last_cell_present: *mut bool,
 ) {
     unsafe {
-        if !out_screen_width.is_null() {
-            ptr::write(out_screen_width, screen_width);
-        }
-        if !out_screen_height.is_null() {
-            ptr::write(out_screen_height, screen_height);
-        }
-        if !out_cell_width.is_null() {
-            ptr::write(out_cell_width, cell_width);
-        }
-        if !out_cell_height.is_null() {
-            ptr::write(out_cell_height, cell_height);
-        }
-        if !out_padding_top.is_null() {
-            ptr::write(out_padding_top, padding_top);
-        }
-        if !out_padding_bottom.is_null() {
-            ptr::write(out_padding_bottom, padding_bottom);
-        }
-        if !out_padding_right.is_null() {
-            ptr::write(out_padding_right, padding_right);
-        }
-        if !out_padding_left.is_null() {
-            ptr::write(out_padding_left, padding_left);
-        }
-        if !last_cell_present.is_null() {
-            ptr::write(last_cell_present, false);
-        }
+        mouse_encoder_setopt_size_write(
+            screen_width,
+            screen_height,
+            cell_width,
+            cell_height,
+            padding_top,
+            padding_bottom,
+            padding_right,
+            padding_left,
+            out_screen_width,
+            out_screen_height,
+            out_cell_width,
+            out_cell_height,
+            out_padding_top,
+            out_padding_bottom,
+            out_padding_right,
+            out_padding_left,
+            last_cell_present,
+        );
     }
 }
