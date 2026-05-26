@@ -2,6 +2,7 @@ use core::ffi::{c_int, c_void};
 use core::ptr;
 
 use crate::constants::*;
+use crate::event_key_field::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_key_event_set_action(event: *mut c_void, action: c_int) {
@@ -145,10 +146,6 @@ pub unsafe extern "C" fn ghostty_rust_key_event_get_unshifted_codepoint(event: *
             KEY_EVENT_UNSHIFTED_CODEPOINT_OFFSET,
         ))
     }
-}
-
-pub(crate) unsafe fn key_event_field<T>(event: *mut c_void, offset: usize) -> *mut T {
-    unsafe { event.cast::<u8>().add(offset).cast::<T>() }
 }
 
 #[no_mangle]
