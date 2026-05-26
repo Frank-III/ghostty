@@ -4,6 +4,7 @@ use crate::constants::*;
 
 pub(crate) use crate::mouse_button_base::*;
 pub(crate) use crate::mouse_button_default::*;
+pub(crate) use crate::mouse_button_motion::*;
 pub(crate) use crate::mouse_button_mods::*;
 pub(crate) use crate::mouse_report::*;
 
@@ -22,9 +23,7 @@ pub(crate) fn mouse_button_code(
         acc = mouse_button_apply_mods(acc, mods);
     }
 
-    if action == MOUSE_ACTION_MOTION {
-        acc = acc.wrapping_add(32);
-    }
+    acc = mouse_button_apply_motion(acc, action);
 
     Some(acc)
 }

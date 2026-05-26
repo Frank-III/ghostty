@@ -87,6 +87,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/mouse_button.rs",
     "src/terminal/rust/mouse_button_base.rs",
     "src/terminal/rust/mouse_button_default.rs",
+    "src/terminal/rust/mouse_button_motion.rs",
     "src/terminal/rust/mouse_button_mods.rs",
     "src/terminal/rust/mouse_encoder_state.rs",
     "src/terminal/rust/mouse_geometry.rs",
