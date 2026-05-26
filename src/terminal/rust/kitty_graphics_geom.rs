@@ -83,6 +83,38 @@ pub unsafe extern "C" fn ghostty_rust_kitty_pixel_size(
     out_width: *mut u32,
     out_height: *mut u32,
 ) -> c_int {
+    unsafe {
+        kitty_pixel_size_impl(
+            image_width,
+            image_height,
+            source_width,
+            source_height,
+            placement_columns,
+            placement_rows,
+            terminal_width_px,
+            terminal_height_px,
+            terminal_cols,
+            terminal_rows,
+            out_width,
+            out_height,
+        )
+    }
+}
+
+pub(crate) unsafe fn kitty_pixel_size_impl(
+    image_width: u32,
+    image_height: u32,
+    source_width: u32,
+    source_height: u32,
+    placement_columns: u32,
+    placement_rows: u32,
+    terminal_width_px: u32,
+    terminal_height_px: u32,
+    terminal_cols: u16,
+    terminal_rows: u16,
+    out_width: *mut u32,
+    out_height: *mut u32,
+) -> c_int {
     if out_width.is_null() || out_height.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
