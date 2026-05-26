@@ -60,3 +60,17 @@ pub(crate) unsafe fn write_mouse_sequence(
         _ => {}
     }
 }
+
+pub(crate) unsafe fn mouse_output_sequence(
+    format: c_int,
+    action: c_int,
+    button_code: u8,
+    cell: GhosttyMouseCell,
+    pos: GhosttyMousePosition,
+    size: GhosttyMouseSize,
+    out: *mut u8,
+) {
+    unsafe {
+        write_mouse_sequence(format, action, button_code, cell, pos, size, out);
+    }
+}

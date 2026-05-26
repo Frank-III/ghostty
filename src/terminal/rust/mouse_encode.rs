@@ -156,7 +156,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     }
 
     unsafe {
-        write_mouse_sequence(format, action, button_code, cell, pos, size, out);
+        mouse_output_sequence(format, action, button_code, cell, pos, size, out);
     }
 
     GHOSTTY_SUCCESS
