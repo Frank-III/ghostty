@@ -1,0 +1,22 @@
+zig_file	rust_module	surface	status	tests	notes
+src/terminal/c/focus.zig	src/terminal/rust/lib.rs	focus encode	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Validated in current lib-vt Rust-backed suite.
+src/terminal/c/size_report.zig	src/terminal/rust/lib.rs	size report encode	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Validated in current lib-vt Rust-backed suite.
+src/terminal/c/paste.zig	src/terminal/rust/lib.rs	paste safety and encode	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Validated in current lib-vt Rust-backed suite.
+src/terminal/c/modes.zig	src/terminal/rust/lib.rs	mode report encode	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Validated in current lib-vt Rust-backed suite.
+src/terminal/c/style.zig	src/terminal/rust/lib.rs	style default helpers	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Validated in current lib-vt Rust-backed suite.
+src/terminal/c/sgr.zig	src/terminal/rust/lib.rs	SGR parser helpers	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Rust handles reset, separator classification, unknown/accessor helpers.
+src/terminal/c/row.zig	src/terminal/rust/lib.rs	row accessors	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Validated in current lib-vt Rust-backed suite.
+src/terminal/c/cell.zig	src/terminal/rust/lib.rs	cell accessors	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Validated in current lib-vt Rust-backed suite.
+src/terminal/c/build_info.zig	src/terminal/rust/lib.rs	build info get	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Validated in current lib-vt Rust-backed suite.
+src/terminal/c/key_event.zig	src/terminal/rust/lib.rs	key event accessors	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Validated in current lib-vt Rust-backed suite.
+src/terminal/c/key_encode.zig	src/terminal/rust/lib.rs	key encoder options	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Rust handles scalar options and terminal-derived option decoding.
+src/terminal/c/mouse_event.zig	src/terminal/rust/lib.rs	mouse event accessors	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Validated in current lib-vt Rust-backed suite.
+src/terminal/c/mouse_encode.zig	src/terminal/rust/lib.rs	mouse encoder encode/options	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Rust handles encode, option writes, terminal-derived options, reset decisions.
+src/terminal/c/selection.zig	src/terminal/rust/lib.rs	selection C helpers	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Rust handles equality, optional outputs, and operation result writes.
+src/terminal/c/osc.zig	src/terminal/rust/lib.rs	OSC command helpers	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Rust handles command type fallback and string output contract.
+src/terminal/c/grid_ref.zig	src/terminal/rust/lib.rs	grid ref helpers	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Rust handles URI buffer, simple graphemes, and default style paths.
+src/terminal/c/grid_ref_tracked.zig	src/terminal/rust/lib.rs	tracked grid ref result/input contracts	rust-backed	zig build test-lib-vt -Dtest-filter='tracked_grid_ref' -Dlib-vt-rust=true --summary all	Rust classifies has_value, snapshot/point result state, and set input validation.
+src/terminal/c/kitty_graphics.zig	src/terminal/rust/lib.rs	kitty graphics C helpers	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Rust handles source rect, size, layer, render info, placement/image accessors, iterator state.
+src/terminal/c/render.zig	src/terminal/rust/lib.rs	render C helpers	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Rust handles render state, row/cell dispatch, colors, row get/set validation, get_multi scalar paths.
+src/terminal/c/terminal.zig	src/terminal/rust/lib.rs	terminal C API helpers	rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Rust handles new/reset/get/set/resize/grid_ref/point/tracked-ref input validation and scalar data helpers.
+src/terminal/c/sys.zig	src/terminal/rust/lib.rs	sys callback options	partial-rust-backed	zig build test-lib-vt -Dlib-vt-rust=true --summary all	Rust classifies option/result; Zig owns global callback state and decode/log wiring.
