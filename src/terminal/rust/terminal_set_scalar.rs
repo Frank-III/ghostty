@@ -9,6 +9,13 @@ pub unsafe extern "C" fn ghostty_rust_terminal_set_u64_zero(
     value: *const u64,
     out_value: *mut u64,
 ) -> c_int {
+    unsafe { terminal_set_u64_zero_impl(value, out_value) }
+}
+
+pub(crate) unsafe fn terminal_set_u64_zero_impl(
+    value: *const u64,
+    out_value: *mut u64,
+) -> c_int {
     if out_value.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
@@ -28,6 +35,14 @@ pub unsafe extern "C" fn ghostty_rust_terminal_set_u64_zero(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_terminal_set_bool_optional(
+    value: *const bool,
+    out_has_value: *mut bool,
+    out_value: *mut bool,
+) -> c_int {
+    unsafe { terminal_set_bool_optional_impl(value, out_has_value, out_value) }
+}
+
+pub(crate) unsafe fn terminal_set_bool_optional_impl(
     value: *const bool,
     out_has_value: *mut bool,
     out_value: *mut bool,
@@ -54,6 +69,14 @@ pub unsafe extern "C" fn ghostty_rust_terminal_set_bool_optional(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_terminal_set_usize_optional(
+    value: *const usize,
+    out_has_value: *mut bool,
+    out_value: *mut usize,
+) -> c_int {
+    unsafe { terminal_set_usize_optional_impl(value, out_has_value, out_value) }
+}
+
+pub(crate) unsafe fn terminal_set_usize_optional_impl(
     value: *const usize,
     out_has_value: *mut bool,
     out_value: *mut usize,
