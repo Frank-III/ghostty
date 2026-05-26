@@ -4,6 +4,7 @@ use core::ptr;
 use crate::constants::*;
 use crate::early::*;
 use crate::paste_bytes::*;
+use crate::paste_safe::*;
 use crate::paste_sanitize::*;
 use crate::simple::*;
 
@@ -13,17 +14,7 @@ pub unsafe extern "C" fn ghostty_rust_paste_is_safe(data: *const u8, len: usize)
         return true;
     }
 
-    let mut offset = 0usize;
-    while offset < len {
-        let byte = unsafe { ptr::read(data.add(offset)) };
-        if byte == b'\n' || unsafe { matches_bytes_at(data, len, offset, PASTE_END) } {
-            return false;
-        }
-
-        offset += 1;
-    }
-
-    true
+    unsafe { paste_data_is_safe(data, len) }
 }
 
 #[no_mangle]
