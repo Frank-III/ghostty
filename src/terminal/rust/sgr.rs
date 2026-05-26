@@ -19,6 +19,7 @@ use crate::sgr_color::*;
 use crate::sgr_constants::*;
 use crate::sgr_parse::*;
 use crate::sgr_underline::*;
+use crate::sgr_unknown::*;
 use crate::sgr_write::*;
 
 #[no_mangle]
@@ -54,16 +55,9 @@ pub unsafe extern "C" fn ghostty_rust_sgr_next(
         match first {
             4 | 38 | 48 | 58 => {}
             _ => {
-                while i < params_len && sgr_sep_is_set(sep_mask, i) {
-                    i += 1;
-                }
-                i = i.saturating_add(1);
-                let partial_len = core::cmp::min(i.saturating_sub(start), params_len - start);
-                unsafe {
-                    ptr::write(idx, i);
-                    write_sgr_unknown(result, params, params_len, params.add(start), partial_len);
-                }
-                return true;
+                return unsafe {
+                    write_sgr_unknown_colon(params, params_len, sep_mask, start, i, idx, result)
+                };
             }
         }
     }
@@ -107,9 +101,5 @@ pub unsafe extern "C" fn ghostty_rust_sgr_next(
         }
     }
 
-    unsafe {
-        ptr::write(idx, params_len);
-        write_sgr_unknown(result, params, params_len, params.add(start), params_len - start);
-    }
-    true
+    unsafe { write_sgr_unknown_rest(params, params_len, start, idx, result) }
 }
