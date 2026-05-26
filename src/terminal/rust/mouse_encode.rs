@@ -9,6 +9,7 @@ use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_button::*;
 use crate::mouse_geometry::*;
+use crate::mouse_last_cell::*;
 use crate::mouse_types::*;
 use crate::mouse_write::*;
 use crate::simple::*;
@@ -59,9 +60,14 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     }
 
     unsafe {
-        ptr::write(next_last_cell_present, last_cell_present);
-        ptr::write(next_last_cell_x, last_cell_x);
-        ptr::write(next_last_cell_y, last_cell_y);
+        mouse_write_last_cell(
+            last_cell_present,
+            last_cell_x,
+            last_cell_y,
+            next_last_cell_present,
+            next_last_cell_x,
+            next_last_cell_y,
+        );
     }
 
     if !mouse_should_report(action, button_present, button, tracking_mode) {
@@ -96,9 +102,12 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
 
     if track_last_cell {
         unsafe {
-            ptr::write(next_last_cell_present, true);
-            ptr::write(next_last_cell_x, cell.x);
-            ptr::write(next_last_cell_y, cell.y);
+            mouse_write_last_cell_from_cell(
+                cell,
+                next_last_cell_present,
+                next_last_cell_x,
+                next_last_cell_y,
+            );
         }
     }
 

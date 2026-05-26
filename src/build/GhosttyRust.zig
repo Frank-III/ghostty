@@ -92,6 +92,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/mouse_encoder_state.rs",
     "src/terminal/rust/mouse_geometry.rs",
     "src/terminal/rust/mouse_encode.rs",
+    "src/terminal/rust/mouse_last_cell.rs",
     "src/terminal/rust/mouse_pixels.rs",
     "src/terminal/rust/mouse_report.rs",
     "src/terminal/rust/mouse_types.rs",
