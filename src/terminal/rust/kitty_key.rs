@@ -65,12 +65,13 @@ impl KittyKeyFlagStack {
     }
 
     pub fn current(&self) -> KittyKeyFlags {
-        self.flags[self.idx as usize]
+        unsafe { *self.flags.get_unchecked(self.idx as usize) }
     }
 
     pub fn set(&mut self, mode: KittySetMode, v: KittyKeyFlags) {
-        let cur = self.flags[self.idx as usize];
-        self.flags[self.idx as usize] = match mode {
+        let cur = unsafe { *self.flags.get_unchecked(self.idx as usize) };
+        let slot = unsafe { self.flags.get_unchecked_mut(self.idx as usize) };
+        *slot = match mode {
             KittySetMode::Set => v,
             KittySetMode::Or => KittyKeyFlags::new(cur.0 | v.0),
             KittySetMode::Not => KittyKeyFlags::new(cur.0 & !v.0),
@@ -79,7 +80,8 @@ impl KittyKeyFlagStack {
 
     pub fn push(&mut self, flags: KittyKeyFlags) {
         self.idx = (self.idx + 1) % (KITTY_KEY_STACK_LEN as u8);
-        self.flags[self.idx as usize] = flags;
+        let slot = unsafe { self.flags.get_unchecked_mut(self.idx as usize) };
+        *slot = flags;
     }
 
     pub fn pop(&mut self, n: usize) {
@@ -89,7 +91,8 @@ impl KittyKeyFlagStack {
             return;
         }
         for _ in 0..n {
-            self.flags[self.idx as usize] = KittyKeyFlags::DISABLED;
+            let slot = unsafe { self.flags.get_unchecked_mut(self.idx as usize) };
+            *slot = KittyKeyFlags::DISABLED;
             if self.idx == 0 {
                 self.idx = (KITTY_KEY_STACK_LEN as u8) - 1;
             } else {

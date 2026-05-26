@@ -37,40 +37,45 @@ impl Tabstops {
     pub fn set(&mut self, col: usize) {
         let i = Self::entry(col);
         let idx = Self::index(col);
+        let mask = unsafe { *MASKS.as_ptr().add(idx) };
         if i < PREALLOC_COUNT {
-            self.prealloc_stops[i] |= MASKS[idx];
-            return;
-        }
-        let dynamic_i = i - PREALLOC_COUNT;
-        debug_assert!(dynamic_i < self.dynamic_stops_len);
-        unsafe {
-            *self.dynamic_stops_ptr.add(dynamic_i) |= MASKS[idx];
+            unsafe {
+                let p = self.prealloc_stops.as_mut_ptr().add(i);
+                *p |= mask;
+            }
+        } else {
+            let dynamic_i = i - PREALLOC_COUNT;
+            unsafe {
+                *self.dynamic_stops_ptr.add(dynamic_i) |= mask;
+            }
         }
     }
 
     pub fn unset(&mut self, col: usize) {
         let i = Self::entry(col);
         let idx = Self::index(col);
+        let mask = unsafe { *MASKS.as_ptr().add(idx) };
         if i < PREALLOC_COUNT {
-            self.prealloc_stops[i] ^= MASKS[idx];
-            return;
-        }
-        let dynamic_i = i - PREALLOC_COUNT;
-        debug_assert!(dynamic_i < self.dynamic_stops_len);
-        unsafe {
-            *self.dynamic_stops_ptr.add(dynamic_i) ^= MASKS[idx];
+            unsafe {
+                let p = self.prealloc_stops.as_mut_ptr().add(i);
+                *p &= !mask;
+            }
+        } else {
+            let dynamic_i = i - PREALLOC_COUNT;
+            unsafe {
+                *self.dynamic_stops_ptr.add(dynamic_i) &= !mask;
+            }
         }
     }
 
     pub fn get(&self, col: usize) -> bool {
         let i = Self::entry(col);
         let idx = Self::index(col);
-        let mask = MASKS[idx];
+        let mask = unsafe { *MASKS.as_ptr().add(idx) };
         let unit = if i < PREALLOC_COUNT {
-            self.prealloc_stops[i]
+            unsafe { *self.prealloc_stops.as_ptr().add(i) }
         } else {
             let dynamic_i = i - PREALLOC_COUNT;
-            debug_assert!(dynamic_i < self.dynamic_stops_len);
             unsafe { *self.dynamic_stops_ptr.add(dynamic_i) }
         };
         unit & mask == mask
@@ -141,13 +146,19 @@ impl Tabstops {
         true
     }
 
-    pub fn reset(&mut self, interval: usize) {
-        self.prealloc_stops = [0u8; PREALLOC_COUNT];
+    pub fn clear(&mut self) {
+        unsafe {
+            core::ptr::write_bytes(self.prealloc_stops.as_mut_ptr(), 0, PREALLOC_COUNT);
+        }
         if self.dynamic_stops_len > 0 && !self.dynamic_stops_ptr.is_null() {
             unsafe {
                 core::ptr::write_bytes(self.dynamic_stops_ptr, 0, self.dynamic_stops_len);
             }
         }
+    }
+
+    pub fn reset(&mut self, interval: usize) {
+        self.clear();
         if interval > 0 && self.cols > 1 {
             let mut i = interval;
             let limit = self.cols - 1;

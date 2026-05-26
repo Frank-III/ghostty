@@ -2,8 +2,12 @@ use core::ptr;
 
 use crate::bitmap_allocator::*;
 use crate::early::*;
+use crate::hash_map::{AutoContext, Layout as HashMapLayout, OffsetHashMap};
+use crate::hyperlink::HyperlinkPageEntry;
 use crate::page_types::*;
+use crate::ref_counted_set::{RefCountedSet, RefCountedSetLayout};
 use crate::size_types::*;
+use crate::style_types::Style;
 
 pub const PAGE_SIZE_MIN: usize = 4096;
 pub const GRAPHEME_CHUNK_LEN: usize = 4;
@@ -13,9 +17,44 @@ pub const STRING_CHUNK: usize = STRING_CHUNK_LEN;
 pub const HYPERLINK_COUNT_DEFAULT: u16 = 4;
 pub const HYPERLINK_CELL_MULTIPLIER: usize = 16;
 
+type GraphemeAlloc = BitmapAllocator<GRAPHEME_CHUNK>;
+type StringAlloc = BitmapAllocator<STRING_CHUNK>;
+type StyleSet = RefCountedSet;
+type GraphemeMap = OffsetHashMap<OffsetInt, OffsetSlice, AutoContext>;
+type HyperlinkSet = RefCountedSet;
+type HyperlinkMap = OffsetHashMap<OffsetInt, u16, AutoContext>;
+
 #[inline]
 const fn align_forward(val: usize, alignment: usize) -> usize {
     (val + alignment - 1) & !(alignment - 1)
+}
+
+const fn div_ceil(a: usize, b: usize) -> usize {
+    if b == 0 {
+        return 0;
+    }
+    (a + b - 1) / b
+}
+
+const fn ceil_power_of_two_usize(v: usize) -> usize {
+    if v == 0 {
+        return 1;
+    }
+    let mut x = v - 1;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    #[cfg(target_pointer_width = "64")]
+    {
+        x |= x >> 32;
+    }
+    x + 1
+}
+
+const fn max_usize(a: usize, b: usize) -> usize {
+    if a >= b { a } else { b }
 }
 
 fn zero_offset() -> Offset {
@@ -37,11 +76,17 @@ pub struct PageLayout {
     pub cells_start: usize,
     pub cells_size: usize,
     pub styles_start: usize,
+    pub styles_layout: RefCountedSetLayout,
     pub grapheme_alloc_start: usize,
+    pub grapheme_alloc_layout: Layout,
     pub grapheme_map_start: usize,
+    pub grapheme_map_layout: HashMapLayout,
     pub string_alloc_start: usize,
-    pub hyperlink_map_start: usize,
+    pub string_alloc_layout: Layout,
     pub hyperlink_set_start: usize,
+    pub hyperlink_set_layout: RefCountedSetLayout,
+    pub hyperlink_map_start: usize,
+    pub hyperlink_map_layout: HashMapLayout,
     pub capacity: PageCapacity,
 }
 
@@ -51,12 +96,12 @@ pub struct Page {
     pub rows: Offset,
     pub cells: Offset,
     pub dirty: bool,
-    pub string_alloc: BitmapAllocator<STRING_CHUNK>,
-    pub grapheme_alloc: BitmapAllocator<GRAPHEME_CHUNK>,
-    pub grapheme_map: usize,
-    pub styles: usize,
-    pub hyperlink_map: usize,
-    pub hyperlink_set: usize,
+    pub string_alloc: StringAlloc,
+    pub grapheme_alloc: GraphemeAlloc,
+    pub grapheme_map: GraphemeMap,
+    pub styles: StyleSet,
+    pub hyperlink_map: HyperlinkMap,
+    pub hyperlink_set: HyperlinkSet,
     pub size: PageSize,
     pub capacity: PageCapacity,
 }
@@ -68,26 +113,71 @@ impl Page {
         let rows_end = rows_start + rows_count * core::mem::size_of::<Row>();
 
         let cells_count = cap.cols as usize * cap.rows as usize;
-        let cells_start = align_forward(rows_end, core::mem::align_of::<u64>());
+        let cells_start = align_forward(rows_end, core::mem::align_of::<Cell>());
         let cells_end = cells_start + cells_count * core::mem::size_of::<Cell>();
 
-        let styles_start = align_forward(cells_end, 8);
-        let styles_end = styles_start;
+        let styles_layout = RefCountedSetLayout::init(
+            cap.styles,
+            core::mem::size_of::<Style>(),
+            core::mem::align_of::<Style>(),
+        );
+        let styles_align = max_usize(
+            core::mem::align_of::<Style>(),
+            core::mem::align_of::<u32>(),
+        );
+        let styles_start = align_forward(cells_end, styles_align);
+        let styles_end = styles_start + styles_layout.total_size;
 
-        let grapheme_alloc_start = align_forward(styles_end, 8);
-        let grapheme_alloc_end = grapheme_alloc_start;
+        let grapheme_alloc_layout = GraphemeAlloc::compute_layout(cap.grapheme_bytes as usize);
+        let grapheme_alloc_start = align_forward(styles_end, GraphemeAlloc::BASE_ALIGN);
+        let grapheme_alloc_end = grapheme_alloc_start + grapheme_alloc_layout.total_size;
 
-        let grapheme_map_start = align_forward(grapheme_alloc_end, 8);
-        let grapheme_map_end = grapheme_map_start;
+        let grapheme_count: usize = if cap.grapheme_bytes == 0 {
+            0
+        } else {
+            let base = div_ceil(cap.grapheme_bytes as usize, GRAPHEME_CHUNK);
+            ceil_power_of_two_usize(base)
+        };
+        let grapheme_map_layout = GraphemeMap::layout(grapheme_count as u32);
+        let grapheme_map_start = align_forward(grapheme_alloc_end, GraphemeMap::BASE_ALIGN);
+        let grapheme_map_end = grapheme_map_start + grapheme_map_layout.total_size;
 
-        let string_alloc_start = align_forward(grapheme_map_end, 8);
-        let string_alloc_end = string_alloc_start;
+        let string_alloc_layout = StringAlloc::compute_layout(cap.string_bytes as usize);
+        let string_alloc_start = align_forward(grapheme_map_end, StringAlloc::BASE_ALIGN);
+        let string_alloc_end = string_alloc_start + string_alloc_layout.total_size;
 
-        let hyperlink_set_start = align_forward(string_alloc_end, 8);
-        let hyperlink_set_end = hyperlink_set_start;
+        let hyperlink_item_size = core::mem::size_of::<HyperlinkPageEntry>();
+        let hyperlink_count: usize = if hyperlink_item_size == 0 {
+            0
+        } else {
+            (cap.hyperlink_bytes as usize) / hyperlink_item_size
+        };
+        let hyperlink_set_layout = RefCountedSetLayout::init(
+            hyperlink_count as u16,
+            hyperlink_item_size,
+            core::mem::align_of::<HyperlinkPageEntry>(),
+        );
+        let hyperlink_set_align = max_usize(
+            core::mem::align_of::<HyperlinkPageEntry>(),
+            core::mem::align_of::<u32>(),
+        );
+        let hyperlink_set_start = align_forward(string_alloc_end, hyperlink_set_align);
+        let hyperlink_set_end = hyperlink_set_start + hyperlink_set_layout.total_size;
 
-        let hyperlink_map_start = align_forward(hyperlink_set_end, 8);
-        let hyperlink_map_end = hyperlink_map_start;
+        let hyperlink_map_count: u32 = if hyperlink_count == 0 {
+            0
+        } else {
+            let mult = hyperlink_count * HYPERLINK_CELL_MULTIPLIER;
+            let mult32 = if mult > (u32::MAX as usize) {
+                u32::MAX
+            } else {
+                mult as u32
+            };
+            ceil_power_of_two_usize(mult32 as usize) as u32
+        };
+        let hyperlink_map_layout = HyperlinkMap::layout(hyperlink_map_count);
+        let hyperlink_map_start = align_forward(hyperlink_set_end, HyperlinkMap::BASE_ALIGN);
+        let hyperlink_map_end = hyperlink_map_start + hyperlink_map_layout.total_size;
 
         let total_size = align_forward(hyperlink_map_end, PAGE_SIZE_MIN);
 
@@ -98,11 +188,17 @@ impl Page {
             cells_start,
             cells_size: cells_end - cells_start,
             styles_start,
+            styles_layout,
             grapheme_alloc_start,
+            grapheme_alloc_layout,
             grapheme_map_start,
+            grapheme_map_layout,
             string_alloc_start,
-            hyperlink_map_start,
+            string_alloc_layout,
             hyperlink_set_start,
+            hyperlink_set_layout,
+            hyperlink_map_start,
+            hyperlink_map_layout,
             capacity: cap,
         }
     }
@@ -136,18 +232,54 @@ impl Page {
             }
         }
 
+        let styles = if l.styles_layout.cap > 0 {
+            StyleSet::init(buf.add(l.styles_start), l.styles_layout)
+        } else {
+            StyleSet::new()
+        };
+
+        let grapheme_alloc = if l.grapheme_alloc_layout.total_size > 0 {
+            GraphemeAlloc::init(buf.add(l.grapheme_alloc_start), l.grapheme_alloc_layout)
+        } else {
+            zero_bitmap_allocator::<GRAPHEME_CHUNK>()
+        };
+
+        let grapheme_map = if l.grapheme_map_layout.capacity > 0 {
+            GraphemeMap::init(buf.add(l.grapheme_map_start), l.grapheme_map_layout)
+        } else {
+            GraphemeMap::new()
+        };
+
+        let string_alloc = if l.string_alloc_layout.total_size > 0 {
+            StringAlloc::init(buf.add(l.string_alloc_start), l.string_alloc_layout)
+        } else {
+            zero_bitmap_allocator::<STRING_CHUNK>()
+        };
+
+        let hyperlink_set = if l.hyperlink_set_layout.cap > 0 {
+            HyperlinkSet::init(buf.add(l.hyperlink_set_start), l.hyperlink_set_layout)
+        } else {
+            HyperlinkSet::new()
+        };
+
+        let hyperlink_map = if l.hyperlink_map_layout.capacity > 0 {
+            HyperlinkMap::init(buf.add(l.hyperlink_map_start), l.hyperlink_map_layout)
+        } else {
+            HyperlinkMap::new()
+        };
+
         Page {
             memory: base,
             memory_len: l.total_size,
             rows,
             cells,
             dirty: false,
-            string_alloc: zero_bitmap_allocator(),
-            grapheme_alloc: zero_bitmap_allocator(),
-            grapheme_map: 0,
-            styles: 0,
-            hyperlink_map: 0,
-            hyperlink_set: 0,
+            string_alloc,
+            grapheme_alloc,
+            grapheme_map,
+            styles,
+            hyperlink_map,
+            hyperlink_set,
             size: PageSize {
                 cols: cap.cols,
                 rows: cap.rows,

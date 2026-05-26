@@ -543,14 +543,20 @@ impl<K, V, C> Clone for OffsetHashMap<K, V, C> {
 impl<K, V, C: HashMapContext<K>> OffsetHashMap<K, V, C> {
     pub const BASE_ALIGN: usize = HashMapUnmanaged::<K, V, C>::BASE_ALIGN;
 
+    pub fn new() -> Self {
+        Self {
+            metadata: Offset { offset: 0 },
+            _phantom: PhantomData,
+        }
+    }
+
     pub fn layout(cap: Size) -> Layout {
         HashMapUnmanaged::<K, V, C>::layout_for_capacity(cap)
     }
 
     pub fn init(buf: OffsetBuf, layout: Layout) -> Self {
-        let start = buf.start();
         let m = HashMapUnmanaged::<K, V, C>::init(buf, layout);
-        let offset = unsafe { get_offset(start as *const u8, m.metadata as *const u8) };
+        let offset = unsafe { get_offset(buf.base as *const u8, m.metadata as *const u8) };
         Self {
             metadata: offset,
             _phantom: PhantomData,

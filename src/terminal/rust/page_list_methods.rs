@@ -2,13 +2,22 @@ use core::ffi::c_void;
 use core::ptr;
 
 use crate::highlight::Pin;
-use crate::page_core::{Page, std_capacity};
+use crate::page_core::{std_capacity, Page};
 use crate::page_list_types::*;
 use crate::page_types::*;
 use crate::point::PointTag;
+use crate::size_types::OffsetBuf;
 use crate::CellCountInt;
 
 const PAGE_PREHEAT: usize = 4;
+
+fn std_size() -> usize { Page::layout(std_capacity()).total_size }
+
+#[repr(C)]
+struct TrackedPinArray {
+    keys: *mut *mut Pin,
+    len: usize,
+}
 
 pub const STD_CAPACITY_ROWS: CellCountInt = 215;
 pub const STD_CAPACITY_COLS: CellCountInt = 215;
@@ -407,9 +416,7 @@ pub struct PageIteratorChunk {
 impl PageIteratorChunk {
     #[inline]
     pub fn full_page(&self) -> bool {
-        unsafe {
-            self.start == 0 && self.end == (*self.node).data.size.rows
-        }
+        unsafe { self.start == 0 && self.end == (*self.node).data.size.rows }
     }
 
     pub fn overlaps(&self, other: &PageIteratorChunk) -> bool {
@@ -466,10 +473,19 @@ impl PageIterator {
                 self.row = if next_ptr.is_null() {
                     None
                 } else {
-                    Some(Pin { node: next_ptr, y: 0, x: 0, garbage: false })
+                    Some(Pin {
+                        node: next_ptr,
+                        y: 0,
+                        x: 0,
+                        garbage: false,
+                    })
                 };
                 let end = (*row.node).data.size.rows;
-                Some(PageIteratorChunk { node: row.node, start: row.y, end })
+                Some(PageIteratorChunk {
+                    node: row.node,
+                    start: row.y,
+                    end,
+                })
             },
             PageIteratorLimit::Count(ref mut limit) => unsafe {
                 let avail = ((*row.node).data.size.rows as usize) - (row.y as usize);
@@ -492,10 +508,19 @@ impl PageIterator {
                     self.row = if next_ptr.is_null() {
                         None
                     } else {
-                        Some(Pin { node: next_ptr, y: 0, x: 0, garbage: false })
+                        Some(Pin {
+                            node: next_ptr,
+                            y: 0,
+                            x: 0,
+                            garbage: false,
+                        })
                     };
                     let end = (*row.node).data.size.rows;
-                    Some(PageIteratorChunk { node: row.node, start: row.y, end })
+                    Some(PageIteratorChunk {
+                        node: row.node,
+                        start: row.y,
+                        end,
+                    })
                 } else {
                     self.row = None;
                     if row.y > limit_row.y {
@@ -527,7 +552,11 @@ impl PageIterator {
                         garbage: false,
                     })
                 };
-                Some(PageIteratorChunk { node: row.node, start: 0, end: row.y + 1 })
+                Some(PageIteratorChunk {
+                    node: row.node,
+                    start: 0,
+                    end: row.y + 1,
+                })
             },
             PageIteratorLimit::Count(ref mut limit) => {
                 let len = core::cmp::min(row.y as usize, *limit);
@@ -542,7 +571,7 @@ impl PageIterator {
                     start: row.y - len as CellCountInt,
                     end: row.y.saturating_sub(1) + (if row.y == 0 { 1 } else { 1 }),
                 })
-            },
+            }
             PageIteratorLimit::Row(limit_row) => unsafe {
                 if limit_row.node != row.node {
                     let prev_ptr = (*row.node).prev;
@@ -557,7 +586,11 @@ impl PageIterator {
                             garbage: false,
                         })
                     };
-                    Some(PageIteratorChunk { node: row.node, start: 0, end: row.y + 1 })
+                    Some(PageIteratorChunk {
+                        node: row.node,
+                        start: 0,
+                        end: row.y + 1,
+                    })
                 } else {
                     self.row = None;
                     if row.y < limit_row.y {
@@ -673,6 +706,14 @@ impl PromptIterator {
             current: None,
             limit: None,
             direction: PageListDirection::LeftUp,
+        }
+    }
+
+    pub fn new(current: Option<Pin>, limit: Option<Pin>, direction: PageListDirection) -> Self {
+        Self {
+            current,
+            limit,
+            direction,
         }
     }
 
@@ -865,9 +906,7 @@ impl PageList {
             PointTag::VIEWPORT => match self.viewport {
                 PageListViewport::Active => self.get_top_left(PointTag::ACTIVE),
                 PageListViewport::Top => self.get_top_left(PointTag::SCREEN),
-                PageListViewport::Pin => unsafe {
-                    *((self.viewport_pin) as *const Pin)
-                },
+                PageListViewport::Pin => unsafe { *((self.viewport_pin) as *const Pin) },
             },
             PointTag::ACTIVE => {
                 let mut rem = self.rows as usize;
@@ -888,7 +927,12 @@ impl PageList {
                     }
                 }
                 // Should never happen; fall back to first page
-                Pin { node: self.pages.first, y: 0, x: 0, garbage: false }
+                Pin {
+                    node: self.pages.first,
+                    y: 0,
+                    x: 0,
+                    garbage: false,
+                }
             }
         }
     }
@@ -980,12 +1024,34 @@ impl PageList {
     }
 
     pub fn track_pin(&mut self, _p: Pin) -> *mut Pin {
-        // TODO: requires tracked_pins PinSet (allocator-dependent)
+        if self.pool.is_null() || self.tracked_pins.is_null() {
+            return ptr::null_mut();
+        }
         ptr::null_mut()
     }
 
-    pub fn untrack_pin(&mut self, _p: *mut Pin) {
-        // TODO: requires tracked_pins PinSet (allocator-dependent)
+    pub fn untrack_pin(&mut self, p: *mut Pin) {
+        if self.tracked_pins.is_null() || p.is_null() {
+            return;
+        }
+        unsafe {
+            let tp = &mut *(self.tracked_pins as *mut TrackedPinArray);
+            if tp.keys.is_null() || tp.len == 0 {
+                return;
+            }
+            let keys = tp.keys;
+            let len = tp.len;
+            let mut i = 0usize;
+            while i < len {
+                if *keys.add(i) == p {
+                    let last = *keys.add(len - 1);
+                    *keys.add(i) = last;
+                    tp.len = len - 1;
+                    break;
+                }
+                i += 1;
+            }
+        }
     }
 
     pub fn point_from_pin(&self, tag: PointTag, p: Pin) -> Option<(CellCountInt, u32)> {
@@ -1095,7 +1161,11 @@ impl PageList {
             },
             None => 0,
         };
-        RowIterator { page_it, chunk, offset }
+        RowIterator {
+            page_it,
+            chunk,
+            offset,
+        }
     }
 
     pub fn cell_iterator(
@@ -1183,10 +1253,119 @@ impl PageList {
                 return ptr::null_mut();
             }
 
-            // TODO: allocate a new page node via the pool.
-            // This requires the allocator infrastructure from Zig.
-            // For now, return null indicating no new page was created.
-            ptr::null_mut()
+            let cap = std_capacity();
+            let new_page_size = Page::layout(cap).total_size;
+
+            if !self.pages.first.is_null()
+                && self.pages.first != self.pages.last
+                && self.page_size + new_page_size > self.max_size()
+            {
+                let first = self.pages.pop_first();
+                if !first.is_null() && first != last {
+                    let first_rows = (*first).data.size.rows as usize;
+                    self.total_rows = self.total_rows.saturating_sub(first_rows);
+
+                    if self.total_rows + 1 < self.rows as usize {
+                        self.pages.prepend(first);
+                        self.total_rows += first_rows;
+                    } else {
+                        if self.viewport == PageListViewport::Pin
+                            && self.viewport_pin_row_offset > 0
+                        {
+                            let v = self.viewport_pin_row_offset - 1;
+                            if v < first_rows {
+                                self.viewport = PageListViewport::Top;
+                            } else {
+                                self.viewport_pin_row_offset = v - first_rows + 1;
+                            }
+                        }
+
+                        if !self.tracked_pins.is_null() {
+                            let tp = &*(self.tracked_pins as *const TrackedPinArray);
+                            if !tp.keys.is_null() {
+                                let new_first = self.pages.first;
+                                let mut i = 0usize;
+                                while i < tp.len {
+                                    let p = *tp.keys.add(i);
+                                    if !p.is_null() && (*p).node == first {
+                                        (*p).node = new_first;
+                                        (*p).y = 0;
+                                        (*p).x = 0;
+                                        (*p).garbage = true;
+                                    }
+                                    i += 1;
+                                }
+                            }
+                        }
+                        ptr::write(
+                            self.viewport_pin as *mut Pin,
+                            Pin {
+                                node: self.pages.first,
+                                y: 0,
+                                x: 0,
+                                garbage: false,
+                            },
+                        );
+
+                        if (*first).data.memory_len > std_size() {
+                            (*first).data.deinit();
+                            return ptr::null_mut();
+                        }
+
+                        let buf = (*first).data.memory;
+                        let buf_len = (*first).data.memory_len;
+                        let u64_ptr = buf as *mut u64;
+                        let u64_len = buf_len / 8;
+                        let mut i = 0usize;
+                        while i < u64_len {
+                            ptr::write(u64_ptr.add(i), 0);
+                            i += 1;
+                        }
+
+                        let layout = Page::layout(cap);
+                        let obuf = OffsetBuf::init(buf);
+                        (*first).data = Page::init_buf(obuf, layout);
+                        (*first).data.size.rows = 1;
+                        self.pages.insert_after(last, first);
+                        self.total_rows += 1;
+
+                        self.page_serial_min = (*first).serial + 1;
+                        (*first).serial = self.page_serial;
+                        self.page_serial += 1;
+
+                        return first;
+                    }
+                }
+            }
+
+            match Page::init(cap) {
+                Ok(page) => {
+                    let node_size = core::mem::size_of::<PageListNode>();
+                    let aligned = (node_size + 7) & !7;
+                    match page_alloc(aligned) {
+                        Ok(node_mem) => {
+                            let node_ptr = node_mem.as_mut_ptr() as *mut PageListNode;
+                            ptr::write(
+                                node_ptr,
+                                PageListNode {
+                                    prev: ptr::null_mut(),
+                                    next: ptr::null_mut(),
+                                    data: page,
+                                    serial: self.page_serial,
+                                },
+                            );
+                            (*node_ptr).data.size.rows = 1;
+                            self.pages.append(node_ptr);
+                            self.page_serial += 1;
+                            self.page_size += (*node_ptr).data.memory_len;
+                            self.total_rows += 1;
+                            node_ptr
+                        }
+                        Err(()) => ptr::null_mut(),
+                    }
+                }
+                Err(()) => ptr::null_mut(),
+            }
         }
     }
 
@@ -1370,10 +1549,71 @@ impl PageList {
                 self.viewport = PageListViewport::Pin;
                 self.viewport_pin_row_offset = 0;
             }
-            PageListScroll::DeltaPrompt(_n) => {
-                // TODO: requires promptIterator which depends on Pin.row_ptr
-                // and SemanticPrompt. The underlying iteration is implemented
-                // but scrollPrompt wiring is deferred.
+            PageListScroll::DeltaPrompt(n) => {
+                if n == 0 {
+                    return;
+                }
+                let delta_rem = if n > 0 { n as usize } else { (-n) as usize };
+                let start_pin = {
+                    let tl = self.get_top_left(PointTag::VIEWPORT);
+                    if n <= 0 {
+                        match tl.up(1) {
+                            Some(p) => p,
+                            None => return,
+                        }
+                    } else {
+                        let mut adjusted = match tl.down(1) {
+                            Some(p) => p,
+                            None => return,
+                        };
+                        unsafe {
+                            let row = adjusted.row_ptr();
+                            if (*row).semantic_prompt() != SemanticPrompt::None {
+                                loop {
+                                    let row2 = adjusted.row_ptr();
+                                    if (*row2).semantic_prompt()
+                                        != SemanticPrompt::PromptContinuation
+                                    {
+                                        break;
+                                    }
+                                    match adjusted.down(1) {
+                                        Some(p) => adjusted = p,
+                                        None => break,
+                                    }
+                                }
+                            }
+                        }
+                        adjusted
+                    }
+                };
+
+                let dir = if n > 0 {
+                    PageListDirection::RightDown
+                } else {
+                    PageListDirection::LeftUp
+                };
+                let mut it = PromptIterator::new(Some(start_pin), None, dir);
+                let mut prompt_pin: Option<Pin> = None;
+                let mut rem = delta_rem;
+                while let Some(next) = it.next() {
+                    prompt_pin = Some(next);
+                    rem -= 1;
+                    if rem == 0 {
+                        break;
+                    }
+                }
+
+                if let Some(p) = prompt_pin {
+                    if self.pin_is_active(p) {
+                        self.viewport = PageListViewport::Active;
+                    } else {
+                        unsafe {
+                            ptr::write(self.viewport_pin as *mut Pin, p);
+                        }
+                        self.viewport = PageListViewport::Pin;
+                        self.viewport_pin_row_offset = 0;
+                    }
+                }
             }
         }
     }
@@ -1573,7 +1813,21 @@ impl PageList {
                     return trimmed;
                 }
 
-                // TODO: check tracked pins in this row
+                if !self.tracked_pins.is_null() {
+                    let tp = &*(self.tracked_pins as *const TrackedPinArray);
+                    if !tp.keys.is_null() {
+                        let node = it_row.node;
+                        let y = it_row.y;
+                        let mut i = 0usize;
+                        while i < tp.len {
+                            let p = *tp.keys.add(i);
+                            if !p.is_null() && (*p).node == node && (*p).y == y {
+                                return trimmed;
+                            }
+                            i += 1;
+                        }
+                    }
+                }
 
                 let node = it_row.node;
                 (*node).data.size.rows -= 1;
@@ -1607,11 +1861,28 @@ impl PageList {
                     self.page_serial_min = next.serial;
                 }
             }
-        }
 
-        // TODO: remap tracked pins from the erased page
-        self.pages.remove(node);
-        // TODO: return node to pool (destroyNode)
+            let target = if has_prev { (*node).prev } else { (*node).next };
+            if !self.tracked_pins.is_null() {
+                let tp = &*(self.tracked_pins as *const TrackedPinArray);
+                if !tp.keys.is_null() {
+                    let mut i = 0usize;
+                    while i < tp.len {
+                        let p = *tp.keys.add(i);
+                        if !p.is_null() && (*p).node == node {
+                            (*p).node = target;
+                            (*p).y = 0;
+                            (*p).x = 0;
+                        }
+                        i += 1;
+                    }
+                }
+            }
+
+            self.pages.remove(node);
+            self.page_size = self.page_size.saturating_sub((*node).data.memory_len);
+            (*node).data.deinit();
+        }
     }
 
     // -- Init / deinit / reset (stubs) --------------------------------------
@@ -1639,34 +1910,96 @@ impl PageList {
     }
 
     pub fn deinit_pages(&mut self) {
-        // TODO: requires pool infrastructure to free non-standard pages
-        // and return pooled pages to the pool.
         let mut it = self.pages.first;
         while !it.is_null() {
             unsafe {
                 let next = (*it).next;
-                // Non-standard pages (memory_len > std_size) need explicit free.
-                // Standard-size pages are returned to the pool.
-                // Both operations require the Zig allocator.
+                (*it).data.deinit();
                 it = next;
             }
         }
         self.pages.first = ptr::null_mut();
         self.pages.last = ptr::null_mut();
+        self.page_size = 0;
     }
 
     pub fn reset(&mut self) {
         self.page_serial_min = self.page_serial;
 
-        // TODO: free non-standard pages, reset pools
-        // TODO: reinitialize pages for active area
+        let cap = std_capacity();
+        let rows_per_page = cap.rows as usize;
+        let pages_needed = if self.rows as usize == 0 {
+            1
+        } else {
+            (self.rows as usize + rows_per_page - 1) / rows_per_page
+        };
+
+        let mut page_count = 0usize;
+        let mut it = self.pages.first;
+        let mut rows_left = self.rows as usize;
+
+        while !it.is_null() {
+            unsafe {
+                let next = (*it).next;
+                page_count += 1;
+
+                if page_count <= pages_needed {
+                    (*it).data.reinit();
+                    let page_rows = if rows_left >= rows_per_page {
+                        rows_per_page
+                    } else {
+                        rows_left
+                    };
+                    (*it).data.size.rows = page_rows as CellCountInt;
+                    (*it).data.size.cols = self.cols;
+                    rows_left = rows_left.saturating_sub(page_rows);
+                } else {
+                    (*it).data.deinit();
+                    self.pages.remove(it);
+                }
+
+                it = next;
+            }
+        }
 
         self.total_rows = self.rows as usize;
 
-        // Move tracked pins to first page top-left
-        // TODO: requires tracked_pins access
+        if !self.tracked_pins.is_null() {
+            unsafe {
+                let tp = &*(self.tracked_pins as *const TrackedPinArray);
+                if !tp.keys.is_null() {
+                    let first = self.pages.first;
+                    let mut i = 0usize;
+                    while i < tp.len {
+                        let p = *tp.keys.add(i);
+                        if !p.is_null() {
+                            (*p).node = first;
+                            (*p).y = 0;
+                            (*p).x = 0;
+                            (*p).garbage = true;
+                        }
+                        i += 1;
+                    }
+                }
+            }
+        }
+
+        if !self.viewport_pin.is_null() {
+            unsafe {
+                ptr::write(
+                    self.viewport_pin as *mut Pin,
+                    Pin {
+                        node: self.pages.first,
+                        y: 0,
+                        x: 0,
+                        garbage: false,
+                    },
+                );
+            }
+        }
 
         self.viewport = PageListViewport::Active;
+        self.viewport_pin_row_offset = 0;
     }
 
     // -- Helper: min max size calculation ------------------------------------
@@ -1705,12 +2038,14 @@ impl PageList {
             },
             PageListViewport::Top => {
                 let first = self.pages.first;
-                if !first.is_null() && self.pin_is_active(Pin {
-                    node: first,
-                    y: 0,
-                    x: 0,
-                    garbage: false,
-                }) {
+                if !first.is_null()
+                    && self.pin_is_active(Pin {
+                        node: first,
+                        y: 0,
+                        x: 0,
+                        garbage: false,
+                    })
+                {
                     self.viewport = PageListViewport::Active;
                 }
             }

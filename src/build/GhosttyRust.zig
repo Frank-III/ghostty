@@ -114,6 +114,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/page_methods.rs",
     "src/terminal/rust/page_list_types.rs",
     "src/terminal/rust/page_list_methods.rs",
+    "src/terminal/rust/reflow_cursor.rs",
     "src/terminal/rust/tabstops.rs",
     "src/terminal/rust/hash_map.rs",
     "src/terminal/rust/ref_counted_set.rs",

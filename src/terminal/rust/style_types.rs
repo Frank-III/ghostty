@@ -57,6 +57,7 @@ pub const FLAG_INVERSE: u16 = 1 << 4;
 pub const FLAG_INVISIBLE: u16 = 1 << 5;
 pub const FLAG_STRIKETHROUGH: u16 = 1 << 6;
 pub const FLAG_OVERLINE: u16 = 1 << 7;
+pub const FLAG_UNDERLINE: u16 = 1 << 8;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct Flags(pub u16);
@@ -163,6 +164,19 @@ impl Flags {
             self.0 |= FLAG_OVERLINE
         } else {
             self.0 &= !FLAG_OVERLINE
+        }
+    }
+
+    #[inline(always)]
+    pub const fn underline(self) -> bool {
+        self.0 & FLAG_UNDERLINE != 0
+    }
+    #[inline(always)]
+    pub fn set_underline(&mut self, v: bool) {
+        if v {
+            self.0 |= FLAG_UNDERLINE
+        } else {
+            self.0 &= !FLAG_UNDERLINE
         }
     }
 }

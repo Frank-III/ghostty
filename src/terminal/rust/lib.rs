@@ -33,6 +33,7 @@ mod page_core;
 mod page_methods;
 mod page_list_types;
 mod page_list_methods;
+mod reflow_cursor;
 mod sgr_attribute;
 mod osc_types;
 mod stream_osc_dispatch;

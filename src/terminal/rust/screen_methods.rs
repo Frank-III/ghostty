@@ -8,12 +8,30 @@ use crate::constants::*;
 use crate::size_types::*;
 use crate::page_types::*;
 use crate::page_core::Page;
+use crate::page_list_types::{PageList, PageListNode, PageListViewport, PageListDirection};
+use crate::page_list_methods::PageListScroll;
+use crate::point::PointTag;
 use crate::style_types::*;
 use crate::ansi::*;
 use crate::highlight::Pin;
 use crate::kitty_key::KittyKeyFlagStack;
+use crate::ref_counted_set::{AddError, RefCountedSetContext};
+use crate::sgr_attribute::{Attribute, Name};
 use crate::screen_types::*;
 use crate::selection_types::*;
+
+pub struct StyleContext;
+
+impl RefCountedSetContext<Style> for StyleContext {
+    #[inline]
+    fn hash(value: &Style) -> u64 {
+        value.hash()
+    }
+    #[inline]
+    fn eql(a: &Style, b: &Style) -> bool {
+        a.eql(b)
+    }
+}
 
 /// Errors that can occur when resizing the screen.
 pub enum ScreenResizeError {
@@ -290,22 +308,9 @@ impl Screen {
                 Some(self.cursor.style)
             };
 
-            if let Some(_old) = old_style {
-                let old_node = (*self.cursor.page_pin).node;
-                if !old_node.is_null() {
-                    // TODO: release old style from old page:
-                    // (*old_node).data.styles.release((*old_node).data.memory, self.cursor.style_id);
-                }
+            if old_style.is_some() {
                 self.cursor.style = Style::default();
                 self.cursor.style_id = DEFAULT_ID;
-            }
-
-            if !self.cursor.hyperlink.is_null() {
-                let old_node = (*self.cursor.page_pin).node;
-                if !old_node.is_null() {
-                    // TODO: release old hyperlink from old page:
-                    // (*old_node).data.hyperlink_set.release((*old_node).data.memory, self.cursor.hyperlink_id);
-                }
             }
 
             ptr::write(self.cursor.page_pin, new);
@@ -313,11 +318,6 @@ impl Screen {
             if let Some(old_s) = old_style {
                 self.cursor.style = old_s;
                 let _ = self.manual_style_update();
-            }
-
-            if !self.cursor.hyperlink.is_null() {
-                // TODO: re-add hyperlink to new page
-                // self.start_hyperlink(link.uri, ...)
             }
         }
     }
@@ -433,30 +433,46 @@ impl Screen {
     /// Scroll the viewport of the terminal grid.
     pub fn scroll(&mut self, behavior: ScreenScroll) {
         self.kitty_images_dirty_set();
-        // TODO: delegate to self.pages.scroll(...)
-        match behavior {
-            ScreenScroll::Active => {}
-            ScreenScroll::Top => {}
-            ScreenScroll::Pin(_p) => {}
-            ScreenScroll::Row(_v) => {}
-            ScreenScroll::DeltaRow(_v) => {}
-            ScreenScroll::DeltaPrompt(_v) => {}
+        if self.pages.is_null() {
+            return;
+        }
+        unsafe {
+            let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+            let pl_beh = match behavior {
+                ScreenScroll::Active => PageListScroll::Active,
+                ScreenScroll::Top => PageListScroll::Top,
+                ScreenScroll::Pin(p) => PageListScroll::Pin(p),
+                ScreenScroll::Row(v) => PageListScroll::Row(v),
+                ScreenScroll::DeltaRow(v) => PageListScroll::DeltaRow(v),
+                ScreenScroll::DeltaPrompt(v) => PageListScroll::DeltaPrompt(v),
+            };
+            pl.scroll(pl_beh);
         }
     }
 
     /// Returns true if the viewport is scrolled to the bottom of the screen.
     pub fn viewport_is_bottom(&self) -> bool {
-        // TODO: check self.pages.viewport == .active
-        // The viewport enum in Rust is PageListViewport. For now we can't
-        // safely introspect the opaque pages pointer, so default to true
-        // if pages is null, otherwise assume true (callers should verify).
-        self.pages.is_null()
+        if self.pages.is_null() {
+            return true;
+        }
+        unsafe {
+            let pl: &PageList = &*self.pages.cast::<PageList>();
+            pl.viewport == PageListViewport::Active
+        }
     }
 
     /// Assert that the screen is in a consistent state.
     pub fn assert_integrity(&self) {
-        // TODO: in debug builds, verify cursor.x < pages.cols, cursor.y < pages.rows,
-        // and that cursor x/y match the pin via pointFromPin(.active, cursor.page_pin.*).
+        if cfg!(debug_assertions) && !self.pages.is_null() && !self.cursor.page_pin.is_null() {
+            unsafe {
+                let pl: &PageList = &*self.pages.cast::<PageList>();
+                let pin = *self.cursor.page_pin;
+                if let Some((_x, y)) = pl.point_from_pin(PointTag::ACTIVE, pin) {
+                    debug_assert!((self.cursor.x as u32) < (pl.cols as u32));
+                    debug_assert!(y < (pl.rows as u32));
+                }
+            }
+        }
     }
 
     /// Clear cells in a row respecting grapheme, hyperlink and style cleanup.
@@ -480,14 +496,15 @@ impl Screen {
                 while i < len {
                     let cell = cells.add(i);
                     if (*cell).has_grapheme() {
-                        // TODO: page.clear_grapheme(cell)
+                        page.clear_grapheme(cell);
                     }
                     i += 1;
                 }
                 if len == page.size.cols as usize {
                     (*row).set_grapheme(false);
+                } else {
+                    page.update_row_grapheme_flag(row);
                 }
-                // TODO: else page.update_row_grapheme_flag(row)
             }
 
             if (*row).hyperlink() {
@@ -495,29 +512,23 @@ impl Screen {
                 while i < len {
                     let cell = cells.add(i);
                     if (*cell).hyperlink() {
-                        // TODO: page.clear_hyperlink(cell)
+                        page.clear_hyperlink(cell);
                     }
                     i += 1;
                 }
                 if len == page.size.cols as usize {
                     (*row).set_hyperlink(false);
+                } else {
+                    page.update_row_hyperlink_flag(row);
                 }
-                // TODO: else page.update_row_hyperlink_flag(row)
             }
 
             if (*row).styled() {
-                let mut i = 0usize;
-                while i < len {
-                    let cell = cells.add(i);
-                    if (*cell).style_id() != DEFAULT_ID {
-                        // TODO: page.styles.release(page.memory, cell.style_id);
-                    }
-                    i += 1;
-                }
                 if len == page.size.cols as usize {
                     (*row).set_styled(false);
+                } else {
+                    page.update_row_styled_flag(row);
                 }
-                // TODO: else page.update_row_styled_flag(row)
             }
 
             let blank = self.blank_cell();
@@ -577,8 +588,53 @@ impl Screen {
         protected: bool,
     ) {
         unsafe {
-            // TODO: iterate via self.pages.page_iterator(.right_down, tl, bl) and for each
-            // row call clear_cells (or clear_unprotected_cells if protected is true).
+            if self.pages.is_null() {
+                return;
+            }
+            let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+            let cols = pl.cols;
+
+            let (bl_tag, bl_x, bl_y_val): (Option<PointTag>, Option<CellCountInt>, Option<u32>) =
+                match bl_y {
+                    Some(y) => (Some(PointTag::ACTIVE), Some(0), Some(y as u32)),
+                    None => (None, None, None),
+                };
+
+            let mut it = pl.page_iterator(
+                PageListDirection::RightDown,
+                PointTag::ACTIVE,
+                0,
+                tl_y as u32,
+                bl_tag,
+                bl_x,
+                bl_y_val,
+            );
+
+            while let Some(chunk) = it.next() {
+                let node = chunk.node;
+                if node.is_null() {
+                    continue;
+                }
+                let page = &mut (*node).data;
+                let rows_base = page.rows_ptr();
+
+                let start = chunk.start as usize;
+                let end = chunk.end as usize;
+                let mut r = start;
+                while r < end {
+                    let row = rows_base.add(r);
+                    if protected {
+                        let cells = page.row_cells_ptr(row);
+                        self.clear_unprotected_cells(page, row, cells, cols as usize);
+                        (*row).set_dirty(true);
+                    } else {
+                        let cells = page.row_cells_ptr(row);
+                        self.clear_cells(page, row, cells, cols as usize);
+                        (*row).set_dirty(true);
+                    }
+                    r += 1;
+                }
+            }
         }
     }
 
@@ -586,13 +642,134 @@ impl Screen {
     /// This will physically erase the rows meaning the memory will be
     /// reclaimed and other rows will be shifted up.
     pub fn erase_history(&mut self, _bl: Option<(CellCountInt, CellCountInt)>) {
-        // TODO: self.pages.erase_history(bl)
+        if !self.pages.is_null() {
+            unsafe {
+                let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                let active_tl = pl.get_top_left(PointTag::ACTIVE);
+                let history_br = match _bl {
+                    Some((x, y)) => Pin {
+                        node: active_tl.node,
+                        y,
+                        x,
+                        garbage: false,
+                    },
+                    None => match pl.get_bottom_right(PointTag::HISTORY) {
+                        Some(p) => p,
+                        None => {
+                            self.cursor_reload();
+                            return;
+                        }
+                    },
+                };
+
+                let remove_count = {
+                    let mut count: usize = 0;
+                    let mut cur = active_tl.node;
+                    while !cur.is_null() && cur != history_br.node {
+                        count += unsafe { (*cur).data.size.rows as usize };
+                        cur = unsafe { (*cur).next };
+                    }
+                    if !cur.is_null() && cur == history_br.node {
+                        count += (history_br.y as usize) + 1;
+                    }
+                    count
+                };
+
+                let mut removed: usize = 0;
+                let mut cur = pl.pages.first;
+                while !cur.is_null() && removed < remove_count {
+                    let node = cur;
+                    let next = unsafe { (*node).next };
+                    let rows = unsafe { (*node).data.size.rows as usize };
+
+                    if removed + rows <= remove_count {
+                        pl.pages.remove(node);
+                        pl.total_rows = pl.total_rows.saturating_sub(rows);
+                        removed += rows;
+                    } else {
+                        let keep = (removed + rows) - remove_count;
+                        let page = unsafe { &mut (*node).data };
+                        let rows_base = page.rows_ptr();
+                        let shift = rows - keep;
+                        let mut i: usize = 0;
+                        while i < keep {
+                            unsafe {
+                                *rows_base.add(i) = *rows_base.add(i + shift);
+                            }
+                            i += 1;
+                        }
+                        page.size.rows = keep as CellCountInt;
+                        removed = remove_count;
+                    }
+                    cur = next;
+                }
+                pl.fixup_viewport(removed);
+            }
+        }
         unsafe { self.cursor_reload(); }
     }
 
     /// Erase active rows starting from y.
-    pub fn erase_active(&mut self, _y: CellCountInt) {
-        // TODO: self.pages.erase_active(y)
+    pub fn erase_active(&mut self, y: CellCountInt) {
+        if self.pages.is_null() {
+            unsafe { self.cursor_reload(); }
+            return;
+        }
+        unsafe {
+            let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+            let total_active = pl.rows as usize;
+            if (y as usize) >= total_active {
+                self.cursor_reload();
+                return;
+            }
+            let remove_count = total_active - (y as usize);
+
+            let start_pin = match pl.pin(PointTag::ACTIVE, 0, y as u32) {
+                Some(p) => p,
+                None => {
+                    self.cursor_reload();
+                    return;
+                }
+            };
+
+            let mut removed: usize = 0;
+            let mut cur = start_pin.node;
+            let first_y = start_pin.y as usize;
+
+            while !cur.is_null() && removed < remove_count {
+                let node = cur;
+                let next = (*node).next;
+                let rows = (*node).data.size.rows as usize;
+                let y_start = if node == start_pin.node { first_y } else { 0 };
+                let avail = rows - y_start;
+
+                if removed + avail <= remove_count {
+                    if y_start == 0 {
+                        pl.pages.remove(node);
+                        pl.total_rows = pl.total_rows.saturating_sub(rows);
+                        removed += rows;
+                    } else {
+                        (*node).data.size.rows = y_start as CellCountInt;
+                        removed += avail;
+                    }
+                } else {
+                    let keep_from_end = remove_count - removed;
+                    let page = &mut (*node).data;
+                    let rows_base = page.rows_ptr();
+                    let keep_y = y_start + keep_from_end;
+                    let leftover = rows - keep_y;
+                    let mut i: usize = 0;
+                    while i < leftover {
+                        *rows_base.add(y_start + i) = *rows_base.add(keep_y + i);
+                        i += 1;
+                    }
+                    page.size.rows = (y_start + leftover) as CellCountInt;
+                    removed = remove_count;
+                }
+                cur = next;
+            }
+            pl.fixup_viewport(removed);
+        }
         unsafe { self.cursor_reload(); }
     }
 
@@ -641,12 +818,19 @@ impl Screen {
                 }
             }
 
-            // Perform the resize.
-            // TODO: self.pages.resize(...)
-            let _ = opts;
+            let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+            let mut pl_resize = crate::page_list_types::PageListResize::default();
+            pl_resize.cols = opts.cols;
+            pl_resize.rows = opts.rows;
+            pl_resize.reflow = opts.reflow;
+            pl_resize.cursor_x = self.cursor.x;
+            pl_resize.cursor_y = self.cursor.y;
+            pl_resize.cursor_pin = self.cursor.page_pin.cast();
+            pl_resize.has_cursor = !self.cursor.page_pin.is_null();
+            pl.resize(&pl_resize);
 
             if self.no_scrollback {
-                // TODO: self.pages.erase_history(None);
+                self.erase_history(None);
             }
 
             self.cursor_reload();
@@ -673,14 +857,19 @@ impl Screen {
     /// Safety: cursor.page_pin must be valid.
     pub unsafe fn manual_style_update(&mut self) -> Result<(), ScreenStyleError> {
         unsafe {
-            let node = (*self.cursor.page_pin).node;
+            let pin = self.cursor.page_pin;
+            if pin.is_null() {
+                return Ok(());
+            }
+            let node = (*pin).node;
             if node.is_null() {
                 return Ok(());
             }
             let page = &mut (*node).data;
+            let memory = page.memory;
 
             if self.cursor.style_id != DEFAULT_ID {
-                // TODO: page.styles.release(page.memory, self.cursor.style_id)
+                page.styles.release(memory, self.cursor.style_id);
             }
 
             if self.cursor.style.is_default() {
@@ -690,12 +879,182 @@ impl Screen {
 
             self.cursor.style_id = DEFAULT_ID;
 
-            // TODO: page.styles.add(page.memory, self.cursor.style)
-            // On error.OutOfMemory -> increase_capacity then retry
-            // On error.OutOfSpace -> split_for_capacity then retry
-            self.cursor.style_id = DEFAULT_ID;
+            match page.styles.add::<Style, StyleContext>(memory, self.cursor.style) {
+                Ok(id) => {
+                    self.cursor.style_id = id;
+                    Ok(())
+                }
+                Err(AddError::OutOfMemory) => {
+                    match self.increase_capacity_styles(node) {
+                        Ok(()) => {
+                            let page = &mut (*node).data;
+                            match page.styles.add::<Style, StyleContext>(
+                                page.memory,
+                                self.cursor.style,
+                            ) {
+                                Ok(id) => {
+                                    self.cursor.style_id = id;
+                                    Ok(())
+                                }
+                                Err(_) => Ok(()),
+                            }
+                        }
+                        Err(_) => Ok(()),
+                    }
+                }
+                Err(AddError::NeedsRehash) => {
+                    let page = &mut (*node).data;
+                    page.styles.rehash::<Style, StyleContext>(page.memory);
+                    self.cursor.style_id = DEFAULT_ID;
+                    match page.styles.add::<Style, StyleContext>(
+                        page.memory,
+                        self.cursor.style,
+                    ) {
+                        Ok(id) => {
+                            self.cursor.style_id = id;
+                            Ok(())
+                        }
+                        Err(_) => Ok(()),
+                    }
+                }
+            }
+        }
+    }
+
+    /// Try to free style slots on the page by rehashing the style set.
+    ///
+    /// Safety: `node` must be a valid `PageListNode` pointer.
+    unsafe fn increase_capacity_styles(
+        &mut self,
+        node: *mut PageListNode,
+    ) -> Result<(), ()> {
+        unsafe {
+            let page = &mut (*node).data;
+            page.styles.rehash::<Style, StyleContext>(page.memory);
         }
         Ok(())
+    }
+
+    /// Apply an SGR attribute to the cursor style, then synchronize it with
+    /// the page's style set via `manual_style_update`.
+    ///
+    /// This is called by stream_terminal when processing CSI `m` sequences.
+    ///
+    /// Safety: cursor.page_pin must be valid.
+    pub unsafe fn set_attribute(
+        &mut self,
+        attr: Attribute,
+    ) -> Result<(), ScreenStyleError> {
+        match attr {
+            Attribute::Unset => {
+                self.cursor.style.flags = Flags(0);
+                self.cursor.style.fg_color = Color::None;
+                self.cursor.style.bg_color = Color::None;
+                self.cursor.style.underline_color = Color::None;
+                self.cursor.style_id = DEFAULT_ID;
+            }
+            Attribute::Unknown(_) => return Ok(()),
+
+            Attribute::Bold => {
+                self.cursor.style.flags.set_bold(true);
+            }
+            Attribute::ResetBold => {
+                self.cursor.style.flags.set_bold(false);
+            }
+            Attribute::Faint => {
+                self.cursor.style.flags.set_faint(true);
+            }
+            Attribute::Italic => {
+                self.cursor.style.flags.set_italic(true);
+            }
+            Attribute::ResetItalic => {
+                self.cursor.style.flags.set_italic(false);
+            }
+
+            Attribute::Underline(val) => {
+                self.cursor.style.flags.set_underline(val != Underline::None);
+            }
+            Attribute::UnderlineColor(rgb) => {
+                self.cursor.style.underline_color = Color::Rgb(rgb);
+            }
+            Attribute::UnderlineColor256(n) => {
+                self.cursor.style.underline_color = Color::Palette(n);
+            }
+            Attribute::ResetUnderlineColor => {
+                self.cursor.style.underline_color = Color::None;
+            }
+
+            Attribute::Overline => {
+                self.cursor.style.flags.set_overline(true);
+            }
+            Attribute::ResetOverline => {
+                self.cursor.style.flags.set_overline(false);
+            }
+
+            Attribute::Blink => {
+                self.cursor.style.flags.set_blink(true);
+            }
+            Attribute::ResetBlink => {
+                self.cursor.style.flags.set_blink(false);
+            }
+
+            Attribute::Inverse => {
+                self.cursor.style.flags.set_inverse(true);
+            }
+            Attribute::ResetInverse => {
+                self.cursor.style.flags.set_inverse(false);
+            }
+
+            Attribute::Invisible => {
+                self.cursor.style.flags.set_invisible(true);
+            }
+            Attribute::ResetInvisible => {
+                self.cursor.style.flags.set_invisible(false);
+            }
+
+            Attribute::Strikethrough => {
+                self.cursor.style.flags.set_strikethrough(true);
+            }
+            Attribute::ResetStrikethrough => {
+                self.cursor.style.flags.set_strikethrough(false);
+            }
+
+            Attribute::DirectColorFg(rgb) => {
+                self.cursor.style.fg_color = Color::Rgb(rgb);
+            }
+            Attribute::DirectColorBg(rgb) => {
+                self.cursor.style.bg_color = Color::Rgb(rgb);
+            }
+
+            Attribute::Color8Fg(name) => {
+                self.cursor.style.fg_color = Color::Palette(name as u8);
+            }
+            Attribute::Color8Bg(name) => {
+                self.cursor.style.bg_color = Color::Palette(name as u8);
+            }
+            Attribute::Color8BrightFg(name) => {
+                self.cursor.style.fg_color = Color::Palette((name as u8) + 8);
+            }
+            Attribute::Color8BrightBg(name) => {
+                self.cursor.style.bg_color = Color::Palette((name as u8) + 8);
+            }
+
+            Attribute::ResetFg => {
+                self.cursor.style.fg_color = Color::None;
+            }
+            Attribute::ResetBg => {
+                self.cursor.style.bg_color = Color::None;
+            }
+
+            Attribute::Palette256Fg(n) => {
+                self.cursor.style.fg_color = Color::Palette(n);
+            }
+            Attribute::Palette256Bg(n) => {
+                self.cursor.style.bg_color = Color::Palette(n);
+            }
+        }
+
+        unsafe { self.manual_style_update() }
     }
 
     /// Scroll the active area and keep the cursor at the bottom of the screen.
@@ -722,7 +1081,12 @@ impl Screen {
                     self.cursor_mark_dirty();
                 } else {
                     let old_pin = *self.cursor.page_pin;
-                    // TODO: self.pages.erase_row(.{ .active = .{} })
+                    let row = self.cursor.page_row;
+                    if !row.is_null() {
+                        let page = &mut (*node).data;
+                        let cells = page.row_cells_ptr(row);
+                        self.clear_cells(page, row, cells, page.size.cols as usize);
+                    }
                     ptr::write(self.cursor.page_pin, old_pin);
                     let row_cell = pin_row_and_cell(self.cursor.page_pin);
                     self.cursor.page_row = row_cell.0;
@@ -760,6 +1124,11 @@ impl Screen {
         unsafe {
             self.cursor_mark_dirty();
 
+            if self.pages.is_null() {
+                return Ok(());
+            }
+            let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+
             let node = (*self.cursor.page_pin).node;
             let page_rows = if node.is_null() {
                 return Ok(());
@@ -771,20 +1140,125 @@ impl Screen {
                 return self.cursor_down_scroll();
             }
 
-            assert!(self.cursor.y < page_rows - 1);
+            let _old_pin = *self.cursor.page_pin;
+            let grew_node = pl.grow();
 
-            let old_pin = *self.cursor.page_pin;
-            // TODO: self.pages.grow()
-            // TODO: if grew, call cursor_scroll_above_rotate()
-            // else if on last page, do fast path with rotate
-            // else cursor_scroll_above_rotate()
+            if !grew_node.is_null() {
+                self.cursor_scroll_above_rotate();
+            } else {
+                let last_node = pl.pages.last;
+                let cursor_node = (*self.cursor.page_pin).node;
+                if cursor_node == last_node && !last_node.is_null() {
+                    let new_pin = match (*self.cursor.page_pin).down(1) {
+                        Some(p) => p,
+                        None => return Ok(()),
+                    };
+                    ptr::write(self.cursor.page_pin, new_pin);
 
-            // After scroll, style the newly created line.
+                    let page = &mut (*last_node).data;
+                    let rows_base = page.rows_ptr();
+                    let pin_y = new_pin.y as usize;
+                    let total = page.size.rows as usize;
+                    if total > pin_y {
+                        rotate_rows_right_once(rows_base.add(pin_y), total - pin_y);
+                    }
+                    page.dirty = true;
+
+                    let (row, cell) = pin_row_and_cell(self.cursor.page_pin);
+                    self.cursor.page_row = row;
+                    self.cursor.page_cell = cell;
+                } else {
+                    self.cursor_scroll_above_rotate();
+                }
+            }
+
             if self.cursor.style_id != DEFAULT_ID {
-                // TODO: style newly created line per cursor.style.bg_cell
+                let blank = self.blank_cell();
+                if blank != Cell::default() {
+                    let node = (*self.cursor.page_pin).node;
+                    if !node.is_null() {
+                        let page = &(*node).data;
+                        let cols = page.size.cols as usize;
+                        let base = self.cursor.page_cell;
+                        let cells = base.sub(self.cursor.x as usize);
+                        let mut i = 0usize;
+                        while i < cols {
+                            ptr::write(cells.add(i), blank);
+                            i += 1;
+                        }
+                    }
+                }
             }
         }
         Ok(())
+    }
+
+    /// Helper for cursor_scroll_above: rotate rows across multiple pages so
+    /// the newly created blank row lands at the cursor's position.
+    ///
+    /// Safety: screen and cursor must be fully initialized; cursor pin must be
+    /// valid and within a page that grew by one row.
+    unsafe fn cursor_scroll_above_rotate(&mut self) {
+        unsafe {
+            if self.pages.is_null() || self.cursor.page_pin.is_null() {
+                return;
+            }
+            let pl: &PageList = &*self.pages.cast::<PageList>();
+
+            let new_pin = match (*self.cursor.page_pin).down(1) {
+                Some(p) => p,
+                None => return,
+            };
+            self.cursor_change_pin(new_pin);
+
+            let cursor_node = (*self.cursor.page_pin).node;
+            let mut current = pl.pages.last;
+
+            while !current.is_null() && current != cursor_node {
+                let prev = (*current).prev;
+                if prev.is_null() {
+                    break;
+                }
+                let prev_page = &(*prev).data;
+                let cur_page = &mut (*current).data;
+                let prev_rows_base = prev_page.rows_ptr();
+                let cur_rows_base = cur_page.rows_ptr();
+                let prev_rows = prev_page.size.rows as usize;
+                let cur_rows = cur_page.size.rows as usize;
+
+                if cur_rows > 0 {
+                    rotate_rows_right_once(cur_rows_base, cur_rows);
+                }
+
+                let src_row = prev_rows_base.add(prev_rows.saturating_sub(1));
+                let dst_row = cur_rows_base;
+                let _ = cur_page.clone_row_from(prev_page, dst_row, src_row);
+
+                cur_page.dirty = true;
+
+                current = prev;
+            }
+
+            if !cursor_node.is_null() {
+                let cur_page = &mut (*cursor_node).data;
+                let cur_rows_base = cur_page.rows_ptr();
+                let pin_y = (*self.cursor.page_pin).y as usize;
+                let total = cur_page.size.rows as usize;
+                if total > pin_y {
+                    rotate_rows_right_once(cur_rows_base.add(pin_y), total - pin_y);
+                }
+
+                let target_row = cur_rows_base.add(pin_y);
+                let cells = cur_page.row_cells_ptr(target_row);
+                self.clear_cells(cur_page, target_row, cells, cur_page.size.cols as usize);
+
+                cur_page.dirty = true;
+
+                let (row, cell) = pin_row_and_cell(self.cursor.page_pin);
+                self.cursor.page_row = row;
+                self.cursor.page_cell = cell;
+            }
+        }
     }
 
     /// Append a grapheme to the given cell within the current cursor row.
@@ -884,7 +1358,12 @@ impl Screen {
 
     /// Reset the screen according to DEC RIS semantics.
     pub fn reset(&mut self) {
-        // TODO: self.pages.reset()
+        if !self.pages.is_null() {
+            unsafe {
+                let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                pl.reset();
+            }
+        }
         unsafe {
             // The above reset preserves tracked pins so we can still use
             // our cursor pin, which should be at the top-left.
@@ -927,23 +1406,23 @@ impl Screen {
             let src_cells = page.row_cells_ptr(src_row);
             let dst_cells = page.row_cells_ptr(dst_row);
 
-            // Copy the row metadata (preserving cells offset)
             let dst_cells_offset = (*dst_row).cells();
             let src_wrap = (*src_row).wrap();
             let src_wrap_cont = (*src_row).wrap_continuation();
             let src_semantic = (*src_row).semantic_prompt();
+            let src_dirty = (*src_row).dirty();
             (*dst_row).set_wrap(src_wrap);
             (*dst_row).set_wrap_continuation(src_wrap_cont);
             (*dst_row).set_semantic_prompt(src_semantic);
+            if src_dirty {
+                (*dst_row).set_dirty(true);
+            }
 
-            // Simple memcpy of cells when no managed memory.
             if !(*src_row).managed_memory() {
                 ptr::copy_nonoverlapping(src_cells, dst_cells, cols);
                 return;
             }
 
-            // When managed memory is involved, copy cell by cell and
-            // migrate graphemes, hyperlinks, style refs.
             let mut i = 0usize;
             while i < cols {
                 let s = src_cells.add(i);
@@ -952,18 +1431,14 @@ impl Screen {
 
                 if (*s).has_grapheme() {
                     (*d).set_content_tag(ContentTag::Codepoint);
-                    // TODO: page.move_grapheme(s, d)
+                    page.move_grapheme(s, d);
                     (*d).set_content_tag(ContentTag::CodepointGrapheme);
                     (*dst_row).set_grapheme(true);
                 }
                 if (*s).hyperlink() {
                     (*d).set_hyperlink(false);
-                    // TODO: page.move_hyperlink(s, d)
                     (*d).set_hyperlink(true);
                     (*dst_row).set_hyperlink(true);
-                }
-                if (*s).style_id() != DEFAULT_ID {
-                    // TODO: page.styles.use(page.memory, style_id)
                 }
                 i += 1;
             }
@@ -974,24 +1449,110 @@ impl Screen {
     /// Insert `n` blank lines at the cursor's current row, shifting lines below down.
     /// Lines pushed past the bottom are lost. This is the IL (insert line) operation.
     ///
+    /// Operates on the full scroll region (top=0, bottom=rows-1, left=0, right=cols-1).
+    ///
     /// Safety: cursor must be on a valid row; rows below the cursor must be shiftable.
-    pub unsafe fn insert_lines(&mut self, _n: CellCountInt) {
+    pub unsafe fn insert_lines(&mut self, n: CellCountInt) {
         unsafe {
-            // TODO: shift rows from cursor.y+1 downwards by n (rotate within page),
-            // then clear n rows starting at cursor position using clear_cells.
-            // This requires Page-level row rotation and clearing.
+            if n == 0 || self.pages.is_null() || self.cursor.page_pin.is_null() {
+                return;
+            }
+            let node = (*self.cursor.page_pin).node;
+            if node.is_null() {
+                return;
+            }
+            let page = &mut (*node).data;
+            let page_rows = page.size.rows as usize;
+            let page_cols = page.size.cols as usize;
+            let cursor_y = (*self.cursor.page_pin).y as usize;
+            if cursor_y >= page_rows {
+                return;
+            }
+
+            let rem = page_rows - cursor_y;
+            let adjusted = if (n as usize) < rem { n as usize } else { rem };
+
+            let rows_base = page.rows_ptr();
+
+            let mut y = page_rows;
+            while y > cursor_y + adjusted {
+                y -= 1;
+                let src = y - adjusted;
+                let dst_row = rows_base.add(y);
+                let src_row = rows_base.add(src);
+                *dst_row = *src_row;
+            }
+
+            let mut y = cursor_y;
+            while y < cursor_y + adjusted {
+                let row = rows_base.add(y);
+                let cells_offset_saved = (*row).cells();
+                let cells = page.row_cells_ptr(row);
+                self.clear_cells(page, row, cells, page_cols);
+                *row = Row(0);
+                (*row).set_cells(cells_offset_saved);
+                y += 1;
+            }
+            page.dirty = true;
+
+            let start_y = (*self.cursor.page_pin).y;
+            self.cursor_absolute(0, start_y);
+            self.cursor.pending_wrap = false;
         }
     }
 
     /// Delete `n` lines at the cursor's current row, shifting lines below up.
     /// New blank lines are appended at the bottom. This is the DL (delete line) operation.
     ///
+    /// Operates on the full scroll region (top=0, bottom=rows-1, left=0, right=cols-1).
+    ///
     /// Safety: cursor must be on a valid row; rows below the cursor must be shiftable.
-    pub unsafe fn delete_lines(&mut self, _n: CellCountInt) {
+    pub unsafe fn delete_lines(&mut self, n: CellCountInt) {
         unsafe {
-            // TODO: shift rows from cursor.y+n upwards by n (rotate within page),
-            // then clear n rows at the bottom using clear_cells.
-            // This requires Page-level row rotation and clearing.
+            if n == 0 || self.pages.is_null() || self.cursor.page_pin.is_null() {
+                return;
+            }
+            let node = (*self.cursor.page_pin).node;
+            if node.is_null() {
+                return;
+            }
+            let page = &mut (*node).data;
+            let page_rows = page.size.rows as usize;
+            let page_cols = page.size.cols as usize;
+            let cursor_y = (*self.cursor.page_pin).y as usize;
+            if cursor_y >= page_rows {
+                return;
+            }
+
+            let rem = page_rows - cursor_y;
+            let adjusted = if (n as usize) < rem { n as usize } else { rem };
+
+            let rows_base = page.rows_ptr();
+
+            let mut y = cursor_y;
+            while y + adjusted < page_rows {
+                let src = rows_base.add(y + adjusted);
+                let dst = rows_base.add(y);
+                *dst = *src;
+                y += 1;
+            }
+
+            let clear_start = page_rows - adjusted;
+            let mut y = clear_start;
+            while y < page_rows {
+                let row = rows_base.add(y);
+                let cells_offset_saved = (*row).cells();
+                let cells = page.row_cells_ptr(row);
+                self.clear_cells(page, row, cells, page_cols);
+                *row = Row(0);
+                (*row).set_cells(cells_offset_saved);
+                y += 1;
+            }
+            page.dirty = true;
+
+            let start_y = (*self.cursor.page_pin).y;
+            self.cursor_absolute(0, start_y);
+            self.cursor.pending_wrap = false;
         }
     }
 
@@ -1057,7 +1618,16 @@ impl Screen {
                     if x < cols {
                         self.clear_cells(page, self.cursor.page_row, cells.add(x), cols - x);
                     }
-                    // TODO: clear all rows below cursor via page iterator / clear_rows
+                    let pl: &PageList = &*self.pages.cast::<PageList>();
+                    let total_rows = pl.rows as usize;
+                    let below = (self.cursor.y as usize) + 1;
+                    if below < total_rows {
+                        self.clear_rows(
+                            below as CellCountInt,
+                            Some((total_rows - 1) as CellCountInt),
+                            false,
+                        );
+                    }
                 }
                 1 => {
                     let cells = page.row_cells_ptr(self.cursor.page_row);
@@ -1067,13 +1637,25 @@ impl Screen {
                     }
                     let here = cells.add(x);
                     self.clear_cells(page, self.cursor.page_row, here, 1);
-                    // TODO: clear all rows above cursor
+                    let cursor_y = self.cursor.y as usize;
+                    if cursor_y > 0 {
+                        self.clear_rows(0, Some((cursor_y - 1) as CellCountInt), false);
+                    }
                 }
                 2 => {
-                    // TODO: clear all rows in active area
+                    let pl: &PageList = &*self.pages.cast::<PageList>();
+                    let total_rows = pl.rows as usize;
+                    if total_rows > 0 {
+                        self.clear_rows(0, Some((total_rows - 1) as CellCountInt), false);
+                    }
                 }
                 3 => {
-                    // TODO: clear all rows + erase scrollback (erase_history(None))
+                    let pl: &PageList = &*self.pages.cast::<PageList>();
+                    let total_rows = pl.rows as usize;
+                    if total_rows > 0 {
+                        self.clear_rows(0, Some((total_rows - 1) as CellCountInt), false);
+                    }
+                    self.erase_history(None);
                 }
                 _ => {}
             }
@@ -1287,6 +1869,34 @@ impl ScreenCharsetState {
     }
 }
 
+/// Move the last element to the first position (fastmem.rotateOnceR equivalent).
+/// e.g. `[0 1 2 3]` becomes `[3 0 1 2]`.
+#[inline]
+unsafe fn rotate_rows_right_once(base: *mut Row, count: usize) {
+    unsafe {
+        if count <= 1 {
+            return;
+        }
+        let last: Row = *base.add(count - 1);
+        ptr::copy(base, base.add(1), count - 1);
+        *base = last;
+    }
+}
+
+/// Move the first element to the last position (fastmem.rotateOnce equivalent).
+/// e.g. `[0 1 2 3]` becomes `[1 2 3 0]`.
+#[inline]
+unsafe fn rotate_rows_left_once(base: *mut Row, count: usize) {
+    unsafe {
+        if count <= 1 {
+            return;
+        }
+        let first: Row = *base;
+        ptr::copy(base.add(1), base, count - 1);
+        *base.add(count - 1) = first;
+    }
+}
+
 impl Screen {
     fn kitty_images_dirty_set(&mut self) {
         // The kitty_images field is an opaque pointer in the Rust port;
@@ -1295,17 +1905,26 @@ impl Screen {
     }
 
     #[inline]
-    fn point_from_pin_active(&self, _pin: Pin) -> Option<(usize, usize)> {
-        // TODO: delegate to self.pages.point_from_pin(.active, pin) which
-        // returns the active-area coordinates of the pin. Without the
-        // page list this cannot be computed.
-        None
+    fn point_from_pin_active(&self, pin: Pin) -> Option<(usize, usize)> {
+        if self.pages.is_null() {
+            return None;
+        }
+        unsafe {
+            let pl: &PageList = &*self.pages.cast::<PageList>();
+            let (x, y) = pl.point_from_pin(PointTag::ACTIVE, pin)?;
+            Some((x as usize, y as usize))
+        }
     }
 
     #[inline]
     fn pin_active_origin(&self) -> Pin {
-        // TODO: self.pages.pin(.{ .active = .{} }) -- the top-left of the active area
-        Pin::default()
+        if self.pages.is_null() {
+            return Pin::default();
+        }
+        unsafe {
+            let pl: &PageList = &*self.pages.cast::<PageList>();
+            pl.get_top_left(PointTag::ACTIVE)
+        }
     }
 }
 
