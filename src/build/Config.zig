@@ -32,6 +32,8 @@ x11: bool = false,
 wayland: bool = false,
 sentry: bool = true,
 simd: bool = true,
+lib_vt_rust: bool = false,
+rustc: []const u8 = "rustc",
 i18n: bool = true,
 wasm_shared: bool = true,
 
@@ -204,6 +206,17 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
 
         break :simd true;
     };
+
+    config.lib_vt_rust = b.option(
+        bool,
+        "lib-vt-rust",
+        "Build libghostty-vt C ABI entrypoints with Rust-backed implementations.",
+    ) orelse false;
+    config.rustc = b.option(
+        []const u8,
+        "rustc",
+        "Rust compiler command for -Dlib-vt-rust builds.",
+    ) orelse "rustc";
 
     config.wayland = b.option(
         bool,
@@ -574,6 +587,7 @@ pub fn terminalOptions(self: *const Config, artifact: TerminalBuildOptions.Artif
     return .{
         .artifact = artifact,
         .simd = self.simd,
+        .lib_vt_rust = false,
         .oniguruma = true,
         .c_abi = false,
         .version = switch (artifact) {

@@ -27,6 +27,9 @@ pub const Options = struct {
     /// but results in significant performance improvements.
     simd: bool,
 
+    /// Whether selected libghostty-vt C ABI entrypoints are backed by Rust.
+    lib_vt_rust: bool,
+
     /// True if we should enable the "slow" runtime safety checks. These
     /// are runtime safety checks that are slower than typical and should
     /// generally be disabled in production builds.
@@ -53,6 +56,7 @@ pub const Options = struct {
         opts.addOption(bool, "c_abi", self.c_abi);
         opts.addOption(bool, "oniguruma", self.oniguruma);
         opts.addOption(bool, "simd", self.simd);
+        opts.addOption(bool, "lib_vt_rust", self.lib_vt_rust);
         opts.addOption(bool, "slow_runtime_safety", self.slow_runtime_safety);
 
         // Kitty graphics is almost always true. This used to be conditional on

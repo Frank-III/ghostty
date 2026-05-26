@@ -4,6 +4,7 @@ const GhosttyZig = @This();
 
 const std = @import("std");
 const Config = @import("Config.zig");
+const GhosttyRust = @import("GhosttyRust.zig");
 const SharedDeps = @import("SharedDeps.zig");
 const TerminalBuildOptions = @import("../terminal/build_options.zig").Options;
 
@@ -110,6 +111,13 @@ fn initVt(
     vt_options: TerminalBuildOptions,
     simd_libs: ?*SharedDeps.LazyPathList,
 ) !*std.Build.Module {
+    var options = vt_options;
+    const rust_object = if (options.c_abi and cfg.lib_vt_rust)
+        GhosttyRust.libVtObject(b, cfg, options, "ghostty_vt_rust")
+    else
+        null;
+    options.lib_vt_rust = rust_object != null;
+
     // General build options
     const general_options = b.addOptions();
     try cfg.addOptions(general_options);
@@ -129,7 +137,11 @@ fn initVt(
             cfg.target.result.abi != .msvc) true else null,
     });
     vt.addOptions("build_options", general_options);
-    vt_options.add(b, vt);
+    options.add(b, vt);
+
+    if (rust_object) |object| {
+        vt.addObjectFile(object);
+    }
 
     // We always need unicode tables
     deps.unicode_tables.addModuleImport(vt);

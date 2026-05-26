@@ -1,0 +1,128 @@
+const std = @import("std");
+const Config = @import("Config.zig");
+const TerminalBuildOptions = @import("../terminal/build_options.zig").Options;
+
+pub fn libVtObject(
+    b: *std.Build,
+    cfg: *const Config,
+    options: TerminalBuildOptions,
+    name: []const u8,
+) std.Build.LazyPath {
+    const target = cfg.target.result;
+    const triple = rustTargetTriple(target) orelse
+        @panic("no Rust target mapping for this libghostty-vt target; pass -Dlib-vt-rust=false");
+
+    const run = b.addSystemCommand(&.{
+        cfg.rustc,
+        "--crate-name",
+        name,
+        "--crate-type=lib",
+        "--edition=2021",
+        "--emit=obj",
+        "--target",
+        triple,
+        "-C",
+        "panic=abort",
+        "-C",
+        "relocation-model=pic",
+        "-C",
+        "debug-assertions=no",
+    });
+    addBuildInfoEnv(run, b, cfg, options);
+
+    switch (cfg.optimize) {
+        .Debug => run.addArgs(&.{ "-C", "opt-level=0", "-C", "debuginfo=2" }),
+        .ReleaseSafe => run.addArgs(&.{ "-C", "opt-level=3", "-C", "debuginfo=1" }),
+        .ReleaseFast => run.addArgs(&.{ "-C", "opt-level=3" }),
+        .ReleaseSmall => run.addArgs(&.{ "-C", "opt-level=z" }),
+    }
+
+    run.addArg("-o");
+    const output = run.addOutputFileArg(objectName(target));
+    run.addFileArg(b.path("src/terminal/rust/lib.rs"));
+    return output;
+}
+
+fn addBuildInfoEnv(
+    run: *std.Build.Step.Run,
+    b: *std.Build,
+    cfg: *const Config,
+    options: TerminalBuildOptions,
+) void {
+    run.setEnvironmentVariable("GHOSTTY_VT_SIMD", if (options.simd) "1" else "0");
+    run.setEnvironmentVariable("GHOSTTY_VT_KITTY_GRAPHICS", if (kittyGraphics(cfg)) "1" else "0");
+    run.setEnvironmentVariable("GHOSTTY_VT_TMUX_CONTROL_MODE", if (options.oniguruma) "1" else "0");
+    run.setEnvironmentVariable("GHOSTTY_VT_OPTIMIZE", switch (cfg.optimize) {
+        .Debug => "debug",
+        .ReleaseSafe => "release_safe",
+        .ReleaseSmall => "release_small",
+        .ReleaseFast => "release_fast",
+    });
+    run.setEnvironmentVariable("GHOSTTY_VT_VERSION_STRING", b.fmt("{f}", .{options.version}));
+    run.setEnvironmentVariable("GHOSTTY_VT_VERSION_MAJOR", b.fmt("{d}", .{options.version.major}));
+    run.setEnvironmentVariable("GHOSTTY_VT_VERSION_MINOR", b.fmt("{d}", .{options.version.minor}));
+    run.setEnvironmentVariable("GHOSTTY_VT_VERSION_PATCH", b.fmt("{d}", .{options.version.patch}));
+    run.setEnvironmentVariable("GHOSTTY_VT_VERSION_PRE", options.version.pre orelse "");
+    run.setEnvironmentVariable("GHOSTTY_VT_VERSION_BUILD", options.version.build orelse "");
+}
+
+fn kittyGraphics(cfg: *const Config) bool {
+    const target = cfg.target.result;
+    return !(target.cpu.arch == .wasm32 and target.os.tag == .freestanding);
+}
+
+fn objectName(target: std.Target) []const u8 {
+    return switch (target.ofmt) {
+        .coff => "ghostty_vt_rust.obj",
+        else => "ghostty_vt_rust.o",
+    };
+}
+
+fn rustTargetTriple(target: std.Target) ?[]const u8 {
+    return switch (target.os.tag) {
+        .macos => switch (target.cpu.arch) {
+            .aarch64 => "aarch64-apple-darwin",
+            .x86_64 => "x86_64-apple-darwin",
+            else => null,
+        },
+        .ios => switch (target.cpu.arch) {
+            .aarch64 => if (target.abi == .simulator)
+                "aarch64-apple-ios-sim"
+            else
+                "aarch64-apple-ios",
+            .x86_64 => if (target.abi == .simulator)
+                "x86_64-apple-ios"
+            else
+                null,
+            else => null,
+        },
+        .linux => switch (target.cpu.arch) {
+            .aarch64 => if (target.abi.isMusl())
+                "aarch64-unknown-linux-musl"
+            else
+                "aarch64-unknown-linux-gnu",
+            .x86_64 => if (target.abi.isMusl())
+                "x86_64-unknown-linux-musl"
+            else
+                "x86_64-unknown-linux-gnu",
+            else => null,
+        },
+        .windows => switch (target.cpu.arch) {
+            .aarch64 => if (target.abi == .msvc)
+                "aarch64-pc-windows-msvc"
+            else
+                null,
+            .x86_64 => if (target.abi == .msvc)
+                "x86_64-pc-windows-msvc"
+            else
+                "x86_64-pc-windows-gnu",
+            else => null,
+        },
+        .freebsd => switch (target.cpu.arch) {
+            .aarch64 => "aarch64-unknown-freebsd",
+            .x86_64 => "x86_64-unknown-freebsd",
+            else => null,
+        },
+        else => null,
+    };
+}
