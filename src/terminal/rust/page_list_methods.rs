@@ -6,6 +6,7 @@ use crate::page_core::{std_capacity, Page};
 use crate::page_list_types::*;
 use crate::page_types::*;
 use crate::point::PointTag;
+use crate::reflow_cursor::ReflowCursor;
 use crate::size_types::OffsetBuf;
 use crate::CellCountInt;
 
@@ -1693,22 +1694,16 @@ impl PageList {
         let new_rows = if opts.rows != 0 { opts.rows } else { self.rows };
 
         if opts.reflow {
-            let old_min_max_size = self.min_max_size;
             self.min_max_size = self.calc_min_max_size(new_cols, new_rows);
 
             if new_cols == self.cols {
                 self.resize_without_reflow_no_cols(new_rows);
             } else if new_cols > self.cols {
-                self.cols = new_cols;
-                // TODO: reflow cols upward (unwrapping) - requires
-                // ReflowCursor and page allocation
-                let _ = old_min_max_size;
+                self.resize_cols(new_cols);
                 self.resize_without_reflow_no_cols(new_rows);
             } else {
                 self.resize_without_reflow_no_cols(new_rows);
-                self.cols = new_cols;
-                // TODO: reflow cols downward (wrapping) - requires
-                // ReflowCursor and page allocation
+                self.resize_cols(new_cols);
             }
 
             match self.viewport {
@@ -1744,9 +1739,7 @@ impl PageList {
                 }
                 self.cols = new_cols;
             } else if new_cols != self.cols && new_cols > self.cols {
-                // TODO: growing cols without reflow requires capacity
-                // reallocation per page - allocator-dependent
-                self.cols = new_cols;
+                self.resize_without_reflow_grow_cols(new_cols);
             }
 
             self.resize_without_reflow_no_cols(new_rows);
@@ -1786,6 +1779,184 @@ impl PageList {
                 },
                 _ => {}
             }
+        }
+    }
+
+    fn resize_cols(&mut self, new_cols: CellCountInt) {
+        unsafe {
+            let first_old = self.pages.first;
+            if first_old.is_null() {
+                return;
+            }
+
+            let cap: PageCapacity = match (*first_old).data.capacity.adjust(&CapacityAdjustment {
+                cols: Some(new_cols),
+            }) {
+                Ok(c) => c,
+                Err(()) => {
+                    let mut fallback = (*first_old).data.capacity;
+                    fallback.cols = new_cols;
+                    let std_rows = std_capacity().rows;
+                    fallback.rows = if (*first_old).data.size.rows < std_rows {
+                        (*first_old).data.size.rows
+                    } else {
+                        std_rows
+                    };
+                    fallback
+                }
+            };
+
+            self.cols = new_cols;
+
+            let first_new_node = match self.alloc_page_node(cap) {
+                Some(n) => n,
+                None => return,
+            };
+            (*first_new_node).data.size.rows = 1;
+
+            let mut row_it = self.row_iterator(
+                PageListDirection::RightDown,
+                PointTag::SCREEN,
+                0,
+                0,
+                None,
+                None,
+                None,
+            );
+
+            self.pages.first = first_new_node;
+            self.pages.last = first_new_node;
+
+            let mut reflow_cursor = ReflowCursor::init(first_new_node);
+            while let Some(row_pin) = row_it.next() {
+                let row_node = row_pin.node;
+                let row_y = row_pin.y;
+                let last_row_in_page = (*row_node).data.size.rows - 1;
+
+                let _ = reflow_cursor.reflow_row(
+                    self as *mut PageList,
+                    row_pin,
+                    None,
+                );
+
+                if row_y == last_row_in_page {
+                    self.destroy_page_node_full(row_node);
+                }
+            }
+
+            self.total_rows = reflow_cursor.total_rows;
+
+            let mut total: usize = 0;
+            let mut node_it = self.pages.first;
+            while !node_it.is_null() {
+                total += (*node_it).data.size.rows as usize;
+                if total >= self.rows as usize {
+                    break;
+                }
+                node_it = (*node_it).next;
+            }
+            if total < self.rows as usize {
+                let needed = self.rows as usize - total;
+                for _ in 0..needed {
+                    self.grow();
+                }
+            }
+        }
+    }
+
+    fn resize_without_reflow_grow_cols(&mut self, new_cols: CellCountInt) {
+        let old_cols = self.cols;
+        unsafe {
+            let mut it = self.pages.first;
+            while !it.is_null() {
+                let node = it;
+                it = (*node).next;
+                let page: *mut Page = &mut (*node).data;
+
+                if (*page).capacity.cols >= new_cols {
+                    let rows_ptr_val = (*page).rows_ptr();
+                    let rows = (*page).size.rows as usize;
+                    let old_last_x = if old_cols > 0 {
+                        (old_cols - 1) as usize
+                    } else {
+                        0
+                    };
+                    let mut spacer_found = false;
+                    let mut i = 0usize;
+                    while i < rows {
+                        let row = rows_ptr_val.add(i);
+                        let cells = (*page).row_cells_ptr(row);
+                        let cell = cells.add(old_last_x);
+                        if (*cell).wide() == Wide::SpacerHead {
+                            spacer_found = true;
+                            break;
+                        }
+                        i += 1;
+                    }
+
+                    if spacer_found {
+                        i = 0;
+                        while i < rows {
+                            let row = rows_ptr_val.add(i);
+                            let cells = (*page).row_cells_ptr(row);
+                            let cell = cells.add(old_last_x);
+                            if (*cell).wide() == Wide::SpacerHead {
+                                ptr::write(cell, Cell::default());
+                            }
+                            i += 1;
+                        }
+                    }
+
+                    (*page).size.cols = new_cols;
+                }
+            }
+        }
+        self.cols = new_cols;
+    }
+
+    unsafe fn alloc_page_node(&mut self, cap: PageCapacity) -> Option<*mut PageListNode> {
+        unsafe {
+            let page = match Page::init(cap) {
+                Ok(p) => p,
+                Err(()) => return None,
+            };
+            let node_size = core::mem::size_of::<PageListNode>();
+            let aligned = (node_size + 7) & !7;
+            let node_mem = match page_alloc(aligned) {
+                Ok(m) => m,
+                Err(()) => {
+                    let mut orphan = page;
+                    orphan.deinit();
+                    return None;
+                }
+            };
+            let node_ptr = node_mem.as_mut_ptr() as *mut PageListNode;
+            ptr::write(
+                node_ptr,
+                PageListNode {
+                    prev: ptr::null_mut(),
+                    next: ptr::null_mut(),
+                    data: page,
+                    serial: self.page_serial,
+                },
+            );
+            self.page_serial += 1;
+            self.page_size += (*node_ptr).data.memory_len;
+            Some(node_ptr)
+        }
+    }
+
+    unsafe fn destroy_page_node_full(&mut self, node: *mut PageListNode) {
+        unsafe {
+            let node_page: *mut Page = &mut (*node).data;
+            let page_mem_len = (*node_page).memory_len;
+            self.page_size = self.page_size.saturating_sub(page_mem_len);
+            (*node_page).deinit();
+
+            let node_size = core::mem::size_of::<PageListNode>();
+            let aligned = (node_size + 7) & !7;
+            let node_slice = core::slice::from_raw_parts_mut(node as *mut u8, aligned);
+            page_free(node_slice);
         }
     }
 

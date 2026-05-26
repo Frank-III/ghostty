@@ -5,6 +5,7 @@ use crate::allocator::GhosttyAllocator;
 use crate::ansi::{ProtectedMode, StatusDisplay};
 use crate::csi::{EraseDisplay, EraseLine};
 use crate::mode_def::ModeTag;
+use crate::page_list_types::PageListNode;
 use crate::screen_set::ScreenKey;
 use crate::screen_types::Screen;
 use crate::size_types::CellCountInt;
@@ -227,17 +228,61 @@ impl Terminal {
             return;
         }
         let region_height = (self.scrolling_region.bottom - cy + 1) as usize;
-        let _adjusted = if count > region_height {
+        let adjusted = if count > region_height {
             region_height
         } else {
             count
         };
-        // TODO: shift rows down within scroll region
-        // TODO: clear vacated rows with current SGR state
-        // TODO: cursor_absolute(scrolling_region.left, cy)
+        self.cursor_resync();
         unsafe {
-            (*screen).cursor.pending_wrap = false;
+            let sref = &*screen;
+            if sref.cursor.page_pin.is_null() {
+                return;
+            }
+            let node = (*sref.cursor.page_pin).node;
+            if node.is_null() {
+                return;
+            }
+            let page: &mut crate::page_core::Page = &mut (*node).data;
+            let page_row_count = page.size.rows as usize;
+            if (cy as usize) >= page_row_count
+                || (self.scrolling_region.bottom as usize) >= page_row_count
+            {
+                return;
+            }
+            let rows_base = page.rows_ptr();
+            let sr_left = self.scrolling_region.left as usize;
+            let width = (self.scrolling_region.right as usize + 1) - sr_left;
+            let mut y = self.scrolling_region.bottom as usize;
+            while y >= (cy as usize) + adjusted {
+                let src_row = rows_base.add(y - adjusted);
+                let dst_row = rows_base.add(y);
+                page.move_cells(src_row, sr_left, dst_row, sr_left, width);
+                (*dst_row).set_wrap(false);
+                (*dst_row).set_wrap_continuation(false);
+                (*src_row).set_wrap(false);
+                (*src_row).set_wrap_continuation(false);
+                (*dst_row).set_dirty(true);
+                if y == 0 {
+                    break;
+                }
+                y -= 1;
+            }
+            let mut y2 = cy as usize;
+            let y_end = (cy as usize) + adjusted;
+            while y2 < y_end {
+                let row = rows_base.add(y2);
+                page.clear_cells(row, sr_left, sr_left + width);
+                (*row).set_wrap(false);
+                (*row).set_wrap_continuation(false);
+                (*row).set_dirty(true);
+                y2 += 1;
+            }
+            let s_mut = &mut *screen;
+            s_mut.cursor.x = self.scrolling_region.left;
+            s_mut.cursor.pending_wrap = false;
         }
+        self.cursor_resync();
     }
 
     pub fn delete_lines(&mut self, count: usize) {
@@ -260,17 +305,64 @@ impl Terminal {
             return;
         }
         let region_height = (self.scrolling_region.bottom - cy + 1) as usize;
-        let _adjusted = if count > region_height {
+        let adjusted = if count > region_height {
             region_height
         } else {
             count
         };
-        // TODO: shift rows up within scroll region
-        // TODO: clear vacated rows at bottom with current SGR state
-        // TODO: cursor_absolute(scrolling_region.left, cy)
+        self.cursor_resync();
         unsafe {
-            (*screen).cursor.pending_wrap = false;
+            let sref = &*screen;
+            if sref.cursor.page_pin.is_null() {
+                return;
+            }
+            let node = (*sref.cursor.page_pin).node;
+            if node.is_null() {
+                return;
+            }
+            let page: &mut crate::page_core::Page = &mut (*node).data;
+            let page_row_count = page.size.rows as usize;
+            if (cy as usize) >= page_row_count
+                || (self.scrolling_region.bottom as usize) >= page_row_count
+            {
+                return;
+            }
+            let rows_base = page.rows_ptr();
+            let sr_left = self.scrolling_region.left as usize;
+            let width = (self.scrolling_region.right as usize + 1) - sr_left;
+            let cy_u = cy as usize;
+            let bottom_u = self.scrolling_region.bottom as usize;
+            let mut y = cy_u;
+            while y + adjusted <= bottom_u {
+                let src_row = rows_base.add(y + adjusted);
+                let dst_row = rows_base.add(y);
+                page.move_cells(src_row, sr_left, dst_row, sr_left, width);
+                (*dst_row).set_wrap(false);
+                (*dst_row).set_wrap_continuation(false);
+                (*src_row).set_wrap(false);
+                (*src_row).set_wrap_continuation(false);
+                (*dst_row).set_dirty(true);
+                y += 1;
+            }
+            let clear_start = if bottom_u + 1 > adjusted {
+                bottom_u + 1 - adjusted
+            } else {
+                0
+            };
+            let mut y2 = clear_start;
+            while y2 <= bottom_u {
+                let row = rows_base.add(y2);
+                page.clear_cells(row, sr_left, sr_left + width);
+                (*row).set_wrap(false);
+                (*row).set_wrap_continuation(false);
+                (*row).set_dirty(true);
+                y2 += 1;
+            }
+            let s_mut = &mut *screen;
+            s_mut.cursor.x = self.scrolling_region.left;
+            s_mut.cursor.pending_wrap = false;
         }
+        self.cursor_resync();
     }
 
     pub fn erase_line(&mut self, mode: EraseLine, protected_req: bool) {
@@ -356,7 +448,42 @@ impl Terminal {
                 }
                 let cy = unsafe { (*screen).cursor.y };
                 if cy + 1 < self.rows {
-                    // TODO: clear_rows below cursor via screen methods
+                    self.cursor_resync();
+                    let blank = unsafe { (*screen).blank_cell() };
+                    let pm = unsafe { (*screen).protected_mode };
+                    let protected = pm == ProtectedMode::ISO || protected_req;
+                    let cols = self.cols as usize;
+                    unsafe {
+                        let sref = &*screen;
+                        if sref.cursor.page_pin.is_null() {
+                            return;
+                        }
+                        let node = (*sref.cursor.page_pin).node;
+                        if node.is_null() {
+                            return;
+                        }
+                        let page: &mut crate::page_core::Page = &mut (*node).data;
+                        let page_row_count = page.size.rows as usize;
+                        let mut y = (cy as usize) + 1;
+                        while y < self.rows as usize && y < page_row_count {
+                            let row = page.rows_ptr().add(y);
+                            let cells = page.row_cells_ptr(row);
+                            if protected {
+                                let mut i = 0usize;
+                                while i < cols {
+                                    let c = cells.add(i);
+                                    if !(*c).protected() {
+                                        ptr::write(c, blank);
+                                    }
+                                    i += 1;
+                                }
+                            } else {
+                                page.clear_cells(row, 0, cols);
+                            }
+                            (*row).set_dirty(true);
+                            y += 1;
+                        }
+                    }
                 }
             }
             EraseDisplay::Above => {
@@ -367,11 +494,51 @@ impl Terminal {
                 }
                 let cy = unsafe { (*screen).cursor.y };
                 if cy > 0 {
-                    // TODO: clear_rows above cursor via screen methods
+                    self.cursor_resync();
+                    let blank = unsafe { (*screen).blank_cell() };
+                    let pm = unsafe { (*screen).protected_mode };
+                    let protected = pm == ProtectedMode::ISO || protected_req;
+                    let cols = self.cols as usize;
+                    unsafe {
+                        let sref = &*screen;
+                        if sref.cursor.page_pin.is_null() {
+                            return;
+                        }
+                        let node = (*sref.cursor.page_pin).node;
+                        if node.is_null() {
+                            return;
+                        }
+                        let page: &mut crate::page_core::Page = &mut (*node).data;
+                        let mut y = 0usize;
+                        while y < cy as usize {
+                            let row = page.rows_ptr().add(y);
+                            let cells = page.row_cells_ptr(row);
+                            if protected {
+                                let mut i = 0usize;
+                                while i < cols {
+                                    let c = cells.add(i);
+                                    if !(*c).protected() {
+                                        ptr::write(c, blank);
+                                    }
+                                    i += 1;
+                                }
+                            } else {
+                                page.clear_cells(row, 0, cols);
+                            }
+                            (*row).set_dirty(true);
+                            y += 1;
+                        }
+                    }
                 }
             }
             EraseDisplay::Scrollback => {
-                // TODO: erase scrollback history
+                let screen = self.active();
+                if screen.is_null() {
+                    return;
+                }
+                unsafe {
+                    (*screen).erase_history(None);
+                }
             }
             EraseDisplay::ScrollComplete => {
                 self.erase_display(EraseDisplay::Complete, protected_req);
@@ -581,9 +748,20 @@ impl Terminal {
         }
     }
 
-    pub fn write(&mut self, _data: &[u8]) {
-        // TODO: feed bytes through VT stream parser, dispatching print /
-        // carriage_return / linefeed / CSI / OSC / ... per codepoint
+    pub fn write(&mut self, data: &[u8]) {
+        use crate::stream_terminal::StreamTerminal;
+        use crate::stream_core::Stream;
+        let terminal_ptr = self as *mut Terminal as *mut core::ffi::c_void;
+        let handler = StreamTerminal::new(terminal_ptr);
+        let mut stream = Stream::new(handler);
+        let len = data.len();
+        let mut i = 0;
+        unsafe {
+            while i < len {
+                stream.next(*data.get_unchecked(i));
+                i += 1;
+            }
+        }
     }
 
     pub fn carriage_return(&mut self) {
@@ -785,10 +963,48 @@ impl Terminal {
         if screen.is_null() {
             return;
         }
+        self.cursor_resync();
         let cx = unsafe { (*screen).cursor.x as usize };
         let cols = self.cols as usize;
-        let end = if cx + count > cols { cols } else { cx + count };
-        let _ = end;
-        // TODO: clear cells [cx..end] on current row, no line wrap reset
+        let count_eff = if count == 0 { 1 } else { count };
+        let end = if cx + count_eff > cols {
+            cols
+        } else {
+            cx + count_eff
+        };
+        if cx >= end {
+            return;
+        }
+        let len = end - cx;
+        self.cursor_resync();
+        unsafe {
+            let sref = &*screen;
+            if sref.cursor.page_pin.is_null() {
+                return;
+            }
+            let node = (*sref.cursor.page_pin).node;
+            if node.is_null() {
+                return;
+            }
+            let page: &mut crate::page_core::Page = &mut (*node).data;
+            let row = sref.cursor.page_row;
+            let cells = page.row_cells_ptr(row).add(cx);
+            let pm = sref.protected_mode;
+            let protected = pm == ProtectedMode::ISO;
+            let blank = sref.blank_cell();
+            if protected {
+                let mut i = 0usize;
+                while i < len {
+                    let c = cells.add(i);
+                    if !(*c).protected() {
+                        ptr::write(c, blank);
+                    }
+                    i += 1;
+                }
+            } else {
+                page.clear_cells(row, cx, cx + len);
+            }
+            (*row).set_dirty(true);
+        }
     }
 }

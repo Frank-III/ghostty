@@ -1274,9 +1274,14 @@ impl Screen {
             if node.is_null() {
                 return Ok(());
             }
-            let _page = &mut (*node).data;
-            // TODO: page.append_grapheme(self.cursor.page_row, cell, cp)
-            // On OutOfMemory: increase_capacity for .grapheme_bytes, then retry
+            let page = &mut (*node).data;
+            match page.append_grapheme(self.cursor.page_row, cell, _cp) {
+                Ok(()) => {}
+                Err(_) => {
+                    let _ = self.increase_capacity(node, Some(PageCapacityAdjustment::GraphemeBytes));
+                    let _ = page.append_grapheme(self.cursor.page_row, cell, _cp);
+                }
+            }
         }
         Ok(())
     }
@@ -1290,9 +1295,42 @@ impl Screen {
         _id: Option<&[u8]>,
     ) -> Result<(), ScreenStyleError> {
         unsafe {
-            // TODO: end any existing hyperlink, then allocate in the page's
-            // hyperlink set. On StringsOutOfMemory/SetOutOfMemory/SetNeedsRehash
-            // increase_capacity and retry.
+            if self.cursor.hyperlink_id != 0 {
+                self.end_hyperlink();
+            }
+            let node = (*self.cursor.page_pin).node;
+            if node.is_null() {
+                return Ok(());
+            }
+            let page = &mut (*node).data;
+            match page.insert_hyperlink(_uri.as_ptr(), _uri.len()) {
+                Ok(id) => {
+                    self.cursor.hyperlink_id = id;
+                    let set: *mut crate::ref_counted_set::RefCountedSet =
+                        &mut (*node).data.hyperlink_set;
+                    (*set).use_id((*node).data.memory, id);
+                }
+                Err(_) => {
+                    let _ = self.increase_capacity(
+                        node,
+                        Some(PageCapacityAdjustment::StringBytes),
+                    );
+                    let _ = self.increase_capacity(
+                        node,
+                        Some(PageCapacityAdjustment::HyperlinkBytes),
+                    );
+                    let page = &mut (*node).data;
+                    match page.insert_hyperlink(_uri.as_ptr(), _uri.len()) {
+                        Ok(id) => {
+                            self.cursor.hyperlink_id = id;
+                            let set: *mut crate::ref_counted_set::RefCountedSet =
+                                &mut (*node).data.hyperlink_set;
+                            (*set).use_id((*node).data.memory, id);
+                        }
+                        Err(_) => return Err(ScreenStyleError::OutOfMemory),
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -1303,16 +1341,16 @@ impl Screen {
             return;
         }
         unsafe {
-            // TODO: release from page.hyperlink_set and free cursor.hyperlink
             let node = if self.cursor.page_pin.is_null() {
                 ptr::null_mut()
             } else {
                 (*self.cursor.page_pin).node
             };
             if !node.is_null() {
-                // (*node).data.hyperlink_set.release((*node).data.memory, self.cursor.hyperlink_id);
+                let set: *mut crate::ref_counted_set::RefCountedSet =
+                    &mut (*node).data.hyperlink_set;
+                (*set).release((*node).data.memory, self.cursor.hyperlink_id);
             }
-            // TODO: also free the heap-allocated Hyperlink struct
             self.cursor.hyperlink_id = 0;
             self.cursor.hyperlink = ptr::null_mut();
         }
@@ -1328,10 +1366,33 @@ impl Screen {
             if node.is_null() {
                 return Ok(());
             }
-            let _page = &mut (*node).data;
-            // TODO: page.set_hyperlink(self.cursor.page_row, self.cursor.page_cell, self.cursor.hyperlink_id)
-            // On HyperlinkMapOutOfMemory: increase_capacity for string_bytes and hyperlink_bytes, retry
-            // On success: page.hyperlink_set.use(page.memory, self.cursor.hyperlink_id)
+            let page = &mut (*node).data;
+            match page.set_hyperlink(
+                self.cursor.page_row,
+                self.cursor.page_cell,
+                self.cursor.hyperlink_id,
+            ) {
+                Ok(()) => {
+                    let set: *mut crate::ref_counted_set::RefCountedSet =
+                        &mut (*node).data.hyperlink_set;
+                    (*set).use_id((*node).data.memory, self.cursor.hyperlink_id);
+                }
+                Err(_) => {
+                    let _ = self.increase_capacity(
+                        node,
+                        Some(PageCapacityAdjustment::HyperlinkBytes),
+                    );
+                    let page = &mut (*node).data;
+                    let _ = page.set_hyperlink(
+                        self.cursor.page_row,
+                        self.cursor.page_cell,
+                        self.cursor.hyperlink_id,
+                    );
+                    let set: *mut crate::ref_counted_set::RefCountedSet =
+                        &mut (*node).data.hyperlink_set;
+                    (*set).use_id((*node).data.memory, self.cursor.hyperlink_id);
+                }
+            }
         }
         Ok(())
     }
@@ -1689,8 +1750,27 @@ impl Screen {
             if self.cursor.y > 0 {
                 self.cursor_up(1);
             } else {
-                // TODO: insert a line at the top of the scrolling region via
-                // page row rotation, then clear the newly created top row.
+                if self.pages.is_null() || self.cursor.page_pin.is_null() {
+                    return;
+                }
+                let node = (*self.cursor.page_pin).node;
+                if node.is_null() {
+                    return;
+                }
+                let page = &mut (*node).data;
+                let rows_base = page.rows_ptr();
+                let total = page.size.rows as usize;
+                if total == 0 {
+                    return;
+                }
+                rotate_rows_right_once(rows_base, total);
+                let top_row = rows_base;
+                let cells = page.row_cells_ptr(top_row);
+                self.clear_cells(page, top_row, cells, page.size.cols as usize);
+                page.dirty = true;
+                let (row, cell) = pin_row_and_cell(self.cursor.page_pin);
+                self.cursor.page_row = row;
+                self.cursor.page_cell = cell;
             }
         }
     }
@@ -1714,7 +1794,9 @@ impl Screen {
             (*cell).set_style_id(self.cursor.style_id);
             (*cell).set_protected(self.cursor.protected);
             (*cell).set_semantic_content(self.cursor.semantic_content);
-            // TODO: apply hyperlink if cursor.hyperlink_id != 0
+            if self.cursor.hyperlink_id != 0 {
+                let _ = self.cursor_set_hyperlink();
+            }
         }
     }
 
