@@ -78,8 +78,10 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         );
     }
 
-    if !mouse_should_report(action, button_present, button, tracking_mode) {
-        return unsafe { mouse_suppress_result(out_written) };
+    if let Err(result) = unsafe {
+        mouse_report_or_suppress(action, button_present, button, tracking_mode, out_written)
+    } {
+        return result;
     }
 
     if let Err(result) = unsafe {
