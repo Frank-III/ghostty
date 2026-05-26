@@ -45,6 +45,14 @@ const rust = if (build_options.lib_vt_rust) struct {
     extern fn ghostty_rust_sgr_attribute_value(
         attr: *sgr.Attribute.C,
     ) callconv(.c) *sgr.Attribute.CValue;
+
+    extern fn ghostty_rust_sgr_next(
+        params: [*]const u16,
+        params_len: usize,
+        sep_mask: u32,
+        idx: *usize,
+        result: *sgr.Attribute.C,
+    ) callconv(.c) bool;
 } else struct {};
 
 pub fn new(
@@ -142,12 +150,31 @@ pub fn next(
 ) callconv(lib.calling_conv) bool {
     const wrapper = parser_ orelse return false;
     const parser: *sgr.Parser = &wrapper.parser;
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_sgr_next(
+            parser.params.ptr,
+            parser.params.len,
+            paramsSepMask(parser),
+            &parser.idx,
+            result,
+        );
+    }
+
     if (parser.next()) |attr| {
         result.* = attr.cval();
         return true;
     }
 
     return false;
+}
+
+fn paramsSepMask(parser: *const sgr.Parser) u32 {
+    var mask: u32 = 0;
+    var i: usize = 0;
+    while (i < parser.params.len and i < 24) : (i += 1) {
+        if (parser.params_sep.isSet(i)) mask |= @as(u32, 1) << @intCast(i);
+    }
+    return mask;
 }
 
 pub fn unknown_full(
