@@ -146,7 +146,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         mouse_write_out_written(out_written, required);
     }
 
-    if required > 0 && (out.is_null() || out_len < required) {
+    if mouse_output_needs_space(required, out, out_len) {
         return GHOSTTY_OUT_OF_SPACE;
     }
 
