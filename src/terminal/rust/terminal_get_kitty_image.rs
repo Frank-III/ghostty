@@ -16,6 +16,28 @@ pub unsafe extern "C" fn ghostty_rust_terminal_get_kitty_image(
     medium_shared_mem: bool,
     out: *mut c_void,
 ) -> c_int {
+    unsafe {
+        terminal_get_kitty_image_impl(
+            data,
+            enabled,
+            storage_limit,
+            medium_file,
+            medium_temp_file,
+            medium_shared_mem,
+            out,
+        )
+    }
+}
+
+pub(crate) unsafe fn terminal_get_kitty_image_impl(
+    data: c_int,
+    enabled: bool,
+    storage_limit: u64,
+    medium_file: bool,
+    medium_temp_file: bool,
+    medium_shared_mem: bool,
+    out: *mut c_void,
+) -> c_int {
     if !enabled {
         return GHOSTTY_NO_VALUE;
     }

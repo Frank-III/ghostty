@@ -12,6 +12,28 @@ pub unsafe extern "C" fn ghostty_rust_terminal_resize(
     out_width_px: *mut u32,
     out_height_px: *mut u32,
 ) -> c_int {
+    unsafe {
+        terminal_resize_impl(
+            has_terminal,
+            cols,
+            rows,
+            cell_width_px,
+            cell_height_px,
+            out_width_px,
+            out_height_px,
+        )
+    }
+}
+
+pub(crate) unsafe fn terminal_resize_impl(
+    has_terminal: bool,
+    cols: u16,
+    rows: u16,
+    cell_width_px: u32,
+    cell_height_px: u32,
+    out_width_px: *mut u32,
+    out_height_px: *mut u32,
+) -> c_int {
     if !has_terminal || cols == 0 || rows == 0 || out_width_px.is_null() || out_height_px.is_null()
     {
         return GHOSTTY_INVALID_VALUE;
