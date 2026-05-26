@@ -12,6 +12,18 @@ pub unsafe extern "C" fn ghostty_rust_render_row_cell_selected(
     x: u16,
     out: *mut bool,
 ) -> c_int {
+    unsafe {
+        render_row_cell_selected_impl(selection_present, selection_start, selection_end, x, out)
+    }
+}
+
+pub(crate) unsafe fn render_row_cell_selected_impl(
+    selection_present: bool,
+    selection_start: u16,
+    selection_end: u16,
+    x: u16,
+    out: *mut bool,
+) -> c_int {
     if out.is_null() {
         return RENDER_RESULT_INVALID_VALUE;
     }
@@ -28,6 +40,16 @@ pub unsafe extern "C" fn ghostty_rust_render_row_cell_selected(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_render_row_cell_get_text(
+    data: c_int,
+    cell: u64,
+    extra: *const u32,
+    extra_len: usize,
+    out: *mut c_void,
+) -> c_int {
+    unsafe { render_row_cell_get_text_impl(data, cell, extra, extra_len, out) }
+}
+
+pub(crate) unsafe fn render_row_cell_get_text_impl(
     data: c_int,
     cell: u64,
     extra: *const u32,
