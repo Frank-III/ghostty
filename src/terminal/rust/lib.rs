@@ -171,6 +171,7 @@ mod sgr_unknown;
 mod sgr_write;
 mod sgr;
 mod color;
+mod color_palette;
 mod allocator;
 mod build_info;
 
@@ -316,6 +317,7 @@ pub(crate) use sgr_unknown::*;
 pub(crate) use sgr_write::*;
 pub(crate) use sgr::*;
 pub(crate) use color::*;
+pub(crate) use color_palette::*;
 pub(crate) use allocator::*;
 pub(crate) use build_info::*;
 
