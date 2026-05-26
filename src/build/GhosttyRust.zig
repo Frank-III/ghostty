@@ -129,6 +129,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/paste.rs",
     "src/terminal/rust/paste_bytes.rs",
     "src/terminal/rust/paste_encode.rs",
+    "src/terminal/rust/paste_is_safe.rs",
     "src/terminal/rust/paste_len.rs",
     "src/terminal/rust/paste_safe.rs",
     "src/terminal/rust/paste_sanitize.rs",
