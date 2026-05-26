@@ -1,6 +1,7 @@
 use core::ffi::c_int;
 
 use crate::constants::*;
+use crate::early::*;
 use crate::input::*;
 use crate::mouse_geometry::*;
 use crate::mouse_types::*;
@@ -55,4 +56,15 @@ pub(crate) fn mouse_sequence_len(
 
 pub(crate) fn mouse_action_suffix_len(_: c_int) -> usize {
     1
+}
+
+pub(crate) fn mouse_required_sequence_len(
+    format: c_int,
+    action: c_int,
+    button_code: u8,
+    cell: GhosttyMouseCell,
+    pos: GhosttyMousePosition,
+    size: GhosttyMouseSize,
+) -> Result<usize, c_int> {
+    mouse_sequence_len(format, action, button_code, cell, pos, size).ok_or(GHOSTTY_INVALID_VALUE)
 }

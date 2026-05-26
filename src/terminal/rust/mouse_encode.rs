@@ -138,8 +138,9 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         return GHOSTTY_SUCCESS;
     }
 
-    let Some(required) = mouse_sequence_len(format, action, button_code, cell, pos, size) else {
-        return GHOSTTY_INVALID_VALUE;
+    let required = match mouse_required_sequence_len(format, action, button_code, cell, pos, size) {
+        Ok(required) => required,
+        Err(err) => return err,
     };
 
     unsafe {
