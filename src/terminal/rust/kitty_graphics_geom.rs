@@ -17,6 +17,34 @@ pub unsafe extern "C" fn ghostty_rust_kitty_source_rect(
     out_width: *mut u32,
     out_height: *mut u32,
 ) -> c_int {
+    unsafe {
+        kitty_source_rect_impl(
+            image_width,
+            image_height,
+            source_x,
+            source_y,
+            source_width,
+            source_height,
+            out_x,
+            out_y,
+            out_width,
+            out_height,
+        )
+    }
+}
+
+pub(crate) unsafe fn kitty_source_rect_impl(
+    image_width: u32,
+    image_height: u32,
+    source_x: u32,
+    source_y: u32,
+    source_width: u32,
+    source_height: u32,
+    out_x: *mut u32,
+    out_y: *mut u32,
+    out_width: *mut u32,
+    out_height: *mut u32,
+) -> c_int {
     if out_x.is_null() || out_y.is_null() || out_width.is_null() || out_height.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
