@@ -18,6 +18,7 @@ mod kitty_graphics;
 mod mouse_encode;
 mod simple;
 mod event_cell_style;
+mod sgr;
 mod color;
 mod allocator;
 
@@ -31,6 +32,7 @@ pub(crate) use kitty_graphics::*;
 pub(crate) use mouse_encode::*;
 pub(crate) use simple::*;
 pub(crate) use event_cell_style::*;
+pub(crate) use sgr::*;
 pub(crate) use color::*;
 pub(crate) use allocator::*;
 
