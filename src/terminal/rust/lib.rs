@@ -122,6 +122,7 @@ mod paste_write;
 mod focus;
 mod focus_sequence;
 mod focus_write;
+mod mode_report_buffer;
 mod mode_report_len;
 mod mode_report_state;
 mod mode_report_tag;

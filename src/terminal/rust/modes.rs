@@ -3,6 +3,7 @@ use core::ptr;
 
 use crate::constants::*;
 use crate::early::*;
+use crate::mode_report_buffer::*;
 use crate::mode_report_len::*;
 use crate::mode_report_state::*;
 use crate::mode_report_tag::*;
@@ -28,7 +29,7 @@ pub unsafe extern "C" fn ghostty_rust_mode_report_encode(
         ptr::write(out_written, total);
     }
 
-    if out.is_null() || out_len < total {
+    if !mode_report_buffer_ready(out, out_len, total) {
         return GHOSTTY_OUT_OF_SPACE;
     }
 
