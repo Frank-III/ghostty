@@ -67,6 +67,41 @@ pub(crate) fn dynamic_next(dynamic: u8) -> Option<u8> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct DynamicRgb {
+    override_color: Option<GhosttyColorRgb>,
+    default_color: Option<GhosttyColorRgb>,
+}
+
+impl DynamicRgb {
+    pub(crate) const UNSET: DynamicRgb = DynamicRgb {
+        override_color: None,
+        default_color: None,
+    };
+
+    pub(crate) const fn init(default_color: GhosttyColorRgb) -> DynamicRgb {
+        DynamicRgb {
+            override_color: None,
+            default_color: Some(default_color),
+        }
+    }
+
+    pub(crate) fn get(&self) -> Option<GhosttyColorRgb> {
+        match self.override_color {
+            Some(color) => Some(color),
+            None => self.default_color,
+        }
+    }
+
+    pub(crate) fn set(&mut self, color: GhosttyColorRgb) {
+        self.override_color = Some(color);
+    }
+
+    pub(crate) fn reset(&mut self) {
+        self.override_color = self.default_color;
+    }
+}
+
 const fn rgb(r: u8, g: u8, b: u8) -> GhosttyColorRgb {
     GhosttyColorRgb { r, g, b }
 }
