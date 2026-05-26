@@ -19,6 +19,40 @@ pub unsafe extern "C" fn ghostty_rust_render_state_get_primitive(
     cursor_viewport_wide_tail: bool,
     out: *mut c_void,
 ) -> c_int {
+    unsafe {
+        render_state_get_primitive_impl(
+            data,
+            cols,
+            rows,
+            dirty,
+            cursor_visual_style,
+            cursor_visible,
+            cursor_blinking,
+            cursor_password_input,
+            cursor_viewport_has_value,
+            cursor_viewport_x,
+            cursor_viewport_y,
+            cursor_viewport_wide_tail,
+            out,
+        )
+    }
+}
+
+pub(crate) unsafe fn render_state_get_primitive_impl(
+    data: c_int,
+    cols: u16,
+    rows: u16,
+    dirty: c_int,
+    cursor_visual_style: c_int,
+    cursor_visible: bool,
+    cursor_blinking: bool,
+    cursor_password_input: bool,
+    cursor_viewport_has_value: bool,
+    cursor_viewport_x: u16,
+    cursor_viewport_y: u16,
+    cursor_viewport_wide_tail: bool,
+    out: *mut c_void,
+) -> c_int {
     if out.is_null() {
         return RENDER_RESULT_INVALID_VALUE;
     }
@@ -76,6 +110,10 @@ pub unsafe extern "C" fn ghostty_rust_render_state_set_dirty(
     value: c_int,
     out: *mut c_int,
 ) -> c_int {
+    unsafe { render_state_set_dirty_impl(value, out) }
+}
+
+pub(crate) unsafe fn render_state_set_dirty_impl(value: c_int, out: *mut c_int) -> c_int {
     if out.is_null() {
         return RENDER_RESULT_INVALID_VALUE;
     }
@@ -93,6 +131,10 @@ pub extern "C" fn ghostty_rust_render_state_set(
     option: c_int,
     has_value: bool,
 ) -> c_int {
+    render_state_set_impl(has_state, option, has_value)
+}
+
+pub(crate) fn render_state_set_impl(has_state: bool, option: c_int, has_value: bool) -> c_int {
     if !has_state || !has_value {
         return RENDER_RESULT_INVALID_VALUE;
     }
