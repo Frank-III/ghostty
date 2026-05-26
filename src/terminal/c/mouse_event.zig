@@ -33,6 +33,7 @@ pub const Position = mouse_encode.Event.Pos;
 pub const Mods = key.Mods;
 
 const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_mouse_event_init(event: *anyopaque) callconv(.c) void;
     extern fn ghostty_rust_mouse_event_set_action(event: *anyopaque, action: c_int) callconv(.c) void;
     extern fn ghostty_rust_mouse_event_get_action(event: *anyopaque) callconv(.c) c_int;
     extern fn ghostty_rust_mouse_event_set_button(event: *anyopaque, button: c_int) callconv(.c) void;
@@ -51,7 +52,12 @@ pub fn new(
     const alloc = lib.alloc.default(alloc_);
     const ptr = alloc.create(MouseEventWrapper) catch
         return .out_of_memory;
-    ptr.* = .{ .alloc = alloc };
+    ptr.alloc = alloc;
+    if (comptime build_options.lib_vt_rust) {
+        rust.ghostty_rust_mouse_event_init(ptr);
+    } else {
+        ptr.event = .{};
+    }
     result.* = ptr;
     return .success;
 }

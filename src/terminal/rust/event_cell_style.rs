@@ -159,6 +159,29 @@ pub(crate) unsafe fn key_event_field<T>(event: *mut c_void, offset: usize) -> *m
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_mouse_event_init(event: *mut c_void) {
+    unsafe {
+        ptr::write(
+            mouse_event_field::<c_int>(event, MOUSE_EVENT_ACTION_OFFSET),
+            MOUSE_ACTION_PRESS,
+        );
+        ptr::write(
+            mouse_event_field::<c_int>(event, MOUSE_EVENT_BUTTON_PAYLOAD_OFFSET),
+            0,
+        );
+        ptr::write(
+            mouse_event_field::<u32>(event, MOUSE_EVENT_BUTTON_TAG_OFFSET),
+            0,
+        );
+        ptr::write(
+            mouse_event_field::<GhosttyMousePosition>(event, MOUSE_EVENT_POS_OFFSET),
+            GhosttyMousePosition { x: 0.0, y: 0.0 },
+        );
+        ptr::write(mouse_event_field::<u16>(event, MOUSE_EVENT_MODS_OFFSET), 0);
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mouse_event_set_action(event: *mut c_void, action: c_int) {
     unsafe {
         ptr::write(
