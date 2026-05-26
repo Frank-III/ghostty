@@ -130,8 +130,8 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         Err(result) => return result,
     };
 
-    if !mouse_x10_cell_in_bounds(format, cell) {
-        return unsafe { mouse_suppress_result(out_written) };
+    if let Err(result) = unsafe { mouse_x10_bounds_or_suppress(format, cell, out_written) } {
+        return result;
     }
 
     let required = match mouse_required_sequence_len(format, action, button_code, cell, pos, size) {
