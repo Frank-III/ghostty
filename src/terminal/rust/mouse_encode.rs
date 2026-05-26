@@ -10,6 +10,7 @@ use crate::kitty_graphics::*;
 use crate::mouse_button::*;
 use crate::mouse_geometry::*;
 use crate::mouse_last_cell::*;
+use crate::mouse_out_written::*;
 use crate::mouse_types::*;
 use crate::mouse_write::*;
 use crate::simple::*;
@@ -72,7 +73,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
 
     if !mouse_should_report(action, button_present, button, tracking_mode) {
         unsafe {
-            ptr::write(out_written, 0);
+            mouse_write_out_written(out_written, 0);
         }
         return GHOSTTY_SUCCESS;
     }
@@ -80,7 +81,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     if action != MOUSE_ACTION_RELEASE && mouse_pos_out_of_viewport(pos, size) {
         if !mouse_event_sends_motion(tracking_mode) || !any_button_pressed {
             unsafe {
-                ptr::write(out_written, 0);
+                mouse_write_out_written(out_written, 0);
             }
             return GHOSTTY_SUCCESS;
         }
@@ -95,7 +96,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         && last_cell_y == cell.y
     {
         unsafe {
-            ptr::write(out_written, 0);
+            mouse_write_out_written(out_written, 0);
         }
         return GHOSTTY_SUCCESS;
     }
@@ -115,14 +116,14 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         mouse_button_code(action, button_present, button, mods, tracking_mode, format)
     else {
         unsafe {
-            ptr::write(out_written, 0);
+            mouse_write_out_written(out_written, 0);
         }
         return GHOSTTY_SUCCESS;
     };
 
     if format == MOUSE_FORMAT_X10 && (cell.x > 222 || cell.y > 222) {
         unsafe {
-            ptr::write(out_written, 0);
+            mouse_write_out_written(out_written, 0);
         }
         return GHOSTTY_SUCCESS;
     }
@@ -132,7 +133,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     };
 
     unsafe {
-        ptr::write(out_written, required);
+        mouse_write_out_written(out_written, required);
     }
 
     if required > 0 && (out.is_null() || out_len < required) {
