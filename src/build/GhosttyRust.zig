@@ -123,6 +123,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/style_copy.rs",
     "src/terminal/rust/style_write.rs",
     "src/terminal/rust/sys.rs",
+    "src/terminal/rust/terminal_lifecycle.rs",
     "src/terminal/rust/terminal_grid_ref.rs",
     "src/terminal/rust/terminal_mode.rs",
     "src/terminal/rust/terminal_point.rs",
@@ -136,12 +137,12 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/terminal_get_scalar.rs",
     "src/terminal/rust/terminal_get_string.rs",
     "src/terminal/rust/terminal_get_style.rs",
+    "src/terminal/rust/terminal.rs",
     "src/terminal/rust/terminal_set.rs",
     "src/terminal/rust/terminal_set_color.rs",
     "src/terminal/rust/terminal_set_scalar.rs",
     "src/terminal/rust/terminal_set_string.rs",
     "src/terminal/rust/terminal_options.rs",
-    "src/terminal/rust/terminal.rs",
 };
 
 fn addBuildInfoEnv(
