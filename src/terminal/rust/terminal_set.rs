@@ -3,6 +3,7 @@ use core::ffi::c_int;
 use crate::constants::*;
 use crate::early::*;
 use crate::terminal::*;
+use crate::terminal_options::*;
 
 #[no_mangle]
 pub extern "C" fn ghostty_rust_terminal_set(has_terminal: bool, option: c_int) -> c_int {
