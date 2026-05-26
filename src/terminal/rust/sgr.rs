@@ -13,6 +13,7 @@ use crate::style::*;
 use crate::color::*;
 use crate::allocator::*;
 use crate::sgr_attr::*;
+use crate::sgr_write::*;
 
 const SGR_UNSET: c_int = 0;
 const SGR_UNKNOWN: c_int = 1;
@@ -310,49 +311,6 @@ fn count_sgr_colon(params_len: usize, sep_mask: u32, idx: usize) -> usize {
         i += 1;
     }
     count
-}
-
-unsafe fn clear_sgr_value(result: *mut GhosttySgrAttribute) {
-    unsafe {
-        ptr::write(
-            core::ptr::addr_of_mut!((*result).value.padding),
-            [0u64; 8],
-        );
-    }
-}
-
-unsafe fn write_sgr_empty(result: *mut GhosttySgrAttribute, tag: c_int) {
-    unsafe {
-        ptr::write(core::ptr::addr_of_mut!((*result).tag), tag);
-        clear_sgr_value(result);
-    }
-}
-
-unsafe fn write_sgr_c_int(result: *mut GhosttySgrAttribute, tag: c_int, value: c_int) {
-    unsafe {
-        write_sgr_empty(result, tag);
-        ptr::write(
-            core::ptr::addr_of_mut!((*result).value).cast::<c_int>(),
-            value,
-        );
-    }
-}
-
-unsafe fn write_sgr_u8(result: *mut GhosttySgrAttribute, tag: c_int, value: u8) {
-    unsafe {
-        write_sgr_empty(result, tag);
-        ptr::write(core::ptr::addr_of_mut!((*result).value).cast::<u8>(), value);
-    }
-}
-
-unsafe fn write_sgr_rgb(result: *mut GhosttySgrAttribute, tag: c_int, r: u8, g: u8, b: u8) {
-    unsafe {
-        write_sgr_empty(result, tag);
-        let rgb = core::ptr::addr_of_mut!((*result).value).cast::<GhosttyColorRgb>();
-        ptr::write(core::ptr::addr_of_mut!((*rgb).r), r);
-        ptr::write(core::ptr::addr_of_mut!((*rgb).g), g);
-        ptr::write(core::ptr::addr_of_mut!((*rgb).b), b);
-    }
 }
 
 unsafe fn write_sgr_unknown(
