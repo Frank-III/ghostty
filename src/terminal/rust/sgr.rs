@@ -13,40 +13,9 @@ use crate::style::*;
 use crate::color::*;
 use crate::allocator::*;
 use crate::sgr_attr::*;
+use crate::sgr_constants::*;
 use crate::sgr_parse::*;
 use crate::sgr_write::*;
-
-const SGR_UNSET: c_int = 0;
-pub(crate) const SGR_UNKNOWN: c_int = 1;
-const SGR_BOLD: c_int = 2;
-const SGR_RESET_BOLD: c_int = 3;
-const SGR_ITALIC: c_int = 4;
-const SGR_RESET_ITALIC: c_int = 5;
-const SGR_FAINT: c_int = 6;
-const SGR_UNDERLINE: c_int = 7;
-const SGR_UNDERLINE_COLOR: c_int = 8;
-const SGR_256_UNDERLINE_COLOR: c_int = 9;
-const SGR_RESET_UNDERLINE_COLOR: c_int = 10;
-const SGR_OVERLINE: c_int = 11;
-const SGR_RESET_OVERLINE: c_int = 12;
-const SGR_BLINK: c_int = 13;
-const SGR_RESET_BLINK: c_int = 14;
-const SGR_INVERSE: c_int = 15;
-const SGR_RESET_INVERSE: c_int = 16;
-const SGR_INVISIBLE: c_int = 17;
-const SGR_RESET_INVISIBLE: c_int = 18;
-const SGR_STRIKETHROUGH: c_int = 19;
-const SGR_RESET_STRIKETHROUGH: c_int = 20;
-const SGR_DIRECT_COLOR_FG: c_int = 21;
-const SGR_DIRECT_COLOR_BG: c_int = 22;
-const SGR_8_BG: c_int = 23;
-const SGR_8_FG: c_int = 24;
-const SGR_RESET_FG: c_int = 25;
-const SGR_RESET_BG: c_int = 26;
-const SGR_8_BRIGHT_BG: c_int = 27;
-const SGR_8_BRIGHT_FG: c_int = 28;
-const SGR_256_BG: c_int = 29;
-const SGR_256_FG: c_int = 30;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_sgr_next(

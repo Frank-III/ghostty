@@ -3,6 +3,7 @@ use core::ptr;
 
 use crate::sgr::*;
 use crate::sgr_attr::*;
+use crate::sgr_constants::*;
 use crate::style::*;
 
 pub(crate) unsafe fn clear_sgr_value(result: *mut GhosttySgrAttribute) {
