@@ -67,6 +67,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/focus.rs",
     "src/terminal/rust/grid_ref.rs",
     "src/terminal/rust/input.rs",
+    "src/terminal/rust/key_options.rs",
     "src/terminal/rust/key_encode.rs",
     "src/terminal/rust/kitty_geometry.rs",
     "src/terminal/rust/kitty_source.rs",
