@@ -153,6 +153,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/style_default.rs",
     "src/terminal/rust/style_is_default.rs",
     "src/terminal/rust/style_size_copy.rs",
+    "src/terminal/rust/style_value_write.rs",
     "src/terminal/rust/style_write.rs",
     "src/terminal/rust/sys.rs",
     "src/terminal/rust/terminal_lifecycle.rs",
