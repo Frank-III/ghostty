@@ -126,6 +126,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/terminal_grid_ref.rs",
     "src/terminal/rust/terminal_mode.rs",
     "src/terminal/rust/terminal_point.rs",
+    "src/terminal/rust/terminal_resize.rs",
     "src/terminal/rust/terminal_get.rs",
     "src/terminal/rust/terminal_get_color.rs",
     "src/terminal/rust/terminal_get_kitty_image.rs",
