@@ -53,30 +53,27 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     next_last_cell_x: *mut u16,
     next_last_cell_y: *mut u32,
 ) -> c_int {
-    let size = match mouse_encode_size(
-        screen_width,
-        screen_height,
-        cell_width,
-        cell_height,
-        padding_top,
-        padding_bottom,
-        padding_right,
-        padding_left,
-    ) {
-        Ok(size) => size,
-        Err(err) => return err,
-    };
-
-    unsafe {
-        mouse_carry_forward_last_cell(
+    let size = match unsafe {
+        mouse_prepare_encode_size(
+            screen_width,
+            screen_height,
+            cell_width,
+            cell_height,
+            padding_top,
+            padding_bottom,
+            padding_right,
+            padding_left,
             last_cell_present,
             last_cell_x,
             last_cell_y,
             next_last_cell_present,
             next_last_cell_x,
             next_last_cell_y,
-        );
-    }
+        )
+    } {
+        Ok(size) => size,
+        Err(err) => return err,
+    };
 
     if let Err(result) = unsafe {
         mouse_report_or_suppress(action, button_present, button, tracking_mode, out_written)
