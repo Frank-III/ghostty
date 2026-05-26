@@ -7,6 +7,7 @@ use crate::render::*;
 use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
+use crate::mouse_setopt::*;
 use crate::simple::*;
 use crate::style::*;
 
@@ -31,24 +32,6 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encoder_setopt_format(
 ) {
     unsafe {
         mouse_encoder_setopt_mode(value, current, out, last_cell_present);
-    }
-}
-
-pub(crate) unsafe fn mouse_encoder_setopt_mode(
-    value: c_int,
-    current: c_int,
-    out: *mut c_int,
-    last_cell_present: *mut bool,
-) {
-    if out.is_null() {
-        return;
-    }
-
-    unsafe {
-        if value != current && !last_cell_present.is_null() {
-            ptr::write(last_cell_present, false);
-        }
-        ptr::write(out, value);
     }
 }
 
