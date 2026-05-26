@@ -459,6 +459,14 @@ impl PageIterator {
         }
     }
 
+    pub fn new_unlimited(start: Pin, direction: PageListDirection) -> Self {
+        Self {
+            row: Some(start),
+            limit: PageIteratorLimit::None,
+            direction,
+        }
+    }
+
     pub fn next(&mut self) -> Option<PageIteratorChunk> {
         match self.direction {
             PageListDirection::RightDown => self.next_down(),
@@ -620,6 +628,23 @@ impl RowIterator {
             page_it: PageIterator::new_empty(),
             chunk: None,
             offset: 0,
+        }
+    }
+
+    pub fn new_from_pin(start: Pin, direction: PageListDirection) -> Self {
+        let mut page_it = PageIterator::new_unlimited(start, direction);
+        let chunk = page_it.next();
+        let offset = match &chunk {
+            Some(c) => match direction {
+                PageListDirection::RightDown => c.start,
+                PageListDirection::LeftUp => c.end.saturating_sub(1),
+            },
+            None => 0,
+        };
+        Self {
+            page_it,
+            chunk,
+            offset,
         }
     }
 

@@ -5,6 +5,7 @@ use crate::page_types::*;
 use crate::point::Coordinate;
 use crate::CellCountInt;
 use crate::style::GhosttyColorRgb;
+use crate::hyperlink::HyperlinkPageEntry;
 use crate::style_types::{Color, RGB, Style};
 
 pub trait FormatterWriter {
@@ -248,8 +249,12 @@ impl<'a> PageFormatter<'a> {
 
                         if let Some(lid) = link_id {
                             current_hyperlink_id = Some(lid);
-                            // TODO: lookup URI from page hyperlink_set and emit
-                            self.format_hyperlink_open(writer, b"#");
+                            let uri: &[u8] = unsafe {
+                                let entry: HyperlinkPageEntry =
+                                    self.page.hyperlink_set.get(self.page.memory as *const u8, lid);
+                                entry.uri_slice(self.page.memory as *const u8)
+                            };
+                            self.format_hyperlink_open(writer, uri);
                         }
                     }
                 }
@@ -322,10 +327,10 @@ impl<'a> PageFormatter<'a> {
     }
 
     fn write_codepoint_with_replacement(&self, writer: &mut dyn FormatterWriter, cp: u32) {
-        // TODO: codepoint_map support requires Options to carry codepoint map fields
-        // (currently absent from formatter_types::Options). When added, search the
-        // map in reverse for a matching range and write the replacement codepoint
-        // or string before falling back to write_codepoint.
+        // codepoint_map is not yet supported: Options lacks a codepoint_map field.
+        // When ported, each codepoint would be reverse-searched in the map's ranges;
+        // on hit the replacement codepoint (or string) is emitted instead of `cp`.
+        // Until then, fall through to write_codepoint which emits cp verbatim.
         self.write_codepoint(writer, cp);
     }
 
@@ -363,9 +368,10 @@ impl<'a> PageFormatter<'a> {
                 if !cell.has_styling() {
                     return Style::default();
                 }
-                // TODO: lookup style from page.styles ref-counted set by cell.style_id()
-                // For now returns default since style set isn't ported
-                Style::default()
+                let sid = cell.style_id();
+                unsafe {
+                    self.page.styles.get::<Style>(self.page.memory as *const u8, sid)
+                }
             }
             ContentTag::BgColorPalette => Style {
                 bg_color: Color::Palette(cell.content_color_palette()),

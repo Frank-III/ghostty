@@ -437,7 +437,14 @@ impl Terminal {
                     }
                 }
                 self.erase_line(EraseLine::Complete, protected_req);
-                // TODO: clear_rows(active area, protected)
+                let screen = self.active();
+                if !screen.is_null() {
+                    let pm = unsafe { (*screen).protected_mode };
+                    let protected = pm == ProtectedMode::ISO || protected_req;
+                    unsafe {
+                        (*screen).clear_rows(0, None, protected);
+                    }
+                }
                 self.flags.dirty.clear = true;
             }
             EraseDisplay::Below => {
@@ -634,7 +641,14 @@ impl Terminal {
         } else {
             TerminalScrollingRegion::default()
         };
-        // TODO: pwd.clear(), title.clear() (require allocator)
+        // TODO: pwd.clearRetainingCapacity(), title.clearRetainingCapacity()
+        // Zig (Terminal.zig:3172-3173):
+        //   self.pwd.clearRetainingCapacity();
+        //   self.title.clearRetainingCapacity();
+        // Types are std.ArrayList(u8) (Terminal.zig:66, 69).
+        // In Rust port: opaque *mut c_void (terminal_types.rs:278-279).
+        // Requires exposing ArrayList.clearRetainingCapacity via Zig FFI or
+        // a Rust-side ArrayList binding.
         let primary = self.screens.get(ScreenKey::Primary);
         if !primary.is_null() {
             unsafe { (*primary.cast::<Screen>()).reset(); }

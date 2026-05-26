@@ -180,6 +180,8 @@ impl<H: StreamHandler> Stream<H> {
         crate::stream_esc_dispatch::esc_dispatch(self, &esc);
     }
 
-    fn osc_dispatch(&mut self, _osc: ParserOsc) {
+    fn osc_dispatch(&mut self, osc: ParserOsc) {
+        let cmd = crate::stream_osc_parse::parse(&osc);
+        crate::stream_osc_dispatch::osc_dispatch(&mut self.handler, cmd);
     }
 }

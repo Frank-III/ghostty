@@ -9,7 +9,7 @@ use crate::size_types::*;
 use crate::page_types::*;
 use crate::page_core::Page;
 use crate::page_list_types::{PageList, PageListNode, PageListViewport, PageListDirection};
-use crate::page_list_methods::PageListScroll;
+use crate::page_list_methods::{PageListScroll, PromptIterator, RowIterator};
 use crate::point::PointTag;
 use crate::style_types::*;
 use crate::ansi::*;
@@ -817,8 +817,40 @@ impl Screen {
                         }
                     }
                     PromptRedraw::True => {
-                        // TODO: iterate from prompt start to end via prompt_iterator,
-                        // clearing cells on each row.
+                        let cursor_pin = self.cursor.page_pin;
+                        if cursor_pin.is_null() {
+                            // Cannot do prompt redraw without cursor pin.
+                        } else {
+                            let cp = unsafe { *cursor_pin };
+                            let mut pit = PromptIterator::new(
+                                Some(cp),
+                                None,
+                                PageListDirection::LeftUp,
+                            );
+                            let start_pin = match pit.next() {
+                                Some(p) => p,
+                                None => {
+                                    // Prompt iterator found no prompt; skip redraw.
+                                    cp
+                                }
+                            };
+                            let mut row_it = RowIterator::new_from_pin(
+                                start_pin,
+                                PageListDirection::RightDown,
+                            );
+                            while let Some(pin) = row_it.next() {
+                                let node = pin.node;
+                                if node.is_null() {
+                                    break;
+                                }
+                                unsafe {
+                                    let page = &mut (*node).data;
+                                    let row = page.get_row(pin.y as usize);
+                                    let cells = page.row_cells_ptr(row);
+                                    self.clear_cells(page, row, cells, page.size.cols as usize);
+                                }
+                            }
+                        }
                     }
                     PromptRedraw::False => {}
                 }
@@ -841,11 +873,24 @@ impl Screen {
 
             self.cursor_reload();
 
-            // TODO: update saved_cursor x/y by tracking a pin through resize
-            // (requires page_list pin tracking, which depends on allocator).
-            // The Zig version creates a tracked pin before resize and reads
-            // its post-resize active coordinates via pointFromPin. For now
-            // saved_cursor coordinates may be off after reflow.
+            // TODO: update saved_cursor x/y by tracking a pin through resize.
+            // Requires PageList.track_pin to be implemented (currently a stub
+            // returning null at page_list_methods.rs:1027).
+            //
+            // Zig implementation (Screen.zig:1699-1816):
+            //   1. Before resize:
+            //      - Get saved_cursor (sc), compute active pin via
+            //        self.pages.pin(.{ .active = .{ .x = sc.x, .y = sc.y } })
+            //      - Track the pin: try self.pages.trackPin(pin) -> *Pin
+            //   2. After cursorReload:
+            //      - let pt = self.pages.pointFromPin(.active, p.*)
+            //      - If Some: sc.x = pt.active.x, sc.y = pt.active.y
+            //        If sc.pending_wrap and sc.x != opts.cols - 1:
+            //          sc.pending_wrap = false; sc.x += 1
+            //      - If None: sc.x = 0; sc.y = 0; sc.pending_wrap = false
+            //   3. defer: self.pages.untrackPin(p)
+            //
+            // For now saved_cursor coordinates may be incorrect after reflow.
 
             // Restore the cursor style.
             self.cursor.style = cursor_style;
@@ -1435,8 +1480,13 @@ impl Screen {
                     old.deinit();
                 }
                 // TODO: if untracked, convert to tracked via sel.track(self).
-                // track() requires an allocator (for tracked pin arrays) which
-                // the Rust port does not yet expose on Screen.
+                // Zig: Selection.zig:131-149, track() calls:
+                //   s.pages.trackPin(start_pin) -> *Pin
+                //   s.pages.trackPin(end_pin) -> *Pin
+                //   returns Selection { bounds: .tracked = { start, end }, rectangle }
+                // Requires PageList.track_pin to be fully implemented (currently
+                // a stub returning null at page_list_methods.rs:1027) and an
+                // allocator exposed on Screen.
                 self.selection = Some(new_sel);
                 self.dirty.selection = true;
             }
@@ -1456,9 +1506,16 @@ impl Screen {
             // our cursor pin, which should be at the top-left.
             if !self.cursor.page_pin.is_null() {
                 let cursor_rac = pin_row_and_cell(self.cursor.page_pin);
-                // Release hyperlink from the page set; freeing the allocated
-                // Hyperlink struct and its URI bytes requires an allocator
-                // (left as a TODO matching the Zig cursor.deinit(alloc) path).
+                // Release hyperlink from the page set.
+                // TODO: free the Hyperlink struct and its uri_ptr bytes.
+                // Zig (Screen.zig:389): self.cursor.deinit(self.alloc)
+                //   -> Cursor.deinit (Screen.zig:179-184):
+                //      link.deinit(alloc) -> Hyperlink.deinit (hyperlink.zig:45):
+                //        alloc.free(self.uri)  // free uri bytes
+                //        if .explicit: alloc.free(v)  // free explicit id bytes
+                //      alloc.destroy(link)  // free Hyperlink struct
+                // Rust Hyperlink (hyperlink.rs:122) holds uri_ptr/uri_len but
+                // the Screen alloc field is *mut c_void, so free() is unavailable.
                 if self.cursor.hyperlink_id != 0 {
                     self.end_hyperlink();
                 }
@@ -1473,9 +1530,13 @@ impl Screen {
             }
         }
         // TODO: kitty_images.deinit + reset to default.
+        // Zig (Screen.zig:396-400):
+        //   self.kitty_images.deinit(self.alloc, self);
+        //   self.kitty_images = .{ .dirty = true };
         // kitty_images is an opaque *mut c_void pointing to the KittyGraphics
-        // struct. Calling methods on it requires exposing the KittyImage type
-        // to the Rust port (not yet done).
+        // struct (Screen.zig:85-90). The Rust port does not expose the
+        // KittyImage type; implementing this requires a Rust binding for
+        // KittyGraphics.deinit and the struct's default init with dirty=true.
         self.saved_cursor = None;
         self.charset = ScreenCharsetState::default();
         self.kitty_keyboard = KittyKeyFlagStack::default();
@@ -1965,9 +2026,16 @@ impl Screen {
 
     /// Cleanly shut down the screen, releasing pages and cursor resources.
     pub fn deinit(&mut self) {
-        // TODO: free cursor.hyperlink (the Hyperlink struct and its uri_ptr)
-        // via the screen allocator. Requires an allocator-capable destroy
-        // which the Rust port does not yet have.
+        // TODO: free cursor.hyperlink (the Hyperlink struct and its uri_ptr).
+        // Zig (Screen.zig:336): self.cursor.deinit(self.alloc)
+        //   -> Cursor.deinit (Screen.zig:179-184):
+        //      if hyperlink is non-null:
+        //        Hyperlink.deinit(alloc)  (hyperlink.zig:45):
+        //          alloc.free(self.uri)       // free URI bytes
+        //          if .explicit: alloc.free(v) // free explicit id bytes
+        //        alloc.destroy(link)          // free Hyperlink struct
+        // Screen.alloc is *mut c_void; no Rust-accessible free() available.
+        // Until allocator is exposed, we just null the pointer (leak).
         if !self.cursor.hyperlink.is_null() {
             self.cursor.hyperlink = ptr::null_mut();
         }

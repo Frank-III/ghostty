@@ -106,6 +106,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/stream_esc_dispatch.rs",
     "src/terminal/rust/sgr_attribute.rs",
     "src/terminal/rust/osc_types.rs",
+    "src/terminal/rust/stream_osc_parse.rs",
     "src/terminal/rust/stream_osc_dispatch.rs",
     "src/terminal/rust/stream_terminal.rs",
     "src/terminal/rust/bitmap_allocator.rs",
