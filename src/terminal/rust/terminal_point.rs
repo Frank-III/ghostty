@@ -16,6 +16,14 @@ pub unsafe extern "C" fn ghostty_rust_terminal_point_from_grid_ref(
     coord: GhosttyPointCoordinate,
     out: *mut GhosttyPointCoordinate,
 ) -> c_int {
+    unsafe { terminal_point_from_grid_ref_impl(has_point, coord, out) }
+}
+
+pub(crate) unsafe fn terminal_point_from_grid_ref_impl(
+    has_point: bool,
+    coord: GhosttyPointCoordinate,
+    out: *mut GhosttyPointCoordinate,
+) -> c_int {
     if !has_point {
         return GHOSTTY_NO_VALUE;
     }
@@ -31,6 +39,13 @@ pub unsafe extern "C" fn ghostty_rust_terminal_point_from_grid_ref(
 
 #[no_mangle]
 pub extern "C" fn ghostty_rust_terminal_point_from_grid_ref_input(
+    has_terminal: bool,
+    has_ref: bool,
+) -> c_int {
+    terminal_point_from_grid_ref_input_impl(has_terminal, has_ref)
+}
+
+pub(crate) fn terminal_point_from_grid_ref_input_impl(
     has_terminal: bool,
     has_ref: bool,
 ) -> c_int {
