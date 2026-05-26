@@ -7,6 +7,12 @@ use crate::event_key_field::*;
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_key_event_set_action(event: *mut c_void, action: c_int) {
     unsafe {
+        key_event_set_action_impl(event, action);
+    }
+}
+
+pub(crate) unsafe fn key_event_set_action_impl(event: *mut c_void, action: c_int) {
+    unsafe {
         ptr::write(
             key_event_field::<c_int>(event, KEY_EVENT_ACTION_OFFSET),
             action,
@@ -16,11 +22,21 @@ pub unsafe extern "C" fn ghostty_rust_key_event_set_action(event: *mut c_void, a
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_key_event_get_action(event: *mut c_void) -> c_int {
+    unsafe { key_event_get_action_impl(event) }
+}
+
+pub(crate) unsafe fn key_event_get_action_impl(event: *mut c_void) -> c_int {
     unsafe { ptr::read(key_event_field::<c_int>(event, KEY_EVENT_ACTION_OFFSET)) }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_key_event_set_key(event: *mut c_void, key: c_int) {
+    unsafe {
+        key_event_set_key_impl(event, key);
+    }
+}
+
+pub(crate) unsafe fn key_event_set_key_impl(event: *mut c_void, key: c_int) {
     unsafe {
         ptr::write(key_event_field::<c_int>(event, KEY_EVENT_KEY_OFFSET), key);
     }
@@ -28,5 +44,9 @@ pub unsafe extern "C" fn ghostty_rust_key_event_set_key(event: *mut c_void, key:
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_key_event_get_key(event: *mut c_void) -> c_int {
+    unsafe { key_event_get_key_impl(event) }
+}
+
+pub(crate) unsafe fn key_event_get_key_impl(event: *mut c_void) -> c_int {
     unsafe { ptr::read(key_event_field::<c_int>(event, KEY_EVENT_KEY_OFFSET)) }
 }
