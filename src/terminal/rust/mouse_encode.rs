@@ -65,7 +65,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     }
 
     unsafe {
-        mouse_write_last_cell(
+        mouse_carry_forward_last_cell(
             last_cell_present,
             last_cell_x,
             last_cell_y,

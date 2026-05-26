@@ -19,6 +19,26 @@ pub(crate) unsafe fn mouse_write_last_cell(
     }
 }
 
+pub(crate) unsafe fn mouse_carry_forward_last_cell(
+    last_cell_present: bool,
+    last_cell_x: u16,
+    last_cell_y: u32,
+    out_present: *mut bool,
+    out_x: *mut u16,
+    out_y: *mut u32,
+) {
+    unsafe {
+        mouse_write_last_cell(
+            last_cell_present,
+            last_cell_x,
+            last_cell_y,
+            out_present,
+            out_x,
+            out_y,
+        );
+    }
+}
+
 pub(crate) unsafe fn mouse_write_last_cell_from_cell(
     cell: GhosttyMouseCell,
     out_present: *mut bool,
