@@ -1,11 +1,33 @@
 const std = @import("std");
 const testing = std.testing;
 const lib = @import("../lib.zig");
+const build_options = @import("terminal_options");
 const PageList = @import("../PageList.zig");
 const point = @import("../point.zig");
 const grid_ref_c = @import("grid_ref.zig");
 const terminal_c = @import("terminal.zig");
 const Result = @import("result.zig").Result;
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_tracked_grid_ref_has_value(
+        has_ref: bool,
+        has_page_list: bool,
+        garbage: bool,
+    ) callconv(.c) bool;
+
+    extern fn ghostty_rust_tracked_grid_ref_result(
+        has_ref: bool,
+        has_page_list: bool,
+        garbage: bool,
+        has_point: bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_tracked_grid_ref_set_input(
+        has_ref: bool,
+        has_terminal: bool,
+        same_terminal: bool,
+    ) callconv(.c) c_int;
+} else struct {};
 
 /// C: GhosttyTrackedGridRef
 ///
@@ -42,8 +64,18 @@ pub fn tracked_grid_ref_free(ref_: CTrackedGridRef) callconv(lib.calling_conv) v
 
 pub fn tracked_grid_ref_has_value(ref_: CTrackedGridRef) callconv(lib.calling_conv) bool {
     const ref = ref_ orelse return false;
-    _ = ref.pageList() orelse return false;
-    return !ref.pin.garbage;
+    const has_page_list = ref.pageList() != null;
+    const garbage = if (has_page_list) ref.pin.garbage else true;
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_tracked_grid_ref_has_value(
+            true,
+            has_page_list,
+            garbage,
+        );
+    }
+
+    if (!has_page_list) return false;
+    return !garbage;
 }
 
 pub fn tracked_grid_ref_snapshot(
@@ -51,8 +83,21 @@ pub fn tracked_grid_ref_snapshot(
     out_ref: ?*grid_ref_c.CGridRef,
 ) callconv(lib.calling_conv) Result {
     const ref = ref_ orelse return .invalid_value;
-    _ = ref.pageList() orelse return .no_value;
-    if (ref.pin.garbage) return .no_value;
+    const has_page_list = ref.pageList() != null;
+    const garbage = if (has_page_list) ref.pin.garbage else true;
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_tracked_grid_ref_result(
+            true,
+            has_page_list,
+            garbage,
+            true,
+        ));
+        if (result != .success) return result;
+    } else {
+        if (!has_page_list) return .no_value;
+        if (garbage) return .no_value;
+    }
+
     if (out_ref) |out| out.* = grid_ref_c.CGridRef.fromPin(ref.pin.*);
     return .success;
 }
@@ -63,10 +108,28 @@ pub fn tracked_grid_ref_point(
     out: ?*point.Coordinate,
 ) callconv(lib.calling_conv) Result {
     const ref = ref_ orelse return .invalid_value;
-    const list = ref.pageList() orelse return .no_value;
-    if (ref.pin.garbage) return .no_value;
-    const pt = list.pointFromPin(tag, ref.pin.*) orelse return .no_value;
-    if (out) |o| o.* = pt.coord();
+    const list = ref.pageList();
+    const garbage = if (list != null) ref.pin.garbage else true;
+    var pt: ?point.Point = null;
+    if (list) |l| {
+        if (!garbage) pt = l.pointFromPin(tag, ref.pin.*);
+    }
+
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_tracked_grid_ref_result(
+            true,
+            list != null,
+            garbage,
+            pt != null,
+        ));
+        if (result != .success) return result;
+    } else {
+        _ = list orelse return .no_value;
+        if (garbage) return .no_value;
+        _ = pt orelse return .no_value;
+    }
+
+    if (out) |o| o.* = pt.?.coord();
     return .success;
 }
 
@@ -75,6 +138,19 @@ pub fn tracked_grid_ref_set(
     terminal_: terminal_c.Terminal,
     pt: point.Point.C,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        const same_terminal = if (ref_ != null and terminal_ != null)
+            ref_.?.terminal == terminal_
+        else
+            false;
+        const result: Result = @enumFromInt(rust.ghostty_rust_tracked_grid_ref_set_input(
+            ref_ != null,
+            terminal_ != null,
+            same_terminal,
+        ));
+        if (result != .success) return result;
+    }
+
     const ref = ref_ orelse return .invalid_value;
     const wrapper = terminal_ orelse return .invalid_value;
     if (ref.terminal != terminal_) return .invalid_value;
@@ -222,4 +298,54 @@ test "tracked_grid_ref reports no value after terminal free" {
     ));
 
     tracked_grid_ref_free(ref);
+}
+
+test "tracked_grid_ref null input" {
+    try testing.expect(!tracked_grid_ref_has_value(null));
+
+    var snapshot: grid_ref_c.CGridRef = undefined;
+    try testing.expectEqual(Result.invalid_value, tracked_grid_ref_snapshot(null, &snapshot));
+
+    var coord: point.Coordinate = undefined;
+    try testing.expectEqual(Result.invalid_value, tracked_grid_ref_point(null, .active, &coord));
+
+    try testing.expectEqual(Result.invalid_value, tracked_grid_ref_set(
+        null,
+        null,
+        point.Point.cval(.{ .active = .{ .x = 0, .y = 0 } }),
+    ));
+}
+
+test "tracked_grid_ref set rejects other terminal" {
+    var terminal_a: terminal_c.Terminal = null;
+    try testing.expectEqual(Result.success, terminal_c.new(
+        &lib.alloc.test_allocator,
+        &terminal_a,
+        .{ .cols = 5, .rows = 2, .max_scrollback = 10_000 },
+    ));
+    defer terminal_c.free(terminal_a);
+
+    var terminal_b: terminal_c.Terminal = null;
+    try testing.expectEqual(Result.success, terminal_c.new(
+        &lib.alloc.test_allocator,
+        &terminal_b,
+        .{ .cols = 5, .rows = 2, .max_scrollback = 10_000 },
+    ));
+    defer terminal_c.free(terminal_b);
+
+    terminal_c.vt_write(terminal_a, "A", 1);
+
+    var ref: CTrackedGridRef = null;
+    try testing.expectEqual(Result.success, terminal_c.grid_ref_track(
+        terminal_a,
+        point.Point.cval(.{ .active = .{ .x = 0, .y = 0 } }),
+        &ref,
+    ));
+    defer tracked_grid_ref_free(ref);
+
+    try testing.expectEqual(Result.invalid_value, tracked_grid_ref_set(
+        ref,
+        terminal_b,
+        point.Point.cval(.{ .active = .{ .x = 0, .y = 0 } }),
+    ));
 }

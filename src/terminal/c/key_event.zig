@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const lib = @import("../lib.zig");
+const build_options = @import("terminal_options");
 const CAllocator = lib.alloc.Allocator;
 const key = @import("../../input/key.zig");
 const Result = @import("result.zig").Result;
@@ -17,6 +18,23 @@ const KeyEventWrapper = struct {
 
 /// C: GhosttyKeyEvent
 pub const Event = ?*KeyEventWrapper;
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_key_event_set_action(event: *anyopaque, action: c_int) callconv(.c) void;
+    extern fn ghostty_rust_key_event_get_action(event: *anyopaque) callconv(.c) c_int;
+    extern fn ghostty_rust_key_event_set_key(event: *anyopaque, k: c_int) callconv(.c) void;
+    extern fn ghostty_rust_key_event_get_key(event: *anyopaque) callconv(.c) c_int;
+    extern fn ghostty_rust_key_event_set_mods(event: *anyopaque, mods: u16) callconv(.c) void;
+    extern fn ghostty_rust_key_event_get_mods(event: *anyopaque) callconv(.c) u16;
+    extern fn ghostty_rust_key_event_set_consumed_mods(event: *anyopaque, mods: u16) callconv(.c) void;
+    extern fn ghostty_rust_key_event_get_consumed_mods(event: *anyopaque) callconv(.c) u16;
+    extern fn ghostty_rust_key_event_set_composing(event: *anyopaque, composing: bool) callconv(.c) void;
+    extern fn ghostty_rust_key_event_get_composing(event: *anyopaque) callconv(.c) bool;
+    extern fn ghostty_rust_key_event_set_utf8(event: *anyopaque, utf8: ?[*]const u8, len: usize) callconv(.c) void;
+    extern fn ghostty_rust_key_event_get_utf8(event: *anyopaque, len: ?*usize) callconv(.c) ?[*]const u8;
+    extern fn ghostty_rust_key_event_set_unshifted_codepoint(event: *anyopaque, codepoint: u32) callconv(.c) void;
+    extern fn ghostty_rust_key_event_get_unshifted_codepoint(event: *anyopaque) callconv(.c) u32;
+} else struct {};
 
 pub fn new(
     alloc_: ?*const CAllocator,
@@ -44,11 +62,19 @@ pub fn set_action(event_: Event, action: key.Action) callconv(lib.calling_conv) 
         };
     }
 
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_key_event_set_action(event_.?, @intFromEnum(action));
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     event.action = action;
 }
 
 pub fn get_action(event_: Event) callconv(lib.calling_conv) key.Action {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_key_event_get_action(event_.?));
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     return event.action;
 }
@@ -61,64 +87,124 @@ pub fn set_key(event_: Event, k: key.Key) callconv(lib.calling_conv) void {
         };
     }
 
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_key_event_set_key(event_.?, @intFromEnum(k));
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     event.key = k;
 }
 
 pub fn get_key(event_: Event) callconv(lib.calling_conv) key.Key {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_key_event_get_key(event_.?));
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     return event.key;
 }
 
 pub fn set_mods(event_: Event, mods: key.Mods) callconv(lib.calling_conv) void {
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_key_event_set_mods(event_.?, @bitCast(mods));
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     event.mods = mods;
 }
 
 pub fn get_mods(event_: Event) callconv(lib.calling_conv) key.Mods {
+    if (comptime build_options.lib_vt_rust) {
+        return @bitCast(rust.ghostty_rust_key_event_get_mods(event_.?));
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     return event.mods;
 }
 
 pub fn set_consumed_mods(event_: Event, consumed_mods: key.Mods) callconv(lib.calling_conv) void {
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_key_event_set_consumed_mods(event_.?, @bitCast(consumed_mods));
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     event.consumed_mods = consumed_mods;
 }
 
 pub fn get_consumed_mods(event_: Event) callconv(lib.calling_conv) key.Mods {
+    if (comptime build_options.lib_vt_rust) {
+        return @bitCast(rust.ghostty_rust_key_event_get_consumed_mods(event_.?));
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     return event.consumed_mods;
 }
 
 pub fn set_composing(event_: Event, composing: bool) callconv(lib.calling_conv) void {
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_key_event_set_composing(event_.?, composing);
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     event.composing = composing;
 }
 
 pub fn get_composing(event_: Event) callconv(lib.calling_conv) bool {
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_key_event_get_composing(event_.?);
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     return event.composing;
 }
 
 pub fn set_utf8(event_: Event, utf8: ?[*]const u8, len: usize) callconv(lib.calling_conv) void {
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_key_event_set_utf8(event_.?, utf8, len);
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     event.utf8 = if (utf8) |ptr| ptr[0..len] else "";
 }
 
 pub fn get_utf8(event_: Event, len: ?*usize) callconv(lib.calling_conv) ?[*]const u8 {
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_key_event_get_utf8(event_.?, len);
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     if (len) |l| l.* = event.utf8.len;
     return if (event.utf8.len == 0) null else event.utf8.ptr;
 }
 
 pub fn set_unshifted_codepoint(event_: Event, codepoint: u32) callconv(lib.calling_conv) void {
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_key_event_set_unshifted_codepoint(event_.?, codepoint);
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     event.unshifted_codepoint = @truncate(codepoint);
 }
 
 pub fn get_unshifted_codepoint(event_: Event) callconv(lib.calling_conv) u32 {
+    if (comptime build_options.lib_vt_rust) {
+        return rust.ghostty_rust_key_event_get_unshifted_codepoint(event_.?);
+    }
+
     const event: *key.KeyEvent = &event_.?.event;
     return event.unshifted_codepoint;
+}
+
+test "rust layout offsets" {
+    try std.testing.expectEqual(@as(usize, 0), @offsetOf(KeyEventWrapper, "event"));
+    try std.testing.expectEqual(@as(usize, 0), @offsetOf(key.KeyEvent, "utf8"));
+    try std.testing.expectEqual(@as(usize, 16), @offsetOf(key.KeyEvent, "action"));
+    try std.testing.expectEqual(@as(usize, 20), @offsetOf(key.KeyEvent, "key"));
+    try std.testing.expectEqual(@as(usize, 24), @offsetOf(key.KeyEvent, "unshifted_codepoint"));
+    try std.testing.expectEqual(@as(usize, 28), @offsetOf(key.KeyEvent, "mods"));
+    try std.testing.expectEqual(@as(usize, 30), @offsetOf(key.KeyEvent, "consumed_mods"));
+    try std.testing.expectEqual(@as(usize, 32), @offsetOf(key.KeyEvent, "composing"));
+    try std.testing.expectEqual(@as(usize, 40), @sizeOf(key.KeyEvent));
 }
 
 test "alloc" {

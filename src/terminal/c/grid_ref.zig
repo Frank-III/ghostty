@@ -1,6 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
 const lib = @import("../lib.zig");
+const build_options = @import("terminal_options");
 const page = @import("../page.zig");
 const PageList = @import("../PageList.zig");
 const point = @import("../point.zig");
@@ -11,6 +12,25 @@ const row_c = @import("row.zig");
 const style_c = @import("style.zig");
 const terminal_c = @import("terminal.zig");
 const Result = @import("result.zig").Result;
+
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_grid_ref_graphemes(
+        has_text: bool,
+        codepoint: u32,
+        out_buf: ?[*]u32,
+        buf_len: usize,
+        out_len: *usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_grid_ref_hyperlink_uri(
+        has_uri: bool,
+        uri: ?[*]const u8,
+        uri_len: usize,
+        out_buf: ?[*]u8,
+        buf_len: usize,
+        out_len: *usize,
+    ) callconv(.c) c_int;
+} else struct {};
 
 /// C: GhosttyGridRef
 ///
@@ -67,6 +87,18 @@ pub fn grid_ref_graphemes(
     const p = ref.toPin() orelse return .invalid_value;
     const cell = p.rowAndCell().cell;
 
+    if (comptime build_options.lib_vt_rust) {
+        if (!cell.hasGrapheme()) {
+            return @enumFromInt(rust.ghostty_rust_grid_ref_graphemes(
+                cell.hasText(),
+                if (cell.hasText()) @intCast(cell.codepoint()) else 0,
+                out_buf,
+                buf_len,
+                out_len,
+            ));
+        }
+    }
+
     if (!cell.hasText()) {
         out_len.* = 0;
         return .success;
@@ -102,16 +134,49 @@ pub fn grid_ref_hyperlink_uri(
     const cell = rac.cell;
 
     if (!cell.hyperlink) {
+        if (comptime build_options.lib_vt_rust) {
+            return @enumFromInt(rust.ghostty_rust_grid_ref_hyperlink_uri(
+                false,
+                null,
+                0,
+                out_buf,
+                buf_len,
+                out_len,
+            ));
+        }
+
         out_len.* = 0;
         return .success;
     }
 
     const link_id = p.node.data.lookupHyperlink(cell) orelse {
+        if (comptime build_options.lib_vt_rust) {
+            return @enumFromInt(rust.ghostty_rust_grid_ref_hyperlink_uri(
+                false,
+                null,
+                0,
+                out_buf,
+                buf_len,
+                out_len,
+            ));
+        }
+
         out_len.* = 0;
         return .success;
     };
     const entry = p.node.data.hyperlink_set.get(p.node.data.memory, link_id);
     const uri = entry.uri.slice(p.node.data.memory);
+
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_grid_ref_hyperlink_uri(
+            true,
+            uri.ptr,
+            uri.len,
+            out_buf,
+            buf_len,
+            out_len,
+        ));
+    }
 
     if (out_buf == null or buf_len < uri.len) {
         out_len.* = uri.len;
@@ -131,7 +196,7 @@ pub fn grid_ref_style(
     if (out) |o| {
         const cell = p.rowAndCell().cell;
         if (cell.style_id == stylepkg.default_id) {
-            o.* = .fromStyle(.{});
+            style_c.default_style(o);
         } else {
             o.* = .fromStyle(p.node.data.styles.get(
                 p.node.data.memory,
@@ -178,6 +243,55 @@ test "grid_ref_graphemes null buf returns out_of_space" {
     try testing.expectEqual(Result.invalid_value, grid_ref_graphemes(&ref, null, 0, &len));
 }
 
+test "grid_ref_graphemes no text" {
+    var terminal: terminal_c.Terminal = null;
+    try testing.expectEqual(Result.success, terminal_c.new(
+        &lib.alloc.test_allocator,
+        &terminal,
+        .{ .cols = 80, .rows = 24, .max_scrollback = 10_000 },
+    ));
+    defer terminal_c.free(terminal);
+
+    var ref: CGridRef = undefined;
+    try testing.expectEqual(Result.success, terminal_c.grid_ref(
+        terminal,
+        point.Point.cval(.{ .active = .{ .x = 0, .y = 0 } }),
+        &ref,
+    ));
+
+    var len: usize = undefined;
+    try testing.expectEqual(Result.success, grid_ref_graphemes(&ref, null, 0, &len));
+    try testing.expectEqual(@as(usize, 0), len);
+}
+
+test "grid_ref_graphemes simple codepoint" {
+    var terminal: terminal_c.Terminal = null;
+    try testing.expectEqual(Result.success, terminal_c.new(
+        &lib.alloc.test_allocator,
+        &terminal,
+        .{ .cols = 80, .rows = 24, .max_scrollback = 10_000 },
+    ));
+    defer terminal_c.free(terminal);
+
+    terminal_c.vt_write(terminal, "A", 1);
+
+    var ref: CGridRef = undefined;
+    try testing.expectEqual(Result.success, terminal_c.grid_ref(
+        terminal,
+        point.Point.cval(.{ .active = .{ .x = 0, .y = 0 } }),
+        &ref,
+    ));
+
+    var len: usize = undefined;
+    try testing.expectEqual(Result.out_of_space, grid_ref_graphemes(&ref, null, 0, &len));
+    try testing.expectEqual(@as(usize, 1), len);
+
+    var buf: [1]u32 = undefined;
+    try testing.expectEqual(Result.success, grid_ref_graphemes(&ref, &buf, buf.len, &len));
+    try testing.expectEqual(@as(usize, 1), len);
+    try testing.expectEqual(@as(u32, 'A'), buf[0]);
+}
+
 test "grid_ref_style null node" {
     const ref = CGridRef{};
     var out: style_c.Style = undefined;
@@ -187,6 +301,29 @@ test "grid_ref_style null node" {
 test "grid_ref_style null out" {
     const ref = CGridRef{};
     try testing.expectEqual(Result.invalid_value, grid_ref_style(&ref, null));
+}
+
+test "grid_ref_style default cell" {
+    var terminal: terminal_c.Terminal = null;
+    try testing.expectEqual(Result.success, terminal_c.new(
+        &lib.alloc.test_allocator,
+        &terminal,
+        .{ .cols = 80, .rows = 24, .max_scrollback = 10_000 },
+    ));
+    defer terminal_c.free(terminal);
+
+    terminal_c.vt_write(terminal, "A", 1);
+
+    var ref: CGridRef = undefined;
+    try testing.expectEqual(Result.success, terminal_c.grid_ref(
+        terminal,
+        point.Point.cval(.{ .active = .{ .x = 0, .y = 0 } }),
+        &ref,
+    ));
+
+    var style: style_c.Style = undefined;
+    try testing.expectEqual(Result.success, grid_ref_style(&ref, &style));
+    try testing.expect(style_c.style_is_default(&style));
 }
 
 test "grid_ref_hyperlink_uri null node" {

@@ -1,6 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
 const lib = @import("../lib.zig");
+const build_options = @import("terminal_options");
 const page = @import("../page.zig");
 const Cell = page.Cell;
 const color = @import("../color.zig");
@@ -99,11 +100,35 @@ pub const CellData = enum(c_int) {
     }
 };
 
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_cell_get(
+        cell: CCell,
+        data: c_int,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_cell_get_multi(
+        cell: CCell,
+        count: usize,
+        keys: ?[*]const CellData,
+        values: ?[*]?*anyopaque,
+        out_written: ?*usize,
+    ) callconv(.c) c_int;
+} else struct {};
+
 pub fn get(
     cell_: CCell,
     data: CellData,
     out: ?*anyopaque,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_cell_get(
+            cell_,
+            @intFromEnum(data),
+            out,
+        ));
+    }
+
     if (comptime std.debug.runtime_safety) {
         _ = std.meta.intToEnum(CellData, @intFromEnum(data)) catch {
             return .invalid_value;
@@ -127,6 +152,16 @@ pub fn get_multi(
     values: ?[*]?*anyopaque,
     out_written: ?*usize,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_cell_get_multi(
+            cell_,
+            count,
+            keys,
+            values,
+            out_written,
+        ));
+    }
+
     const k = keys orelse return .invalid_value;
     const v = values orelse return .invalid_value;
 
@@ -196,6 +231,64 @@ test "get wide" {
     var w: Wide = .narrow;
     try testing.expectEqual(Result.success, get(cell, .wide, @ptrCast(&w)));
     try testing.expectEqual(Wide.wide, w);
+}
+
+test "get style and metadata" {
+    var zig_cell = Cell.init('A');
+    zig_cell.style_id = 42;
+    zig_cell.hyperlink = true;
+    zig_cell.protected = true;
+    zig_cell.semantic_content = .prompt;
+    const cell: CCell = @bitCast(zig_cell);
+
+    var has_styling: bool = false;
+    var style_id: u16 = 0;
+    var has_hyperlink: bool = false;
+    var is_protected: bool = false;
+    var semantic_content: SemanticContent = .output;
+
+    try testing.expectEqual(Result.success, get(cell, .has_styling, @ptrCast(&has_styling)));
+    try testing.expectEqual(Result.success, get(cell, .style_id, @ptrCast(&style_id)));
+    try testing.expectEqual(Result.success, get(cell, .has_hyperlink, @ptrCast(&has_hyperlink)));
+    try testing.expectEqual(Result.success, get(cell, .protected, @ptrCast(&is_protected)));
+    try testing.expectEqual(Result.success, get(cell, .semantic_content, @ptrCast(&semantic_content)));
+
+    try testing.expect(has_styling);
+    try testing.expectEqual(@as(u16, 42), style_id);
+    try testing.expect(has_hyperlink);
+    try testing.expect(is_protected);
+    try testing.expectEqual(SemanticContent.prompt, semantic_content);
+}
+
+test "get background colors" {
+    var palette_cell = Cell.init(0);
+    palette_cell.content_tag = .bg_color_palette;
+    palette_cell.content = .{ .color_palette = 7 };
+
+    var content_tag: ContentTag = .codepoint;
+    var cp: u32 = 1;
+    var has_text: bool = true;
+    var palette: u8 = 0;
+
+    try testing.expectEqual(Result.success, get(@bitCast(palette_cell), .content_tag, @ptrCast(&content_tag)));
+    try testing.expectEqual(Result.success, get(@bitCast(palette_cell), .codepoint, @ptrCast(&cp)));
+    try testing.expectEqual(Result.success, get(@bitCast(palette_cell), .has_text, @ptrCast(&has_text)));
+    try testing.expectEqual(Result.success, get(@bitCast(palette_cell), .color_palette, @ptrCast(&palette)));
+
+    try testing.expectEqual(ContentTag.bg_color_palette, content_tag);
+    try testing.expectEqual(@as(u32, 0), cp);
+    try testing.expect(!has_text);
+    try testing.expectEqual(@as(u8, 7), palette);
+
+    var rgb_cell = Cell.init(0);
+    rgb_cell.content_tag = .bg_color_rgb;
+    rgb_cell.content = .{ .color_rgb = .{ .r = 0x12, .g = 0x34, .b = 0x56 } };
+
+    var rgb: color.RGB.C = undefined;
+    try testing.expectEqual(Result.success, get(@bitCast(rgb_cell), .color_rgb, @ptrCast(&rgb)));
+    try testing.expectEqual(@as(u8, 0x12), rgb.r);
+    try testing.expectEqual(@as(u8, 0x34), rgb.g);
+    try testing.expectEqual(@as(u8, 0x56), rgb.b);
 }
 
 test "get_multi success" {
