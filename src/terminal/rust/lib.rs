@@ -144,6 +144,7 @@ mod key_bool_option;
 mod key_option_as_alt_value;
 mod key_option_as_alt;
 mod key_setopt_bool;
+mod key_setopt_bool_write;
 mod key_from_terminal_write;
 mod key_from_terminal;
 mod sys;
