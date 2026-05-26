@@ -9,6 +9,7 @@ use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
 use crate::style_color_none::*;
+use crate::style_default::*;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -54,22 +55,7 @@ pub struct GhosttyStyle {
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_style_default(result: *mut GhosttyStyle) {
     unsafe {
-        ptr::write(
-            core::ptr::addr_of_mut!((*result).size),
-            mem::size_of::<GhosttyStyle>(),
-        );
-        write_style_color_none(core::ptr::addr_of_mut!((*result).fg_color));
-        write_style_color_none(core::ptr::addr_of_mut!((*result).bg_color));
-        write_style_color_none(core::ptr::addr_of_mut!((*result).underline_color));
-        ptr::write(core::ptr::addr_of_mut!((*result).bold), false);
-        ptr::write(core::ptr::addr_of_mut!((*result).italic), false);
-        ptr::write(core::ptr::addr_of_mut!((*result).faint), false);
-        ptr::write(core::ptr::addr_of_mut!((*result).blink), false);
-        ptr::write(core::ptr::addr_of_mut!((*result).inverse), false);
-        ptr::write(core::ptr::addr_of_mut!((*result).invisible), false);
-        ptr::write(core::ptr::addr_of_mut!((*result).strikethrough), false);
-        ptr::write(core::ptr::addr_of_mut!((*result).overline), false);
-        ptr::write(core::ptr::addr_of_mut!((*result).underline), 0);
+        write_style_default(result);
     }
 }
 
