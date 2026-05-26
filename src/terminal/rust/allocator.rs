@@ -34,6 +34,13 @@ pub unsafe extern "C" fn ghostty_rust_alloc_alloc(
     alloc: *const GhosttyAllocator,
     len: usize,
 ) -> *mut u8 {
+    unsafe { alloc_alloc_impl(alloc, len) }
+}
+
+pub(crate) unsafe fn alloc_alloc_impl(
+    alloc: *const GhosttyAllocator,
+    len: usize,
+) -> *mut u8 {
     if alloc.is_null() {
         return ptr::null_mut();
     }
@@ -53,6 +60,14 @@ pub unsafe extern "C" fn ghostty_rust_alloc_alloc(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_alloc_free(
+    alloc: *const GhosttyAllocator,
+    ptr: *mut u8,
+    len: usize,
+) {
+    unsafe { alloc_free_impl(alloc, ptr, len) }
+}
+
+pub(crate) unsafe fn alloc_free_impl(
     alloc: *const GhosttyAllocator,
     ptr: *mut u8,
     len: usize,
