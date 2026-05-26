@@ -1,5 +1,7 @@
+use core::ffi::c_int;
 use core::ptr;
 
+use crate::constants::*;
 use crate::mouse_types::*;
 
 pub(crate) unsafe fn mouse_write_last_cell(
@@ -26,4 +28,21 @@ pub(crate) unsafe fn mouse_write_last_cell_from_cell(
     unsafe {
         mouse_write_last_cell(true, cell.x, cell.y, out_present, out_x, out_y);
     }
+}
+
+pub(crate) fn mouse_should_suppress_same_cell_motion(
+    action: c_int,
+    format: c_int,
+    track_last_cell: bool,
+    last_cell_present: bool,
+    last_cell_x: u16,
+    last_cell_y: u32,
+    cell: GhosttyMouseCell,
+) -> bool {
+    action == MOUSE_ACTION_MOTION
+        && format != MOUSE_FORMAT_SGR_PIXELS
+        && track_last_cell
+        && last_cell_present
+        && last_cell_x == cell.x
+        && last_cell_y == cell.y
 }
