@@ -96,16 +96,19 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     }
 
     let cell = mouse_pos_to_cell(pos, size);
-    if mouse_should_suppress_same_cell_motion(
-        action,
-        format,
-        track_last_cell,
-        last_cell_present,
-        last_cell_x,
-        last_cell_y,
-        cell,
-    ) {
-        return unsafe { mouse_suppress_result(out_written) };
+    if let Err(result) = unsafe {
+        mouse_same_cell_motion_or_suppress(
+            action,
+            format,
+            track_last_cell,
+            last_cell_present,
+            last_cell_x,
+            last_cell_y,
+            cell,
+            out_written,
+        )
+    } {
+        return result;
     }
 
     unsafe {
