@@ -9,6 +9,7 @@ use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
 use crate::simple::*;
 use crate::event_cell_style::*;
+use crate::cell::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_render_index_next(
