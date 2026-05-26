@@ -124,6 +124,7 @@ mod focus_sequence;
 mod focus_write;
 mod mode_report_len;
 mod mode_report_state;
+mod mode_report_tag;
 mod mode_report_write;
 mod modes;
 mod osc;

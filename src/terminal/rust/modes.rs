@@ -5,6 +5,7 @@ use crate::constants::*;
 use crate::early::*;
 use crate::mode_report_len::*;
 use crate::mode_report_state::*;
+use crate::mode_report_tag::*;
 use crate::mode_report_write::*;
 
 #[no_mangle]
@@ -19,10 +20,9 @@ pub unsafe extern "C" fn ghostty_rust_mode_report_encode(
         return GHOSTTY_INVALID_VALUE;
     }
 
-    let value = u64::from(tag & MODE_VALUE_MASK);
-    let ansi = (tag & MODE_ANSI_MASK) != 0;
+    let report_tag = mode_report_tag(tag);
     let state_value = state as u64;
-    let total = mode_report_len(value, ansi, state_value);
+    let total = mode_report_len(report_tag.value, report_tag.ansi, state_value);
 
     unsafe {
         ptr::write(out_written, total);
@@ -33,7 +33,7 @@ pub unsafe extern "C" fn ghostty_rust_mode_report_encode(
     }
 
     unsafe {
-        write_mode_report(out, value, ansi, state_value);
+        write_mode_report(out, report_tag.value, report_tag.ansi, state_value);
     }
 
     GHOSTTY_SUCCESS
