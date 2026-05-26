@@ -2,6 +2,7 @@ use core::ffi::c_int;
 
 use crate::constants::*;
 
+pub(crate) use crate::mouse_button_base::*;
 pub(crate) use crate::mouse_button_mods::*;
 pub(crate) use crate::mouse_report::*;
 
@@ -21,18 +22,7 @@ pub(crate) fn mouse_button_code(
     {
         3u8
     } else {
-        match button {
-            MOUSE_BUTTON_LEFT => 0,
-            MOUSE_BUTTON_MIDDLE => 1,
-            MOUSE_BUTTON_RIGHT => 2,
-            MOUSE_BUTTON_FOUR => 64,
-            MOUSE_BUTTON_FIVE => 65,
-            MOUSE_BUTTON_SIX => 66,
-            MOUSE_BUTTON_SEVEN => 67,
-            MOUSE_BUTTON_EIGHT => 128,
-            MOUSE_BUTTON_NINE => 129,
-            _ => return None,
-        }
+        mouse_button_base_code(button)?
     };
 
     if tracking_mode != MOUSE_TRACKING_X10 {
