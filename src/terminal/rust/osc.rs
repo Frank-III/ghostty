@@ -1,7 +1,7 @@
 use core::ffi::{c_int, c_void};
-use core::ptr;
 
 use crate::early::*;
+use crate::osc_command_data::*;
 use crate::osc_command_type::*;
 
 pub(crate) const OSC_COMMAND_INVALID: c_int = 0;
@@ -19,13 +19,5 @@ pub unsafe extern "C" fn ghostty_rust_osc_command_data_string(
     value: *const u8,
     out: *mut c_void,
 ) -> bool {
-    if data != OSC_DATA_CHANGE_WINDOW_TITLE_STR || !has_value || value.is_null() || out.is_null() {
-        return false;
-    }
-
-    unsafe {
-        ptr::write(out.cast::<*const u8>(), value);
-    }
-
-    true
+    unsafe { osc_command_data_string(data, has_value, value, out) }
 }
