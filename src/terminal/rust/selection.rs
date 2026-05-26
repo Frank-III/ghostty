@@ -43,6 +43,14 @@ pub unsafe extern "C" fn ghostty_rust_selection_write(
     selection: *const GhosttySelection,
     out: *mut GhosttySelection,
 ) -> c_int {
+    unsafe { selection_write_impl(has_value, selection, out) }
+}
+
+pub(crate) unsafe fn selection_write_impl(
+    has_value: bool,
+    selection: *const GhosttySelection,
+    out: *mut GhosttySelection,
+) -> c_int {
     if out.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
@@ -56,6 +64,13 @@ pub unsafe extern "C" fn ghostty_rust_selection_write(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_selection_write_order(
+    order: c_int,
+    out: *mut c_int,
+) -> c_int {
+    unsafe { selection_write_order_impl(order, out) }
+}
+
+pub(crate) unsafe fn selection_write_order_impl(
     order: c_int,
     out: *mut c_int,
 ) -> c_int {
@@ -80,6 +95,10 @@ pub unsafe extern "C" fn ghostty_rust_selection_write_order(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_selection_write_bool(value: bool, out: *mut bool) -> c_int {
+    unsafe { selection_write_bool_impl(value, out) }
+}
+
+pub(crate) unsafe fn selection_write_bool_impl(value: bool, out: *mut bool) -> c_int {
     if out.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
@@ -93,6 +112,15 @@ pub unsafe extern "C" fn ghostty_rust_selection_write_bool(value: bool, out: *mu
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_selection_equal(
+    terminal: *mut c_void,
+    a: *const GhosttySelection,
+    b: *const GhosttySelection,
+    out: *mut bool,
+) -> c_int {
+    unsafe { selection_equal_impl(terminal, a, b, out) }
+}
+
+pub(crate) unsafe fn selection_equal_impl(
     terminal: *mut c_void,
     a: *const GhosttySelection,
     b: *const GhosttySelection,
@@ -127,4 +155,3 @@ pub unsafe extern "C" fn ghostty_rust_selection_equal(
 
     GHOSTTY_SUCCESS
 }
-
