@@ -56,6 +56,7 @@ mod kitty_placement_layer;
 mod mouse_cell;
 mod mouse_button;
 mod mouse_button_base;
+mod mouse_button_required;
 mod mouse_button_default;
 mod mouse_button_motion;
 mod mouse_button_mods;

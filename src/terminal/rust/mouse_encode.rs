@@ -8,6 +8,7 @@ use crate::input::*;
 use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_button::*;
+use crate::mouse_button_required::*;
 use crate::mouse_commit::*;
 use crate::mouse_encode_size::*;
 use crate::mouse_geometry::*;
@@ -114,15 +115,19 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         );
     }
 
-    let Some(button_code) = mouse_required_button_code(
-        action,
-        button_present,
-        button,
-        mods,
-        tracking_mode,
-        format,
-    ) else {
-        return unsafe { mouse_suppress_result(out_written) };
+    let button_code = match unsafe {
+        mouse_required_button_code_or_suppress(
+            action,
+            button_present,
+            button,
+            mods,
+            tracking_mode,
+            format,
+            out_written,
+        )
+    } {
+        Ok(button_code) => button_code,
+        Err(result) => return result,
     };
 
     if !mouse_x10_cell_in_bounds(format, cell) {
