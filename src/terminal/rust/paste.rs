@@ -1,0 +1,144 @@
+use core::ffi::c_int;
+use core::ptr;
+
+use crate::constants::*;
+use crate::early::*;
+use crate::simple::*;
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_paste_is_safe(data: *const u8, len: usize) -> bool {
+    if data.is_null() {
+        return true;
+    }
+
+    let mut offset = 0usize;
+    while offset < len {
+        let byte = unsafe { ptr::read(data.add(offset)) };
+        if byte == b'\n' || unsafe { matches_bytes_at(data, len, offset, PASTE_END) } {
+            return false;
+        }
+
+        offset += 1;
+    }
+
+    true
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_paste_encode(
+    data: *mut u8,
+    data_len: usize,
+    bracketed: bool,
+    out: *mut u8,
+    out_len: usize,
+    out_written: *mut usize,
+) -> c_int {
+    let actual_data_len = if data.is_null() { 0 } else { data_len };
+
+    if !data.is_null() {
+        let mut offset = 0usize;
+        while offset < actual_data_len {
+            let byte = unsafe { ptr::read(data.add(offset)) };
+            if paste_strip_byte(byte) || (!bracketed && byte == b'\n') {
+                unsafe {
+                    ptr::write(
+                        data.add(offset),
+                        if !bracketed && byte == b'\n' {
+                            b'\r'
+                        } else {
+                            b' '
+                        },
+                    );
+                }
+            }
+            offset += 1;
+        }
+    }
+
+    let prefix_len = if bracketed { PASTE_START.len() } else { 0 };
+    let suffix_len = if bracketed { PASTE_END.len() } else { 0 };
+    let total = prefix_len + actual_data_len + suffix_len;
+
+    unsafe {
+        ptr::write(out_written, total);
+    }
+
+    if out_len < total || (total > 0 && out.is_null()) {
+        return GHOSTTY_OUT_OF_SPACE;
+    }
+
+    let mut out_offset = 0usize;
+    if bracketed {
+        unsafe {
+            write_bytes(out, &mut out_offset, PASTE_START);
+        }
+    }
+    if actual_data_len > 0 {
+        unsafe {
+            copy_data_bytes(out, &mut out_offset, data, actual_data_len);
+        }
+    }
+    if bracketed {
+        unsafe {
+            write_bytes(out, &mut out_offset, PASTE_END);
+        }
+    }
+
+    GHOSTTY_SUCCESS
+}
+
+pub(crate) fn paste_strip_byte(byte: u8) -> bool {
+    matches!(
+        byte,
+        0x00 | 0x08
+            | 0x05
+            | 0x04
+            | 0x1B
+            | 0x7F
+            | 0x03
+            | 0x1C
+            | 0x15
+            | 0x1A
+            | 0x11
+            | 0x13
+            | 0x17
+            | 0x16
+            | 0x12
+            | 0x0F
+    )
+}
+
+pub(crate) unsafe fn matches_bytes_at(
+    data: *const u8,
+    len: usize,
+    offset: usize,
+    bytes: &[u8],
+) -> bool {
+    if len - offset < bytes.len() {
+        return false;
+    }
+
+    let mut i = 0usize;
+    while i < bytes.len() {
+        let actual = unsafe { ptr::read(data.add(offset + i)) };
+        let expected = unsafe { ptr::read(bytes.as_ptr().add(i)) };
+        if actual != expected {
+            return false;
+        }
+        i += 1;
+    }
+
+    true
+}
+
+pub(crate) unsafe fn copy_data_bytes(out: *mut u8, offset: &mut usize, data: *const u8, len: usize) {
+    let mut i = 0usize;
+    while i < len {
+        let byte = unsafe { ptr::read(data.add(i)) };
+        unsafe {
+            ptr::write(out.add(*offset + i), byte);
+        }
+        i += 1;
+    }
+    *offset += len;
+}
