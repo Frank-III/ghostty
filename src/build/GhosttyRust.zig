@@ -40,8 +40,24 @@ pub fn libVtObject(
     run.addArg("-o");
     const output = run.addOutputFileArg(objectName(target));
     run.addFileArg(b.path("src/terminal/rust/lib.rs"));
+    for (lib_vt_modules) |module| {
+        run.addFileInput(b.path(module));
+    }
     return output;
 }
+
+const lib_vt_modules = [_][]const u8{
+    "src/terminal/rust/constants.rs",
+    "src/terminal/rust/early.rs",
+    "src/terminal/rust/event_cell_style.rs",
+    "src/terminal/rust/input.rs",
+    "src/terminal/rust/kitty_graphics.rs",
+    "src/terminal/rust/mouse_encode.rs",
+    "src/terminal/rust/render.rs",
+    "src/terminal/rust/selection.rs",
+    "src/terminal/rust/simple.rs",
+    "src/terminal/rust/terminal.rs",
+};
 
 fn addBuildInfoEnv(
     run: *std.Build.Step.Run,

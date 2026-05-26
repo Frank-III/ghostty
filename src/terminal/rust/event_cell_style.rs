@@ -1,0 +1,823 @@
+use core::ffi::{c_int, c_void};
+use core::{mem, ptr};
+use crate::early::*;
+use crate::constants::*;
+use crate::terminal::*;
+use crate::render::*;
+use crate::input::*;
+use crate::selection::*;
+use crate::kitty_graphics::*;
+use crate::mouse_encode::*;
+use crate::simple::*;
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_set_action(event: *mut c_void, action: c_int) {
+    unsafe {
+        ptr::write(
+            key_event_field::<c_int>(event, KEY_EVENT_ACTION_OFFSET),
+            action,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_get_action(event: *mut c_void) -> c_int {
+    unsafe { ptr::read(key_event_field::<c_int>(event, KEY_EVENT_ACTION_OFFSET)) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_set_key(event: *mut c_void, key: c_int) {
+    unsafe {
+        ptr::write(key_event_field::<c_int>(event, KEY_EVENT_KEY_OFFSET), key);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_get_key(event: *mut c_void) -> c_int {
+    unsafe { ptr::read(key_event_field::<c_int>(event, KEY_EVENT_KEY_OFFSET)) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_set_mods(event: *mut c_void, mods: u16) {
+    unsafe {
+        ptr::write(key_event_field::<u16>(event, KEY_EVENT_MODS_OFFSET), mods);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_get_mods(event: *mut c_void) -> u16 {
+    unsafe { ptr::read(key_event_field::<u16>(event, KEY_EVENT_MODS_OFFSET)) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_set_consumed_mods(event: *mut c_void, mods: u16) {
+    unsafe {
+        ptr::write(
+            key_event_field::<u16>(event, KEY_EVENT_CONSUMED_MODS_OFFSET),
+            mods,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_get_consumed_mods(event: *mut c_void) -> u16 {
+    unsafe {
+        ptr::read(key_event_field::<u16>(
+            event,
+            KEY_EVENT_CONSUMED_MODS_OFFSET,
+        ))
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_set_composing(event: *mut c_void, composing: bool) {
+    unsafe {
+        ptr::write(
+            key_event_field::<bool>(event, KEY_EVENT_COMPOSING_OFFSET),
+            composing,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_get_composing(event: *mut c_void) -> bool {
+    unsafe { ptr::read(key_event_field::<bool>(event, KEY_EVENT_COMPOSING_OFFSET)) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_set_utf8(
+    event: *mut c_void,
+    utf8: *const u8,
+    len: usize,
+) {
+    let ptr = if utf8.is_null() {
+        EMPTY_UTF8.as_ptr()
+    } else {
+        utf8
+    };
+    unsafe {
+        ptr::write(
+            key_event_field::<*const u8>(event, KEY_EVENT_UTF8_PTR_OFFSET),
+            ptr,
+        );
+        ptr::write(
+            key_event_field::<usize>(event, KEY_EVENT_UTF8_LEN_OFFSET),
+            len,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_get_utf8(
+    event: *mut c_void,
+    len: *mut usize,
+) -> *const u8 {
+    let utf8_len = unsafe { ptr::read(key_event_field::<usize>(event, KEY_EVENT_UTF8_LEN_OFFSET)) };
+    if !len.is_null() {
+        unsafe {
+            ptr::write(len, utf8_len);
+        }
+    }
+
+    if utf8_len == 0 {
+        ptr::null()
+    } else {
+        unsafe {
+            ptr::read(key_event_field::<*const u8>(
+                event,
+                KEY_EVENT_UTF8_PTR_OFFSET,
+            ))
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_set_unshifted_codepoint(
+    event: *mut c_void,
+    codepoint: u32,
+) {
+    unsafe {
+        ptr::write(
+            key_event_field::<u32>(event, KEY_EVENT_UNSHIFTED_CODEPOINT_OFFSET),
+            codepoint & 0x001f_ffff,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_key_event_get_unshifted_codepoint(event: *mut c_void) -> u32 {
+    unsafe {
+        ptr::read(key_event_field::<u32>(
+            event,
+            KEY_EVENT_UNSHIFTED_CODEPOINT_OFFSET,
+        ))
+    }
+}
+
+pub(crate) unsafe fn key_event_field<T>(event: *mut c_void, offset: usize) -> *mut T {
+    unsafe { event.cast::<u8>().add(offset).cast::<T>() }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_mouse_event_set_action(event: *mut c_void, action: c_int) {
+    unsafe {
+        ptr::write(
+            mouse_event_field::<c_int>(event, MOUSE_EVENT_ACTION_OFFSET),
+            action,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_mouse_event_get_action(event: *mut c_void) -> c_int {
+    unsafe { ptr::read(mouse_event_field::<c_int>(event, MOUSE_EVENT_ACTION_OFFSET)) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_mouse_event_set_button(event: *mut c_void, button: c_int) {
+    unsafe {
+        ptr::write(
+            mouse_event_field::<c_int>(event, MOUSE_EVENT_BUTTON_PAYLOAD_OFFSET),
+            button,
+        );
+        ptr::write(
+            mouse_event_field::<u32>(event, MOUSE_EVENT_BUTTON_TAG_OFFSET),
+            1,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_mouse_event_clear_button(event: *mut c_void) {
+    unsafe {
+        ptr::write(
+            mouse_event_field::<c_int>(event, MOUSE_EVENT_BUTTON_PAYLOAD_OFFSET),
+            0,
+        );
+        ptr::write(
+            mouse_event_field::<u32>(event, MOUSE_EVENT_BUTTON_TAG_OFFSET),
+            0,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_mouse_event_get_button(
+    event: *mut c_void,
+    out: *mut c_int,
+) -> bool {
+    let tag = unsafe {
+        ptr::read(mouse_event_field::<u32>(
+            event,
+            MOUSE_EVENT_BUTTON_TAG_OFFSET,
+        ))
+    };
+    if tag == 0 {
+        return false;
+    }
+
+    if !out.is_null() {
+        unsafe {
+            ptr::write(
+                out,
+                ptr::read(mouse_event_field::<c_int>(
+                    event,
+                    MOUSE_EVENT_BUTTON_PAYLOAD_OFFSET,
+                )),
+            );
+        }
+    }
+
+    true
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_mouse_event_set_mods(event: *mut c_void, mods: u16) {
+    unsafe {
+        ptr::write(
+            mouse_event_field::<u16>(event, MOUSE_EVENT_MODS_OFFSET),
+            mods,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_mouse_event_get_mods(event: *mut c_void) -> u16 {
+    unsafe { ptr::read(mouse_event_field::<u16>(event, MOUSE_EVENT_MODS_OFFSET)) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_mouse_event_set_position(
+    event: *mut c_void,
+    pos: GhosttyMousePosition,
+) {
+    unsafe {
+        ptr::write(
+            mouse_event_field::<GhosttyMousePosition>(event, MOUSE_EVENT_POS_OFFSET),
+            pos,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_mouse_event_get_position(
+    event: *mut c_void,
+) -> GhosttyMousePosition {
+    unsafe {
+        ptr::read(mouse_event_field::<GhosttyMousePosition>(
+            event,
+            MOUSE_EVENT_POS_OFFSET,
+        ))
+    }
+}
+
+pub(crate) unsafe fn mouse_event_field<T>(event: *mut c_void, offset: usize) -> *mut T {
+    unsafe {
+        event
+            .cast::<u8>()
+            .add(MOUSE_EVENT_EVENT_OFFSET + offset)
+            .cast::<T>()
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_cell_get(cell: u64, data: c_int, out: *mut c_void) -> c_int {
+    unsafe { cell_get(cell, data, out) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_cell_get_multi(
+    cell: u64,
+    count: usize,
+    keys: *const c_int,
+    values: *const *mut c_void,
+    out_written: *mut usize,
+) -> c_int {
+    if keys.is_null() || values.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
+
+    let mut i = 0usize;
+    while i < count {
+        let key = unsafe { ptr::read(keys.add(i)) };
+        let out = unsafe { ptr::read(values.add(i)) };
+        let result = unsafe { cell_get(cell, key, out) };
+        if result != GHOSTTY_SUCCESS {
+            if !out_written.is_null() {
+                unsafe {
+                    ptr::write(out_written, i);
+                }
+            }
+            return result;
+        }
+
+        i += 1;
+    }
+
+    if !out_written.is_null() {
+        unsafe {
+            ptr::write(out_written, count);
+        }
+    }
+
+    GHOSTTY_SUCCESS
+}
+
+pub(crate) unsafe fn cell_get(cell: u64, data: c_int, out: *mut c_void) -> c_int {
+    match data {
+        CELL_DATA_CODEPOINT => unsafe { write_out(out, cell_codepoint(cell)) },
+        CELL_DATA_CONTENT_TAG => unsafe { write_out(out, cell_content_tag(cell) as c_int) },
+        CELL_DATA_WIDE => unsafe { write_out(out, ((cell >> 42) & 0x3) as c_int) },
+        CELL_DATA_HAS_TEXT => unsafe { write_out(out, cell_has_text(cell)) },
+        CELL_DATA_HAS_STYLING => unsafe { write_out(out, cell_style_id(cell) != 0) },
+        CELL_DATA_STYLE_ID => unsafe { write_out(out, cell_style_id(cell)) },
+        CELL_DATA_HAS_HYPERLINK => unsafe { write_out(out, cell_bit(cell, 45)) },
+        CELL_DATA_PROTECTED => unsafe { write_out(out, cell_bit(cell, 44)) },
+        CELL_DATA_SEMANTIC_CONTENT => unsafe { write_out(out, ((cell >> 46) & 0x3) as c_int) },
+        CELL_DATA_COLOR_PALETTE => unsafe { write_out(out, cell_content(cell) as u8) },
+        CELL_DATA_COLOR_RGB => unsafe { write_cell_rgb(out, cell_content(cell)) },
+        _ => return GHOSTTY_INVALID_VALUE,
+    }
+
+    GHOSTTY_SUCCESS
+}
+
+pub(crate) fn cell_content_tag(cell: u64) -> u64 {
+    cell & 0x3
+}
+
+pub(crate) fn cell_content(cell: u64) -> u64 {
+    (cell >> 2) & 0x00ff_ffff
+}
+
+pub(crate) fn cell_codepoint(cell: u64) -> u32 {
+    match cell_content_tag(cell) {
+        CELL_CONTENT_TAG_CODEPOINT | CELL_CONTENT_TAG_CODEPOINT_GRAPHEME => {
+            (cell_content(cell) & 0x001f_ffff) as u32
+        }
+        _ => 0,
+    }
+}
+
+pub(crate) fn cell_has_text(cell: u64) -> bool {
+    match cell_content_tag(cell) {
+        CELL_CONTENT_TAG_CODEPOINT | CELL_CONTENT_TAG_CODEPOINT_GRAPHEME => {
+            cell_codepoint(cell) != 0
+        }
+        _ => false,
+    }
+}
+
+pub(crate) fn cell_has_grapheme(cell: u64) -> bool {
+    cell_content_tag(cell) == CELL_CONTENT_TAG_CODEPOINT_GRAPHEME
+}
+
+pub(crate) fn cell_style_id(cell: u64) -> u16 {
+    ((cell >> 26) & 0xffff) as u16
+}
+
+pub(crate) fn cell_bit(cell: u64, bit: u32) -> bool {
+    ((cell >> bit) & 1) != 0
+}
+
+pub(crate) unsafe fn write_cell_rgb(out: *mut c_void, content: u64) {
+    let rgb = out.cast::<GhosttyColorRgb>();
+    unsafe {
+        ptr::write(core::ptr::addr_of_mut!((*rgb).r), content as u8);
+        ptr::write(core::ptr::addr_of_mut!((*rgb).g), (content >> 8) as u8);
+        ptr::write(core::ptr::addr_of_mut!((*rgb).b), (content >> 16) as u8);
+    }
+}
+
+pub(crate) unsafe fn write_style_color_rgb(
+    color: *const GhosttyStyleColor,
+    palette_color: *const GhosttyColorRgb,
+    out: *mut c_void,
+) -> c_int {
+    if color.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
+
+    unsafe {
+        match ptr::read(core::ptr::addr_of!((*color).tag)) {
+            STYLE_COLOR_NONE => GHOSTTY_INVALID_VALUE,
+            STYLE_COLOR_PALETTE => {
+                write_rgb(out, palette_color);
+                GHOSTTY_SUCCESS
+            }
+            STYLE_COLOR_RGB => {
+                let rgb = core::ptr::addr_of!((*color).value.rgb);
+                write_rgb(out, rgb);
+                GHOSTTY_SUCCESS
+            }
+            _ => GHOSTTY_INVALID_VALUE,
+        }
+    }
+}
+
+pub(crate) unsafe fn copy_style_color(dst: *mut GhosttyStyleColor, src: *const GhosttyStyleColor) -> c_int {
+    if dst.is_null() || src.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
+
+    unsafe {
+        let tag = ptr::read(core::ptr::addr_of!((*src).tag));
+        ptr::write(core::ptr::addr_of_mut!((*dst).tag), tag);
+        ptr::write(core::ptr::addr_of_mut!((*dst).value.padding), 0);
+
+        match tag {
+            STYLE_COLOR_NONE => {}
+            STYLE_COLOR_PALETTE => {
+                ptr::write(
+                    core::ptr::addr_of_mut!((*dst).value.palette),
+                    ptr::read(core::ptr::addr_of!((*src).value.palette)),
+                );
+            }
+            STYLE_COLOR_RGB => {
+                write_rgb(
+                    core::ptr::addr_of_mut!((*dst).value.rgb).cast::<c_void>(),
+                    core::ptr::addr_of!((*src).value.rgb),
+                );
+            }
+            _ => return GHOSTTY_INVALID_VALUE,
+        }
+    }
+
+    GHOSTTY_SUCCESS
+}
+
+pub(crate) unsafe fn copy_style(dst: *mut GhosttyStyle, src: *const GhosttyStyle) -> c_int {
+    if dst.is_null() || src.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
+
+    unsafe {
+        ptr::write(
+            core::ptr::addr_of_mut!((*dst).size),
+            ptr::read(core::ptr::addr_of!((*src).size)),
+        );
+        let result = copy_style_color(
+            core::ptr::addr_of_mut!((*dst).fg_color),
+            core::ptr::addr_of!((*src).fg_color),
+        );
+        if result != GHOSTTY_SUCCESS {
+            return result;
+        }
+        let result = copy_style_color(
+            core::ptr::addr_of_mut!((*dst).bg_color),
+            core::ptr::addr_of!((*src).bg_color),
+        );
+        if result != GHOSTTY_SUCCESS {
+            return result;
+        }
+        let result = copy_style_color(
+            core::ptr::addr_of_mut!((*dst).underline_color),
+            core::ptr::addr_of!((*src).underline_color),
+        );
+        if result != GHOSTTY_SUCCESS {
+            return result;
+        }
+        ptr::write(
+            core::ptr::addr_of_mut!((*dst).bold),
+            ptr::read(core::ptr::addr_of!((*src).bold)),
+        );
+        ptr::write(
+            core::ptr::addr_of_mut!((*dst).italic),
+            ptr::read(core::ptr::addr_of!((*src).italic)),
+        );
+        ptr::write(
+            core::ptr::addr_of_mut!((*dst).faint),
+            ptr::read(core::ptr::addr_of!((*src).faint)),
+        );
+        ptr::write(
+            core::ptr::addr_of_mut!((*dst).blink),
+            ptr::read(core::ptr::addr_of!((*src).blink)),
+        );
+        ptr::write(
+            core::ptr::addr_of_mut!((*dst).inverse),
+            ptr::read(core::ptr::addr_of!((*src).inverse)),
+        );
+        ptr::write(
+            core::ptr::addr_of_mut!((*dst).invisible),
+            ptr::read(core::ptr::addr_of!((*src).invisible)),
+        );
+        ptr::write(
+            core::ptr::addr_of_mut!((*dst).strikethrough),
+            ptr::read(core::ptr::addr_of!((*src).strikethrough)),
+        );
+        ptr::write(
+            core::ptr::addr_of_mut!((*dst).overline),
+            ptr::read(core::ptr::addr_of!((*src).overline)),
+        );
+        ptr::write(
+            core::ptr::addr_of_mut!((*dst).underline),
+            ptr::read(core::ptr::addr_of!((*src).underline)),
+        );
+    }
+
+    GHOSTTY_SUCCESS
+}
+
+pub(crate) unsafe fn write_scrollbar(out: *mut GhosttyTerminalScrollbar, total: u64, offset: u64, len: u64) {
+    unsafe {
+        ptr::write(core::ptr::addr_of_mut!((*out).total), total);
+        ptr::write(core::ptr::addr_of_mut!((*out).offset), offset);
+        ptr::write(core::ptr::addr_of_mut!((*out).len), len);
+    }
+}
+
+pub(crate) unsafe fn write_rgb_value(out: *mut GhosttyColorRgb, r: u8, g: u8, b: u8) {
+    unsafe {
+        ptr::write(core::ptr::addr_of_mut!((*out).r), r);
+        ptr::write(core::ptr::addr_of_mut!((*out).g), g);
+        ptr::write(core::ptr::addr_of_mut!((*out).b), b);
+    }
+}
+
+pub(crate) unsafe fn copy_palette(dst: *mut GhosttyColorRgb, src: *const GhosttyColorRgb) -> c_int {
+    if dst.is_null() || src.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
+
+    let mut i = 0usize;
+    while i < 256 {
+        unsafe {
+            let src_rgb = src.add(i);
+            write_rgb_value(
+                dst.add(i),
+                ptr::read(core::ptr::addr_of!((*src_rgb).r)),
+                ptr::read(core::ptr::addr_of!((*src_rgb).g)),
+                ptr::read(core::ptr::addr_of!((*src_rgb).b)),
+            );
+        }
+        i += 1;
+    }
+
+    GHOSTTY_SUCCESS
+}
+
+pub(crate) unsafe fn write_rgb(out: *mut c_void, src: *const GhosttyColorRgb) {
+    let rgb = out.cast::<GhosttyColorRgb>();
+    unsafe {
+        ptr::write(
+            core::ptr::addr_of_mut!((*rgb).r),
+            ptr::read(core::ptr::addr_of!((*src).r)),
+        );
+        ptr::write(
+            core::ptr::addr_of_mut!((*rgb).g),
+            ptr::read(core::ptr::addr_of!((*src).g)),
+        );
+        ptr::write(
+            core::ptr::addr_of_mut!((*rgb).b),
+            ptr::read(core::ptr::addr_of!((*src).b)),
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_row_get(row: u64, data: c_int, out: *mut c_void) -> c_int {
+    unsafe { row_get(row, data, out) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_row_get_multi(
+    row: u64,
+    count: usize,
+    keys: *const c_int,
+    values: *const *mut c_void,
+    out_written: *mut usize,
+) -> c_int {
+    if keys.is_null() || values.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
+
+    let mut i = 0usize;
+    while i < count {
+        let key = unsafe { ptr::read(keys.add(i)) };
+        let out = unsafe { ptr::read(values.add(i)) };
+        let result = unsafe { row_get(row, key, out) };
+        if result != GHOSTTY_SUCCESS {
+            if !out_written.is_null() {
+                unsafe {
+                    ptr::write(out_written, i);
+                }
+            }
+            return result;
+        }
+
+        i += 1;
+    }
+
+    if !out_written.is_null() {
+        unsafe {
+            ptr::write(out_written, count);
+        }
+    }
+
+    GHOSTTY_SUCCESS
+}
+
+pub(crate) unsafe fn row_get(row: u64, data: c_int, out: *mut c_void) -> c_int {
+    match data {
+        ROW_DATA_WRAP => unsafe { write_out(out, row_bit(row, 32)) },
+        ROW_DATA_WRAP_CONTINUATION => unsafe { write_out(out, row_bit(row, 33)) },
+        ROW_DATA_GRAPHEME => unsafe { write_out(out, row_bit(row, 34)) },
+        ROW_DATA_STYLED => unsafe { write_out(out, row_bit(row, 35)) },
+        ROW_DATA_HYPERLINK => unsafe { write_out(out, row_bit(row, 36)) },
+        ROW_DATA_SEMANTIC_PROMPT => unsafe { write_out(out, ((row >> 37) & 0x3) as c_int) },
+        ROW_DATA_KITTY_VIRTUAL_PLACEHOLDER => unsafe { write_out(out, row_bit(row, 39)) },
+        ROW_DATA_DIRTY => unsafe { write_out(out, row_bit(row, 40)) },
+        _ => return GHOSTTY_INVALID_VALUE,
+    }
+
+    GHOSTTY_SUCCESS
+}
+
+pub(crate) fn row_bit(row: u64, bit: u32) -> bool {
+    ((row >> bit) & 1) != 0
+}
+
+pub(crate) unsafe fn write_out<T>(out: *mut c_void, value: T) {
+    unsafe {
+        ptr::write(out.cast::<T>(), value);
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct GhosttyStyleColor {
+    pub(crate) tag: c_int,
+    pub(crate) value: GhosttyStyleColorValue,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union GhosttyStyleColorValue {
+    palette: u8,
+    rgb: GhosttyColorRgb,
+    padding: u64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct GhosttyColorRgb {
+    pub(crate) r: u8,
+    pub(crate) g: u8,
+    pub(crate) b: u8,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct GhosttyStyle {
+    pub(crate) size: usize,
+    pub(crate) fg_color: GhosttyStyleColor,
+    pub(crate) bg_color: GhosttyStyleColor,
+    pub(crate) underline_color: GhosttyStyleColor,
+    pub(crate) bold: bool,
+    pub(crate) italic: bool,
+    pub(crate) faint: bool,
+    pub(crate) blink: bool,
+    pub(crate) inverse: bool,
+    pub(crate) invisible: bool,
+    pub(crate) strikethrough: bool,
+    pub(crate) overline: bool,
+    pub(crate) underline: c_int,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct GhosttySgrUnknown {
+    pub(crate) full_ptr: *const u16,
+    pub(crate) full_len: usize,
+    pub(crate) partial_ptr: *const u16,
+    pub(crate) partial_len: usize,
+}
+
+#[repr(C)]
+pub union GhosttySgrAttributeValue {
+    unknown: GhosttySgrUnknown,
+    padding: [u64; 8],
+}
+
+#[repr(C)]
+pub struct GhosttySgrAttribute {
+    pub(crate) tag: c_int,
+    pub(crate) value: GhosttySgrAttributeValue,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_sgr_parser_reset(idx: *mut usize) {
+    if idx.is_null() {
+        return;
+    }
+
+    unsafe {
+        ptr::write(idx, 0);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_sgr_params_sep_mask(seps: *const u8, len: usize) -> u32 {
+    if seps.is_null() {
+        return 0;
+    }
+
+    let mut mask = 0u32;
+    let mut i = 0usize;
+    while i < len && i < 24 {
+        let sep = unsafe { ptr::read(seps.add(i)) };
+        if sep == b':' {
+            mask |= 1u32 << i;
+        }
+        i += 1;
+    }
+    mask
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_sgr_unknown_full(
+    unknown: GhosttySgrUnknown,
+    ptr_out: *mut *const u16,
+) -> usize {
+    if !ptr_out.is_null() {
+        unsafe {
+            ptr::write(ptr_out, unknown.full_ptr);
+        }
+    }
+
+    unknown.full_len
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_sgr_unknown_partial(
+    unknown: GhosttySgrUnknown,
+    ptr_out: *mut *const u16,
+) -> usize {
+    if !ptr_out.is_null() {
+        unsafe {
+            ptr::write(ptr_out, unknown.partial_ptr);
+        }
+    }
+
+    unknown.partial_len
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_sgr_attribute_tag(attr: GhosttySgrAttribute) -> c_int {
+    attr.tag
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_sgr_attribute_value(
+    attr: *mut GhosttySgrAttribute,
+) -> *mut GhosttySgrAttributeValue {
+    unsafe { core::ptr::addr_of_mut!((*attr).value) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_style_default(result: *mut GhosttyStyle) {
+    unsafe {
+        ptr::write(
+            core::ptr::addr_of_mut!((*result).size),
+            mem::size_of::<GhosttyStyle>(),
+        );
+        write_style_color_none(core::ptr::addr_of_mut!((*result).fg_color));
+        write_style_color_none(core::ptr::addr_of_mut!((*result).bg_color));
+        write_style_color_none(core::ptr::addr_of_mut!((*result).underline_color));
+        ptr::write(core::ptr::addr_of_mut!((*result).bold), false);
+        ptr::write(core::ptr::addr_of_mut!((*result).italic), false);
+        ptr::write(core::ptr::addr_of_mut!((*result).faint), false);
+        ptr::write(core::ptr::addr_of_mut!((*result).blink), false);
+        ptr::write(core::ptr::addr_of_mut!((*result).inverse), false);
+        ptr::write(core::ptr::addr_of_mut!((*result).invisible), false);
+        ptr::write(core::ptr::addr_of_mut!((*result).strikethrough), false);
+        ptr::write(core::ptr::addr_of_mut!((*result).overline), false);
+        ptr::write(core::ptr::addr_of_mut!((*result).underline), 0);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_style_is_default(style: *const GhosttyStyle) -> bool {
+    unsafe {
+        ptr::read(core::ptr::addr_of!((*style).size)) == mem::size_of::<GhosttyStyle>()
+            && ptr::read(core::ptr::addr_of!((*style).fg_color.tag)) == STYLE_COLOR_NONE
+            && ptr::read(core::ptr::addr_of!((*style).bg_color.tag)) == STYLE_COLOR_NONE
+            && ptr::read(core::ptr::addr_of!((*style).underline_color.tag)) == STYLE_COLOR_NONE
+            && !ptr::read(core::ptr::addr_of!((*style).bold))
+            && !ptr::read(core::ptr::addr_of!((*style).italic))
+            && !ptr::read(core::ptr::addr_of!((*style).faint))
+            && !ptr::read(core::ptr::addr_of!((*style).blink))
+            && !ptr::read(core::ptr::addr_of!((*style).inverse))
+            && !ptr::read(core::ptr::addr_of!((*style).invisible))
+            && !ptr::read(core::ptr::addr_of!((*style).strikethrough))
+            && !ptr::read(core::ptr::addr_of!((*style).overline))
+            && ptr::read(core::ptr::addr_of!((*style).underline)) == 0
+    }
+}
+
+pub(crate) unsafe fn write_style_color_none(color: *mut GhosttyStyleColor) {
+    unsafe {
+        ptr::write(core::ptr::addr_of_mut!((*color).tag), STYLE_COLOR_NONE);
+        ptr::write(core::ptr::addr_of_mut!((*color).value.padding), 0);
+    }
+}
