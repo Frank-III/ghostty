@@ -15,6 +15,7 @@ use crate::mouse_out_written::*;
 use crate::mouse_size::*;
 use crate::mouse_types::*;
 use crate::mouse_write::*;
+use crate::mouse_x10::*;
 use crate::simple::*;
 use crate::style::*;
 
@@ -123,7 +124,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         return GHOSTTY_SUCCESS;
     };
 
-    if format == MOUSE_FORMAT_X10 && (cell.x > 222 || cell.y > 222) {
+    if !mouse_x10_cell_in_bounds(format, cell) {
         unsafe {
             mouse_suppress_output(out_written);
         }
