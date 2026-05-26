@@ -14,6 +14,14 @@ pub unsafe extern "C" fn ghostty_rust_terminal_set_rgb(
     out_has_value: *mut bool,
     out_rgb: *mut GhosttyColorRgb,
 ) -> c_int {
+    unsafe { terminal_set_rgb_impl(value, out_has_value, out_rgb) }
+}
+
+pub(crate) unsafe fn terminal_set_rgb_impl(
+    value: *const GhosttyColorRgb,
+    out_has_value: *mut bool,
+    out_rgb: *mut GhosttyColorRgb,
+) -> c_int {
     if out_has_value.is_null() || out_rgb.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
@@ -36,6 +44,14 @@ pub unsafe extern "C" fn ghostty_rust_terminal_set_rgb(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_terminal_set_palette(
+    value: *const GhosttyColorRgb,
+    out_has_value: *mut bool,
+    out_palette: *mut *const GhosttyColorRgb,
+) -> c_int {
+    unsafe { terminal_set_palette_impl(value, out_has_value, out_palette) }
+}
+
+pub(crate) unsafe fn terminal_set_palette_impl(
     value: *const GhosttyColorRgb,
     out_has_value: *mut bool,
     out_palette: *mut *const GhosttyColorRgb,

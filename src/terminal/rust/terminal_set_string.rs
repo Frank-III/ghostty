@@ -12,6 +12,14 @@ pub unsafe extern "C" fn ghostty_rust_terminal_set_string(
     out_ptr: *mut *const u8,
     out_len: *mut usize,
 ) -> c_int {
+    unsafe { terminal_set_string_impl(value, out_ptr, out_len) }
+}
+
+pub(crate) unsafe fn terminal_set_string_impl(
+    value: *const GhosttyString,
+    out_ptr: *mut *const u8,
+    out_len: *mut usize,
+) -> c_int {
     if out_ptr.is_null() || out_len.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
