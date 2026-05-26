@@ -9,6 +9,15 @@ pub extern "C" fn ghostty_rust_render_row_cell_get(
     data: c_int,
     has_out: bool,
 ) -> c_int {
+    render_row_cell_get_impl(has_cells, has_cell, data, has_out)
+}
+
+pub(crate) fn render_row_cell_get_impl(
+    has_cells: bool,
+    has_cell: bool,
+    data: c_int,
+    has_out: bool,
+) -> c_int {
     if !has_cells || !has_cell || !has_out {
         return RENDER_RESULT_INVALID_VALUE;
     }
