@@ -21,6 +21,16 @@ pub(crate) unsafe fn mouse_write_last_cell(
     }
 }
 
+pub(crate) unsafe fn mouse_clear_last_cell_present(last_cell_present: *mut bool) {
+    if last_cell_present.is_null() {
+        return;
+    }
+
+    unsafe {
+        ptr::write(last_cell_present, false);
+    }
+}
+
 pub(crate) unsafe fn mouse_carry_forward_last_cell(
     last_cell_present: bool,
     last_cell_x: u16,

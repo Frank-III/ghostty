@@ -1,5 +1,7 @@
 use core::ptr;
 
+use crate::mouse_last_cell::*;
+
 pub(crate) unsafe fn mouse_encoder_setopt_size_write(
     screen_width: u32,
     screen_height: u32,
@@ -44,8 +46,6 @@ pub(crate) unsafe fn mouse_encoder_setopt_size_write(
         if !out_padding_left.is_null() {
             ptr::write(out_padding_left, padding_left);
         }
-        if !last_cell_present.is_null() {
-            ptr::write(last_cell_present, false);
-        }
+        mouse_clear_last_cell_present(last_cell_present);
     }
 }

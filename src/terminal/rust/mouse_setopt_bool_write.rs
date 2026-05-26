@@ -2,6 +2,7 @@ use core::ffi::c_int;
 use core::ptr;
 
 use crate::constants::*;
+use crate::mouse_last_cell::*;
 
 pub(crate) unsafe fn mouse_encoder_setopt_bool_write(
     option: c_int,
@@ -21,8 +22,8 @@ pub(crate) unsafe fn mouse_encoder_setopt_bool_write(
                 if !track_last_cell.is_null() {
                     ptr::write(track_last_cell, value);
                 }
-                if !value && !last_cell_present.is_null() {
-                    ptr::write(last_cell_present, false);
+                if !value {
+                    mouse_clear_last_cell_present(last_cell_present);
                 }
             }
             _ => {}

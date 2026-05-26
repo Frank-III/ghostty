@@ -1,6 +1,8 @@
 use core::ffi::c_int;
 use core::ptr;
 
+use crate::mouse_last_cell::*;
+
 pub(crate) unsafe fn mouse_encoder_setopt_mode(
     value: c_int,
     current: c_int,
@@ -12,8 +14,8 @@ pub(crate) unsafe fn mouse_encoder_setopt_mode(
     }
 
     unsafe {
-        if value != current && !last_cell_present.is_null() {
-            ptr::write(last_cell_present, false);
+        if value != current {
+            mouse_clear_last_cell_present(last_cell_present);
         }
         ptr::write(out, value);
     }
