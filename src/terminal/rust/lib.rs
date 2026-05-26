@@ -59,6 +59,7 @@ mod mouse_button_base;
 mod mouse_button_default;
 mod mouse_button_motion;
 mod mouse_button_mods;
+mod mouse_commit;
 mod mouse_encoder_state;
 mod mouse_encode_size;
 mod mouse_geometry;

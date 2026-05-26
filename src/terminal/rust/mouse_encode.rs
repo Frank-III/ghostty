@@ -8,6 +8,7 @@ use crate::input::*;
 use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_button::*;
+use crate::mouse_commit::*;
 use crate::mouse_encode_size::*;
 use crate::mouse_geometry::*;
 use crate::mouse_last_cell::*;
@@ -134,16 +135,17 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     };
 
     unsafe {
-        mouse_commit_output_len(out_written, required);
+        mouse_commit_sequence(
+            format,
+            action,
+            button_code,
+            cell,
+            pos,
+            size,
+            required,
+            out,
+            out_len,
+            out_written,
+        )
     }
-
-    if mouse_output_needs_space(required, out, out_len) {
-        return GHOSTTY_OUT_OF_SPACE;
-    }
-
-    unsafe {
-        mouse_output_sequence(format, action, button_code, cell, pos, size, out);
-    }
-
-    GHOSTTY_SUCCESS
 }
