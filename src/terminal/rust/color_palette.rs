@@ -239,6 +239,24 @@ pub(crate) fn rgb_parse_hash(value: &[u8]) -> Option<GhosttyColorRgb> {
     ))
 }
 
+pub(crate) fn rgb_parse_hex_spec(value: &[u8]) -> Option<GhosttyColorRgb> {
+    if value.len() < b"rgb:a/a/a".len() || !value.starts_with(b"rgb:") {
+        return None;
+    }
+
+    let mut index = 4usize;
+    let red_end = find_byte(value, index, b'/')?;
+    let red = rgb_from_hex_component(&value[index..red_end])?;
+    index = red_end + 1;
+
+    let green_end = find_byte(value, index, b'/')?;
+    let green = rgb_from_hex_component(&value[index..green_end])?;
+    index = green_end + 1;
+
+    let blue = rgb_from_hex_component(&value[index..])?;
+    Some(rgb(red, green, blue))
+}
+
 fn rgb_component_luminance(component: u8) -> f64 {
     let normalized = f64::from(component) / 255.0;
     if normalized <= 0.03928 {
@@ -246,6 +264,17 @@ fn rgb_component_luminance(component: u8) -> f64 {
     } else {
         ((normalized + 0.055) / 1.055).powf(2.4)
     }
+}
+
+fn find_byte(value: &[u8], start: usize, needle: u8) -> Option<usize> {
+    let mut index = start;
+    while index < value.len() {
+        if value[index] == needle {
+            return Some(index);
+        }
+        index += 1;
+    }
+    None
 }
 
 fn hex_digit(value: u8) -> Option<u8> {
