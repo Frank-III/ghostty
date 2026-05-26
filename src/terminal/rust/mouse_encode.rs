@@ -111,15 +111,14 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         return GHOSTTY_SUCCESS;
     }
 
-    if track_last_cell {
-        unsafe {
-            mouse_write_last_cell_from_cell(
-                cell,
-                next_last_cell_present,
-                next_last_cell_x,
-                next_last_cell_y,
-            );
-        }
+    unsafe {
+        mouse_update_tracked_last_cell(
+            track_last_cell,
+            cell,
+            next_last_cell_present,
+            next_last_cell_x,
+            next_last_cell_y,
+        );
     }
 
     let Some(button_code) =

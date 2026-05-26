@@ -46,3 +46,17 @@ pub(crate) fn mouse_should_suppress_same_cell_motion(
         && last_cell_x == cell.x
         && last_cell_y == cell.y
 }
+
+pub(crate) unsafe fn mouse_update_tracked_last_cell(
+    track_last_cell: bool,
+    cell: GhosttyMouseCell,
+    out_present: *mut bool,
+    out_x: *mut u16,
+    out_y: *mut u32,
+) {
+    if track_last_cell {
+        unsafe {
+            mouse_write_last_cell_from_cell(cell, out_present, out_x, out_y);
+        }
+    }
+}
