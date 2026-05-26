@@ -6,6 +6,10 @@ use crate::early::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_kitty_placement_layer_matches(layer: c_int, z: i32) -> bool {
+    kitty_placement_layer_matches_impl(layer, z)
+}
+
+pub(crate) fn kitty_placement_layer_matches_impl(layer: c_int, z: i32) -> bool {
     let below_bg_boundary = i32::MIN / 2;
     match layer {
         KITTY_PLACEMENT_LAYER_ALL => true,
