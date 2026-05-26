@@ -82,14 +82,17 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         return unsafe { mouse_suppress_result(out_written) };
     }
 
-    if mouse_should_suppress_out_of_viewport(
-        action,
-        tracking_mode,
-        any_button_pressed,
-        pos,
-        size,
-    ) {
-        return unsafe { mouse_suppress_result(out_written) };
+    if let Err(result) = unsafe {
+        mouse_viewport_or_suppress(
+            action,
+            tracking_mode,
+            any_button_pressed,
+            pos,
+            size,
+            out_written,
+        )
+    } {
+        return result;
     }
 
     let cell = mouse_pos_to_cell(pos, size);
