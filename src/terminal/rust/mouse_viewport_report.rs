@@ -39,3 +39,26 @@ pub(crate) unsafe fn mouse_viewport_or_suppress(
         Ok(())
     }
 }
+
+pub(crate) unsafe fn mouse_report_viewport_or_suppress(
+    action: c_int,
+    button_present: bool,
+    button: c_int,
+    tracking_mode: c_int,
+    any_button_pressed: bool,
+    pos: GhosttyMousePosition,
+    size: GhosttyMouseSize,
+    out_written: *mut usize,
+) -> Result<(), c_int> {
+    unsafe {
+        mouse_report_or_suppress(action, button_present, button, tracking_mode, out_written)?;
+        mouse_viewport_or_suppress(
+            action,
+            tracking_mode,
+            any_button_pressed,
+            pos,
+            size,
+            out_written,
+        )
+    }
+}
