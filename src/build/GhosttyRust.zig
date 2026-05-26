@@ -60,6 +60,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/key_encode.rs",
     "src/terminal/rust/kitty_graphics.rs",
     "src/terminal/rust/kitty_image.rs",
+    "src/terminal/rust/kitty_placement.rs",
     "src/terminal/rust/lib.rs",
     "src/terminal/rust/modes.rs",
     "src/terminal/rust/mouse_encode.rs",
