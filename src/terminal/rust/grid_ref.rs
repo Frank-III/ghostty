@@ -12,6 +12,17 @@ pub unsafe extern "C" fn ghostty_rust_grid_ref_hyperlink_uri(
     buf_len: usize,
     out_len: *mut usize,
 ) -> c_int {
+    unsafe { grid_ref_hyperlink_uri_impl(has_uri, uri, uri_len, out_buf, buf_len, out_len) }
+}
+
+pub(crate) unsafe fn grid_ref_hyperlink_uri_impl(
+    has_uri: bool,
+    uri: *const u8,
+    uri_len: usize,
+    out_buf: *mut u8,
+    buf_len: usize,
+    out_len: *mut usize,
+) -> c_int {
     unsafe {
         ptr::write(out_len, if has_uri { uri_len } else { 0 });
     }
@@ -43,6 +54,16 @@ pub unsafe extern "C" fn ghostty_rust_grid_ref_graphemes(
     buf_len: usize,
     out_len: *mut usize,
 ) -> c_int {
+    unsafe { grid_ref_graphemes_impl(has_text, codepoint, out_buf, buf_len, out_len) }
+}
+
+pub(crate) unsafe fn grid_ref_graphemes_impl(
+    has_text: bool,
+    codepoint: u32,
+    out_buf: *mut u32,
+    buf_len: usize,
+    out_len: *mut usize,
+) -> c_int {
     unsafe {
         ptr::write(out_len, if has_text { 1 } else { 0 });
     }
@@ -68,11 +89,28 @@ pub extern "C" fn ghostty_rust_tracked_grid_ref_has_value(
     has_page_list: bool,
     garbage: bool,
 ) -> bool {
+    tracked_grid_ref_has_value_impl(has_ref, has_page_list, garbage)
+}
+
+pub(crate) fn tracked_grid_ref_has_value_impl(
+    has_ref: bool,
+    has_page_list: bool,
+    garbage: bool,
+) -> bool {
     has_ref && has_page_list && !garbage
 }
 
 #[no_mangle]
 pub extern "C" fn ghostty_rust_tracked_grid_ref_result(
+    has_ref: bool,
+    has_page_list: bool,
+    garbage: bool,
+    has_point: bool,
+) -> c_int {
+    tracked_grid_ref_result_impl(has_ref, has_page_list, garbage, has_point)
+}
+
+pub(crate) fn tracked_grid_ref_result_impl(
     has_ref: bool,
     has_page_list: bool,
     garbage: bool,
@@ -91,6 +129,14 @@ pub extern "C" fn ghostty_rust_tracked_grid_ref_result(
 
 #[no_mangle]
 pub extern "C" fn ghostty_rust_tracked_grid_ref_set_input(
+    has_ref: bool,
+    has_terminal: bool,
+    same_terminal: bool,
+) -> c_int {
+    tracked_grid_ref_set_input_impl(has_ref, has_terminal, same_terminal)
+}
+
+pub(crate) fn tracked_grid_ref_set_input_impl(
     has_ref: bool,
     has_terminal: bool,
     same_terminal: bool,
