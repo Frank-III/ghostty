@@ -3,6 +3,7 @@ use core::ptr;
 
 use crate::constants::*;
 use crate::early::*;
+use crate::palette_copy::*;
 use crate::style::*;
 use crate::style_write::*;
 use crate::terminal::*;

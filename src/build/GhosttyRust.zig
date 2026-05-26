@@ -110,6 +110,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/mouse_write.rs",
     "src/terminal/rust/mouse_x10.rs",
     "src/terminal/rust/osc.rs",
+    "src/terminal/rust/palette_copy.rs",
     "src/terminal/rust/paste.rs",
     "src/terminal/rust/paste_bytes.rs",
     "src/terminal/rust/render_index.rs",

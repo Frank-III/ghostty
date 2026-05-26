@@ -2,6 +2,7 @@ use core::ffi::{c_int, c_void};
 use core::{mem, ptr};
 
 use crate::constants::*;
+use crate::palette_copy::*;
 use crate::simple::*;
 use crate::style::*;
 use crate::style_copy::*;
