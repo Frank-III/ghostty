@@ -10,6 +10,10 @@ pub extern "C" fn ghostty_rust_terminal_get(
     data: c_int,
     has_out: bool,
 ) -> c_int {
+    terminal_get_impl(has_terminal, data, has_out)
+}
+
+pub(crate) fn terminal_get_impl(has_terminal: bool, data: c_int, has_out: bool) -> c_int {
     if !has_terminal || !has_out {
         return GHOSTTY_INVALID_VALUE;
     }

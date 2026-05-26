@@ -7,6 +7,10 @@ use crate::terminal_options::*;
 
 #[no_mangle]
 pub extern "C" fn ghostty_rust_terminal_set(has_terminal: bool, option: c_int) -> c_int {
+    terminal_set_impl(has_terminal, option)
+}
+
+pub(crate) fn terminal_set_impl(has_terminal: bool, option: c_int) -> c_int {
     if !has_terminal {
         return GHOSTTY_INVALID_VALUE;
     }

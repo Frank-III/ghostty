@@ -17,6 +17,17 @@ pub unsafe extern "C" fn ghostty_rust_terminal_get_color(
     b: u8,
     out: *mut c_void,
 ) -> c_int {
+    unsafe { terminal_get_color_impl(data, has_value, r, g, b, out) }
+}
+
+pub(crate) unsafe fn terminal_get_color_impl(
+    data: c_int,
+    has_value: bool,
+    r: u8,
+    g: u8,
+    b: u8,
+    out: *mut c_void,
+) -> c_int {
     match data {
         TERMINAL_DATA_COLOR_FOREGROUND
         | TERMINAL_DATA_COLOR_BACKGROUND
@@ -39,6 +50,14 @@ pub unsafe extern "C" fn ghostty_rust_terminal_get_color(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_terminal_get_palette(
+    data: c_int,
+    palette: *const GhosttyColorRgb,
+    out: *mut c_void,
+) -> c_int {
+    unsafe { terminal_get_palette_impl(data, palette, out) }
+}
+
+pub(crate) unsafe fn terminal_get_palette_impl(
     data: c_int,
     palette: *const GhosttyColorRgb,
     out: *mut c_void,
