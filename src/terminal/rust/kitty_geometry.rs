@@ -1,5 +1,5 @@
 use crate::constants::*;
-use crate::mouse_encode::*;
+use crate::mouse_geometry::*;
 
 pub(crate) fn kitty_pixel_size(
     image_width: u32,
