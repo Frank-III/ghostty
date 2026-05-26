@@ -10,6 +10,10 @@ use crate::style_write::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_build_info(data: c_int, out: *mut c_void) -> c_int {
+    unsafe { build_info_impl(data, out) }
+}
+
+pub(crate) unsafe fn build_info_impl(data: c_int, out: *mut c_void) -> c_int {
     match data {
         BUILD_INFO_SIMD => unsafe { write_out(out, env_flag(env!("GHOSTTY_VT_SIMD"))) },
         BUILD_INFO_KITTY_GRAPHICS => unsafe {
