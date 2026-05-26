@@ -73,6 +73,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/render_cell.rs",
     "src/terminal/rust/render_cell_text.rs",
     "src/terminal/rust/render_state.rs",
+    "src/terminal/rust/render_state_color.rs",
     "src/terminal/rust/render.rs",
     "src/terminal/rust/row.rs",
     "src/terminal/rust/selection.rs",
