@@ -1,6 +1,6 @@
 use core::ffi::c_int;
-use core::ptr;
 
+use crate::key_from_terminal_write::*;
 use crate::key_option_as_alt_value::key_option_as_alt_value;
 use crate::key_options::*;
 
@@ -11,7 +11,7 @@ pub(crate) unsafe fn key_option_as_alt_write(option: c_int, value: c_int, out: *
 
     if key_option_as_alt_value(value) {
         unsafe {
-            ptr::write(out, value);
+            key_write_ptr(out, value);
         }
     }
 }
