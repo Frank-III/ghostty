@@ -13,6 +13,15 @@ pub unsafe extern "C" fn ghostty_rust_terminal_get_selection(
     selection: *const GhosttySelection,
     out: *mut c_void,
 ) -> c_int {
+    unsafe { terminal_get_selection_impl(data, has_value, selection, out) }
+}
+
+pub(crate) unsafe fn terminal_get_selection_impl(
+    data: c_int,
+    has_value: bool,
+    selection: *const GhosttySelection,
+    out: *mut c_void,
+) -> c_int {
     match data {
         TERMINAL_DATA_SELECTION => {}
         _ => return GHOSTTY_INVALID_VALUE,

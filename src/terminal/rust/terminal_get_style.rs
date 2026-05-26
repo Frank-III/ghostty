@@ -13,6 +13,14 @@ pub unsafe extern "C" fn ghostty_rust_terminal_get_style(
     style: *const GhosttyStyle,
     out: *mut c_void,
 ) -> c_int {
+    unsafe { terminal_get_style_impl(data, style, out) }
+}
+
+pub(crate) unsafe fn terminal_get_style_impl(
+    data: c_int,
+    style: *const GhosttyStyle,
+    out: *mut c_void,
+) -> c_int {
     match data {
         TERMINAL_DATA_CURSOR_STYLE => unsafe { copy_style(out.cast::<GhosttyStyle>(), style) },
         _ => return GHOSTTY_INVALID_VALUE,
@@ -21,6 +29,16 @@ pub unsafe extern "C" fn ghostty_rust_terminal_get_style(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_terminal_get_scrollbar(
+    data: c_int,
+    total: u64,
+    offset: u64,
+    len: u64,
+    out: *mut c_void,
+) -> c_int {
+    unsafe { terminal_get_scrollbar_impl(data, total, offset, len, out) }
+}
+
+pub(crate) unsafe fn terminal_get_scrollbar_impl(
     data: c_int,
     total: u64,
     offset: u64,
