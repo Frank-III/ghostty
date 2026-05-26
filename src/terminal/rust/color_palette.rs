@@ -51,6 +51,108 @@ pub(crate) fn default_palette() -> Palette {
     result
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct DynamicPalette {
+    current: Palette,
+    original: Palette,
+    mask: PaletteMask,
+}
+
+impl DynamicPalette {
+    pub(crate) fn init(default_palette: Palette) -> DynamicPalette {
+        DynamicPalette {
+            current: default_palette,
+            original: default_palette,
+            mask: PaletteMask::empty(),
+        }
+    }
+
+    pub(crate) fn current(&self) -> &Palette {
+        &self.current
+    }
+
+    pub(crate) fn original(&self) -> &Palette {
+        &self.original
+    }
+
+    pub(crate) fn changed_count(&self) -> u32 {
+        self.mask.count()
+    }
+
+    pub(crate) fn set(&mut self, index: u8, color: GhosttyColorRgb) {
+        self.current[index as usize] = color;
+        self.mask.set(index);
+    }
+
+    pub(crate) fn reset(&mut self, index: u8) {
+        self.current[index as usize] = self.original[index as usize];
+        self.mask.unset(index);
+    }
+
+    pub(crate) fn reset_all(&mut self) {
+        *self = DynamicPalette::init(self.original);
+    }
+
+    pub(crate) fn change_default(&mut self, default_palette: Palette) {
+        self.original = default_palette;
+        if self.mask.is_empty() {
+            self.current = self.original;
+            return;
+        }
+
+        let previous = self.current;
+        self.current = default_palette;
+        let mut index = 0u16;
+        while index < 256 {
+            let idx = index as u8;
+            if self.mask.is_set(idx) {
+                self.current[index as usize] = previous[index as usize];
+            }
+            index += 1;
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct PaletteMask {
+    words: [u64; 4],
+}
+
+impl PaletteMask {
+    const fn empty() -> PaletteMask {
+        PaletteMask { words: [0; 4] }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.words[0] | self.words[1] | self.words[2] | self.words[3] == 0
+    }
+
+    fn count(&self) -> u32 {
+        self.words[0].count_ones()
+            + self.words[1].count_ones()
+            + self.words[2].count_ones()
+            + self.words[3].count_ones()
+    }
+
+    fn set(&mut self, index: u8) {
+        let word = usize::from(index / 64);
+        let bit = index % 64;
+        self.words[word] |= 1u64 << bit;
+    }
+
+    fn unset(&mut self, index: u8) {
+        let word = usize::from(index / 64);
+        let bit = index % 64;
+        self.words[word] &= !(1u64 << bit);
+    }
+
+    fn is_set(&self, index: u8) -> bool {
+        let word = usize::from(index / 64);
+        let bit = index % 64;
+        (self.words[word] & (1u64 << bit)) != 0
+    }
+}
+
 pub(crate) fn special_osc4(index: u8) -> Option<u16> {
     if index < 5 {
         Some(u16::from(index) + 256)
