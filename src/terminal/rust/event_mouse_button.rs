@@ -7,6 +7,12 @@ use crate::event_mouse_field::*;
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mouse_event_set_button(event: *mut c_void, button: c_int) {
     unsafe {
+        mouse_event_set_button_impl(event, button);
+    }
+}
+
+pub(crate) unsafe fn mouse_event_set_button_impl(event: *mut c_void, button: c_int) {
+    unsafe {
         ptr::write(
             mouse_event_field::<c_int>(event, MOUSE_EVENT_BUTTON_PAYLOAD_OFFSET),
             button,
@@ -20,6 +26,12 @@ pub unsafe extern "C" fn ghostty_rust_mouse_event_set_button(event: *mut c_void,
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mouse_event_clear_button(event: *mut c_void) {
+    unsafe {
+        mouse_event_clear_button_impl(event);
+    }
+}
+
+pub(crate) unsafe fn mouse_event_clear_button_impl(event: *mut c_void) {
     unsafe {
         ptr::write(
             mouse_event_field::<c_int>(event, MOUSE_EVENT_BUTTON_PAYLOAD_OFFSET),
@@ -37,6 +49,10 @@ pub unsafe extern "C" fn ghostty_rust_mouse_event_get_button(
     event: *mut c_void,
     out: *mut c_int,
 ) -> bool {
+    unsafe { mouse_event_get_button_impl(event, out) }
+}
+
+pub(crate) unsafe fn mouse_event_get_button_impl(event: *mut c_void, out: *mut c_int) -> bool {
     let tag = unsafe {
         ptr::read(mouse_event_field::<u32>(
             event,
