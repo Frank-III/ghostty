@@ -17,6 +17,34 @@ pub unsafe extern "C" fn ghostty_rust_kitty_image_get(
     data_len: usize,
     out: *mut c_void,
 ) -> c_int {
+    unsafe {
+        kitty_image_get_impl(
+            data,
+            id,
+            number,
+            width,
+            height,
+            format,
+            compression,
+            data_ptr,
+            data_len,
+            out,
+        )
+    }
+}
+
+pub(crate) unsafe fn kitty_image_get_impl(
+    data: c_int,
+    id: u32,
+    number: u32,
+    width: u32,
+    height: u32,
+    format: c_int,
+    compression: c_int,
+    data_ptr: *const u8,
+    data_len: usize,
+    out: *mut c_void,
+) -> c_int {
     if out.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
