@@ -29,6 +29,205 @@ const Handler = @import("../stream_terminal.zig").Handler;
 
 const log = std.log.scoped(.terminal_c);
 
+const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_terminal_new(
+        cols: size.CellCountInt,
+        rows: size.CellCountInt,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_reset(has_terminal: bool) callconv(.c) bool;
+
+    extern fn ghostty_rust_terminal_get(
+        has_terminal: bool,
+        data: c_int,
+        has_out: bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_get_scalar(
+        data: c_int,
+        cols: size.CellCountInt,
+        rows: size.CellCountInt,
+        cursor_x: size.CellCountInt,
+        cursor_y: size.CellCountInt,
+        cursor_pending_wrap: bool,
+        active_screen: c_int,
+        cursor_visible: bool,
+        kitty_keyboard_flags: u8,
+        mouse_tracking: bool,
+        total_rows: usize,
+        scrollback_rows: usize,
+        width_px: u32,
+        height_px: u32,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_get_scalar_multi(
+        count: usize,
+        keys: ?[*]const TerminalData,
+        values: ?[*]?*anyopaque,
+        out_written: ?*usize,
+        cols: size.CellCountInt,
+        rows: size.CellCountInt,
+        cursor_x: size.CellCountInt,
+        cursor_y: size.CellCountInt,
+        cursor_pending_wrap: bool,
+        active_screen: c_int,
+        cursor_visible: bool,
+        kitty_keyboard_flags: u8,
+        mouse_tracking: bool,
+        total_rows: usize,
+        scrollback_rows: usize,
+        width_px: u32,
+        height_px: u32,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_get_string(
+        data: c_int,
+        ptr: [*]const u8,
+        len: usize,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_get_style(
+        data: c_int,
+        style_: *const style_c.Style,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_get_scrollbar(
+        data: c_int,
+        total: u64,
+        offset: u64,
+        len: u64,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_get_kitty_image(
+        data: c_int,
+        enabled: bool,
+        storage_limit: u64,
+        medium_file: bool,
+        medium_temp_file: bool,
+        medium_shared_mem: bool,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_get_color(
+        data: c_int,
+        has_value: bool,
+        r: u8,
+        g: u8,
+        b: u8,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_get_palette(
+        data: c_int,
+        palette: *const color.PaletteC,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_get_pointer(
+        data: c_int,
+        has_value: bool,
+        value: ?*anyopaque,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_get_selection(
+        data: c_int,
+        has_value: bool,
+        selection: ?*const selection_c.CSelection,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_point_from_grid_ref(
+        has_point: bool,
+        coord: point.Coordinate,
+        out: ?*point.Coordinate,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_point_from_grid_ref_input(
+        has_terminal: bool,
+        has_ref: bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_grid_ref(
+        has_pin: bool,
+        node: ?*anyopaque,
+        x: size.CellCountInt,
+        y: size.CellCountInt,
+        out_ref: ?*grid_ref_c.CGridRef,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_grid_ref_track_input(
+        has_terminal: bool,
+        has_out: bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_mode_get(
+        has_terminal: bool,
+        has_mode: bool,
+        value: bool,
+        out: *bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_mode_set(
+        has_terminal: bool,
+        has_mode: bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_resize(
+        has_terminal: bool,
+        cols: size.CellCountInt,
+        rows: size.CellCountInt,
+        cell_width_px: u32,
+        cell_height_px: u32,
+        out_width_px: *u32,
+        out_height_px: *u32,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_set(
+        has_terminal: bool,
+        option: c_int,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_set_string(
+        value: ?*const lib.String,
+        out_ptr: *[*]const u8,
+        out_len: *usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_set_rgb(
+        value: ?*const color.RGB.C,
+        out_has_value: *bool,
+        out_rgb: *color.RGB.C,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_set_palette(
+        value: ?*const color.PaletteC,
+        out_has_value: *bool,
+        out_palette: *[*]const color.RGB.C,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_set_u64_zero(
+        value: ?*const u64,
+        out_value: *u64,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_set_bool_optional(
+        value: ?*const bool,
+        out_has_value: *bool,
+        out_value: *bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_set_usize_optional(
+        value: ?*const usize,
+        out_has_value: *bool,
+        out_value: *usize,
+    ) callconv(.c) c_int;
+} else struct {};
+
 /// Wrapper around ZigTerminal that tracks additional state for C API usage,
 /// such as the persistent VT stream needed to handle escape sequences split
 /// across multiple vt_write calls.
@@ -232,6 +431,17 @@ pub fn new(
     result: *Terminal,
     opts: Options,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        const validation: Result = @enumFromInt(rust.ghostty_rust_terminal_new(
+            opts.cols,
+            opts.rows,
+        ));
+        if (validation != .success) {
+            result.* = null;
+            return validation;
+        }
+    }
+
     result.* = new_(alloc_, opts) catch |err| {
         result.* = null;
         return switch (err) {
@@ -353,7 +563,13 @@ pub fn set(
     option: Option,
     value: ?*const anyopaque,
 ) callconv(lib.calling_conv) Result {
-    if (comptime std.debug.runtime_safety) {
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_terminal_set(
+            terminal_ != null,
+            @intFromEnum(option),
+        ));
+        if (result != .success) return result;
+    } else if (comptime std.debug.runtime_safety) {
         _ = std.meta.intToEnum(Option, @intFromEnum(option)) catch {
             log.warn("terminal_set invalid option value={d}", .{@intFromEnum(option)});
             return .invalid_value;
@@ -387,34 +603,67 @@ fn setTyped(
         .title_changed => wrapper.effects.title_changed = value,
         .size_cb => wrapper.effects.size_cb = value,
         .title => {
-            const str = if (value) |v| v.ptr[0..v.len] else "";
+            const str = if (comptime build_options.lib_vt_rust) str: {
+                var ptr: [*]const u8 = undefined;
+                var len: usize = undefined;
+                const result: Result = @enumFromInt(rust.ghostty_rust_terminal_set_string(
+                    value,
+                    &ptr,
+                    &len,
+                ));
+                if (result != .success) return result;
+                break :str ptr[0..len];
+            } else if (value) |v| v.ptr[0..v.len] else "";
             wrapper.terminal.setTitle(str) catch return .out_of_memory;
         },
         .pwd => {
-            const str = if (value) |v| v.ptr[0..v.len] else "";
+            const str = if (comptime build_options.lib_vt_rust) str: {
+                var ptr: [*]const u8 = undefined;
+                var len: usize = undefined;
+                const result: Result = @enumFromInt(rust.ghostty_rust_terminal_set_string(
+                    value,
+                    &ptr,
+                    &len,
+                ));
+                if (result != .success) return result;
+                break :str ptr[0..len];
+            } else if (value) |v| v.ptr[0..v.len] else "";
             wrapper.terminal.setPwd(str) catch return .out_of_memory;
         },
         .color_foreground => {
-            wrapper.terminal.colors.foreground.default = if (value) |v| .fromC(v.*) else null;
+            var rgb: ?color.RGB = null;
+            const result = decodeSetRgb(value, &rgb);
+            if (result != .success) return result;
+            wrapper.terminal.colors.foreground.default = rgb;
             wrapper.terminal.flags.dirty.palette = true;
         },
         .color_background => {
-            wrapper.terminal.colors.background.default = if (value) |v| .fromC(v.*) else null;
+            var rgb: ?color.RGB = null;
+            const result = decodeSetRgb(value, &rgb);
+            if (result != .success) return result;
+            wrapper.terminal.colors.background.default = rgb;
             wrapper.terminal.flags.dirty.palette = true;
         },
         .color_cursor => {
-            wrapper.terminal.colors.cursor.default = if (value) |v| .fromC(v.*) else null;
+            var rgb: ?color.RGB = null;
+            const result = decodeSetRgb(value, &rgb);
+            if (result != .success) return result;
+            wrapper.terminal.colors.cursor.default = rgb;
             wrapper.terminal.flags.dirty.palette = true;
         },
         .color_palette => {
-            wrapper.terminal.colors.palette.changeDefault(
-                if (value) |v| color.paletteZval(v) else color.default,
-            );
+            var palette: color.Palette = undefined;
+            const result = decodeSetPalette(value, &palette);
+            if (result != .success) return result;
+            wrapper.terminal.colors.palette.changeDefault(palette);
             wrapper.terminal.flags.dirty.palette = true;
         },
         .kitty_image_storage_limit => {
             if (comptime !build_options.kitty_graphics) return .success;
-            const limit: usize = if (value) |v| @intCast(v.*) else 0;
+            var limit_u64: u64 = undefined;
+            const result = decodeSetU64Zero(value, &limit_u64);
+            if (result != .success) return result;
+            const limit: usize = @intCast(limit_u64);
             var it = wrapper.terminal.screens.all.iterator();
             while (it.next()) |entry| {
                 const screen = entry.value.*;
@@ -426,7 +675,11 @@ fn setTyped(
         .kitty_image_medium_shared_mem,
         => {
             if (comptime !build_options.kitty_graphics) return .success;
-            const val = (value orelse return .success).*;
+            var val: bool = undefined;
+            var has_value: bool = undefined;
+            const result = decodeSetBoolOptional(value, &has_value, &val);
+            if (result != .success) return result;
+            if (!has_value) return .success;
             var it = wrapper.terminal.screens.all.iterator();
             while (it.next()) |entry| {
                 const screen = entry.value.*;
@@ -439,14 +692,22 @@ fn setTyped(
             }
         },
         .apc_max_bytes => {
-            wrapper.stream.handler.apc_handler.max_bytes = if (value) |ptr|
-                .initFull(ptr.*)
+            var has_value: bool = undefined;
+            var max_bytes: usize = undefined;
+            const result = decodeSetUsizeOptional(value, &has_value, &max_bytes);
+            if (result != .success) return result;
+            wrapper.stream.handler.apc_handler.max_bytes = if (has_value)
+                .initFull(max_bytes)
             else
                 .{};
         },
         .apc_max_bytes_kitty => {
-            if (value) |ptr| {
-                wrapper.stream.handler.apc_handler.max_bytes.put(.kitty, ptr.*);
+            var has_value: bool = undefined;
+            var max_bytes: usize = undefined;
+            const result = decodeSetUsizeOptional(value, &has_value, &max_bytes);
+            if (result != .success) return result;
+            if (has_value) {
+                wrapper.stream.handler.apc_handler.max_bytes.put(.kitty, max_bytes);
             } else {
                 wrapper.stream.handler.apc_handler.max_bytes.remove(.kitty);
             }
@@ -460,6 +721,92 @@ fn setTyped(
             }
         },
     }
+    return .success;
+}
+
+fn decodeSetPalette(value: ?*const color.PaletteC, out: *color.Palette) Result {
+    if (comptime build_options.lib_vt_rust) {
+        var has_value: bool = undefined;
+        var palette_ptr: [*]const color.RGB.C = undefined;
+        const result: Result = @enumFromInt(rust.ghostty_rust_terminal_set_palette(
+            value,
+            &has_value,
+            &palette_ptr,
+        ));
+        if (result != .success) return result;
+
+        out.* = if (has_value) palette: {
+            const palette_c: *const color.PaletteC = @ptrCast(palette_ptr);
+            break :palette color.paletteZval(palette_c);
+        } else color.default;
+    } else {
+        out.* = if (value) |v| color.paletteZval(v) else color.default;
+    }
+
+    return .success;
+}
+
+fn decodeSetUsizeOptional(value: ?*const usize, out_has_value: *bool, out_value: *usize) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_terminal_set_usize_optional(
+            value,
+            out_has_value,
+            out_value,
+        ));
+    }
+
+    if (value) |v| {
+        out_has_value.* = true;
+        out_value.* = v.*;
+    } else {
+        out_has_value.* = false;
+    }
+    return .success;
+}
+
+fn decodeSetU64Zero(value: ?*const u64, out: *u64) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_terminal_set_u64_zero(value, out));
+    }
+
+    out.* = if (value) |v| v.* else 0;
+    return .success;
+}
+
+fn decodeSetBoolOptional(value: ?*const bool, out_has_value: *bool, out_value: *bool) Result {
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_terminal_set_bool_optional(
+            value,
+            out_has_value,
+            out_value,
+        ));
+    }
+
+    if (value) |v| {
+        out_has_value.* = true;
+        out_value.* = v.*;
+    } else {
+        out_has_value.* = false;
+    }
+    return .success;
+}
+
+fn decodeSetRgb(value: ?*const color.RGB.C, out: *?color.RGB) Result {
+    if (comptime build_options.lib_vt_rust) {
+        var has_value: bool = undefined;
+        var rgb: color.RGB.C = undefined;
+        const result: Result = @enumFromInt(rust.ghostty_rust_terminal_set_rgb(
+            value,
+            &has_value,
+            &rgb,
+        ));
+        if (result != .success) return result;
+
+        out.* = if (has_value) .fromC(rgb) else null;
+    } else {
+        out.* = if (value) |v| .fromC(v.*) else null;
+    }
+
     return .success;
 }
 
@@ -488,14 +835,47 @@ pub fn resize(
     cell_width_px: u32,
     cell_height_px: u32,
 ) callconv(lib.calling_conv) Result {
-    const wrapper = terminal_ orelse return .invalid_value;
+    var width_px: u32 = undefined;
+    var height_px: u32 = undefined;
+
+    const wrapper = terminal_ orelse {
+        if (comptime build_options.lib_vt_rust) {
+            return @enumFromInt(rust.ghostty_rust_terminal_resize(
+                false,
+                cols,
+                rows,
+                cell_width_px,
+                cell_height_px,
+                &width_px,
+                &height_px,
+            ));
+        }
+        return .invalid_value;
+    };
+
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_terminal_resize(
+            true,
+            cols,
+            rows,
+            cell_width_px,
+            cell_height_px,
+            &width_px,
+            &height_px,
+        ));
+        if (result != .success) return result;
+    } else {
+        if (cols == 0 or rows == 0) return .invalid_value;
+        width_px = std.math.mul(u32, cols, cell_width_px) catch std.math.maxInt(u32);
+        height_px = std.math.mul(u32, rows, cell_height_px) catch std.math.maxInt(u32);
+    }
+
     const t = wrapper.terminal;
-    if (cols == 0 or rows == 0) return .invalid_value;
     t.resize(t.gpa(), cols, rows) catch return .out_of_memory;
 
     // Update pixel sizes
-    t.width_px = std.math.mul(u32, cols, cell_width_px) catch std.math.maxInt(u32);
-    t.height_px = std.math.mul(u32, rows, cell_height_px) catch std.math.maxInt(u32);
+    t.width_px = width_px;
+    t.height_px = height_px;
 
     // Disable synchronized output mode so that we show changes
     // immediately for a resize. This is allowed by the spec.
@@ -522,6 +902,10 @@ pub fn resize(
 }
 
 pub fn reset(terminal_: Terminal) callconv(lib.calling_conv) void {
+    if (comptime build_options.lib_vt_rust) {
+        if (!rust.ghostty_rust_terminal_reset(terminal_ != null)) return;
+    }
+
     const t: *ZigTerminal = (terminal_ orelse return).terminal;
     t.fullReset();
 }
@@ -531,9 +915,38 @@ pub fn mode_get(
     tag: modes.ModeTag.Backing,
     out_value: *bool,
 ) callconv(lib.calling_conv) Result {
-    const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
+    const wrapper = terminal_ orelse {
+        if (comptime build_options.lib_vt_rust) {
+            return @enumFromInt(rust.ghostty_rust_terminal_mode_get(
+                false,
+                false,
+                false,
+                out_value,
+            ));
+        }
+        return .invalid_value;
+    };
+    const t: *ZigTerminal = wrapper.terminal;
     const mode_tag: modes.ModeTag = @bitCast(tag);
-    const mode = modes.modeFromInt(mode_tag.value, mode_tag.ansi) orelse return .invalid_value;
+    const mode = modes.modeFromInt(mode_tag.value, mode_tag.ansi) orelse {
+        if (comptime build_options.lib_vt_rust) {
+            return @enumFromInt(rust.ghostty_rust_terminal_mode_get(
+                true,
+                false,
+                false,
+                out_value,
+            ));
+        }
+        return .invalid_value;
+    };
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_terminal_mode_get(
+            true,
+            true,
+            t.modes.get(mode),
+            out_value,
+        ));
+    }
     out_value.* = t.modes.get(mode);
     return .success;
 }
@@ -543,9 +956,24 @@ pub fn mode_set(
     tag: modes.ModeTag.Backing,
     value: bool,
 ) callconv(lib.calling_conv) Result {
-    const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
+    const wrapper = terminal_ orelse {
+        if (comptime build_options.lib_vt_rust) {
+            return @enumFromInt(rust.ghostty_rust_terminal_mode_set(false, false));
+        }
+        return .invalid_value;
+    };
+    const t: *ZigTerminal = wrapper.terminal;
     const mode_tag: modes.ModeTag = @bitCast(tag);
-    const mode = modes.modeFromInt(mode_tag.value, mode_tag.ansi) orelse return .invalid_value;
+    const mode = modes.modeFromInt(mode_tag.value, mode_tag.ansi) orelse {
+        if (comptime build_options.lib_vt_rust) {
+            return @enumFromInt(rust.ghostty_rust_terminal_mode_set(true, false));
+        }
+        return .invalid_value;
+    };
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_terminal_mode_set(true, true));
+        if (result != .success) return result;
+    }
     t.modes.set(mode, value);
     return .success;
 }
@@ -638,6 +1066,15 @@ pub fn get(
         };
     }
 
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_terminal_get(
+            terminal_ != null,
+            @intFromEnum(data),
+            out != null,
+        ));
+        if (result != .success) return result;
+    }
+
     return switch (data) {
         .invalid => .invalid_value,
         inline else => |comptime_data| getTyped(
@@ -657,6 +1094,63 @@ pub fn get_multi(
 ) callconv(lib.calling_conv) Result {
     const k = keys orelse return .invalid_value;
     const v = values orelse return .invalid_value;
+    if (count == 0) {
+        if (out_written) |w| w.* = 0;
+        return .success;
+    }
+
+    if (comptime build_options.lib_vt_rust) {
+        var scalar_only = true;
+        for (0..count) |i| {
+            switch (k[i]) {
+                .invalid,
+                .cols,
+                .rows,
+                .cursor_x,
+                .cursor_y,
+                .cursor_pending_wrap,
+                .active_screen,
+                .cursor_visible,
+                .kitty_keyboard_flags,
+                .mouse_tracking,
+                .total_rows,
+                .scrollback_rows,
+                .width_px,
+                .height_px,
+                => {},
+                else => {
+                    scalar_only = false;
+                    break;
+                },
+            }
+        }
+
+        if (scalar_only) {
+            const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
+            return @enumFromInt(rust.ghostty_rust_terminal_get_scalar_multi(
+                count,
+                k,
+                v,
+                out_written,
+                t.cols,
+                t.rows,
+                t.screens.active.cursor.x,
+                t.screens.active.cursor.y,
+                t.screens.active.cursor.pending_wrap,
+                @intFromEnum(t.screens.active_key),
+                t.modes.get(.cursor_visible),
+                @as(u8, t.screens.active.kitty_keyboard.current().int()),
+                t.modes.get(.mouse_event_x10) or
+                    t.modes.get(.mouse_event_normal) or
+                    t.modes.get(.mouse_event_button) or
+                    t.modes.get(.mouse_event_any),
+                t.screens.active.pages.total_rows,
+                t.screens.active.pages.total_rows - t.rows,
+                t.width_px,
+                t.height_px,
+            ));
+        }
+    }
 
     for (0..count) |i| {
         const result = get(terminal_, k[i], v[i]);
@@ -675,6 +1169,199 @@ fn getTyped(
     out: *data.OutType(),
 ) Result {
     const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
+    if (comptime build_options.lib_vt_rust) {
+        switch (data) {
+            .cols,
+            .rows,
+            .cursor_x,
+            .cursor_y,
+            .cursor_pending_wrap,
+            .active_screen,
+            .cursor_visible,
+            .kitty_keyboard_flags,
+            .mouse_tracking,
+            .total_rows,
+            .scrollback_rows,
+            .width_px,
+            .height_px,
+            => return @enumFromInt(rust.ghostty_rust_terminal_get_scalar(
+                @intFromEnum(data),
+                t.cols,
+                t.rows,
+                t.screens.active.cursor.x,
+                t.screens.active.cursor.y,
+                t.screens.active.cursor.pending_wrap,
+                @intFromEnum(t.screens.active_key),
+                t.modes.get(.cursor_visible),
+                @as(u8, t.screens.active.kitty_keyboard.current().int()),
+                t.modes.get(.mouse_event_x10) or
+                    t.modes.get(.mouse_event_normal) or
+                    t.modes.get(.mouse_event_button) or
+                    t.modes.get(.mouse_event_any),
+                t.screens.active.pages.total_rows,
+                t.screens.active.pages.total_rows - t.rows,
+                t.width_px,
+                t.height_px,
+                @ptrCast(out),
+            )),
+            else => {},
+        }
+
+        switch (data) {
+            .title,
+            .pwd,
+            => {
+                const value = switch (data) {
+                    .title => t.getTitle() orelse "",
+                    .pwd => t.getPwd() orelse "",
+                    else => unreachable,
+                };
+                return @enumFromInt(rust.ghostty_rust_terminal_get_string(
+                    @intFromEnum(data),
+                    value.ptr,
+                    value.len,
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+
+        switch (data) {
+            .cursor_style => {
+                const value: style_c.Style = .fromStyle(t.screens.active.cursor.style);
+                return @enumFromInt(rust.ghostty_rust_terminal_get_style(
+                    @intFromEnum(data),
+                    &value,
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+
+        switch (data) {
+            .scrollbar => {
+                const value = t.screens.active.pages.scrollbar().cval();
+                return @enumFromInt(rust.ghostty_rust_terminal_get_scrollbar(
+                    @intFromEnum(data),
+                    value.total,
+                    value.offset,
+                    value.len,
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+
+        switch (data) {
+            .kitty_image_storage_limit,
+            .kitty_image_medium_file,
+            .kitty_image_medium_temp_file,
+            .kitty_image_medium_shared_mem,
+            => {
+                if (comptime build_options.kitty_graphics) {
+                    return @enumFromInt(rust.ghostty_rust_terminal_get_kitty_image(
+                        @intFromEnum(data),
+                        true,
+                        @intCast(t.screens.active.kitty_images.total_limit),
+                        t.screens.active.kitty_images.image_limits.file,
+                        t.screens.active.kitty_images.image_limits.temporary_file,
+                        t.screens.active.kitty_images.image_limits.shared_memory,
+                        @ptrCast(out),
+                    ));
+                }
+
+                return @enumFromInt(rust.ghostty_rust_terminal_get_kitty_image(
+                    @intFromEnum(data),
+                    false,
+                    0,
+                    false,
+                    false,
+                    false,
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+
+        switch (data) {
+            .color_foreground,
+            .color_background,
+            .color_cursor,
+            .color_foreground_default,
+            .color_background_default,
+            .color_cursor_default,
+            => {
+                const value: ?color.RGB.C = switch (data) {
+                    .color_foreground => if (t.colors.foreground.get()) |v| v.cval() else null,
+                    .color_background => if (t.colors.background.get()) |v| v.cval() else null,
+                    .color_cursor => if (t.colors.cursor.get()) |v| v.cval() else null,
+                    .color_foreground_default => if (t.colors.foreground.default) |v| v.cval() else null,
+                    .color_background_default => if (t.colors.background.default) |v| v.cval() else null,
+                    .color_cursor_default => if (t.colors.cursor.default) |v| v.cval() else null,
+                    else => unreachable,
+                };
+                return @enumFromInt(rust.ghostty_rust_terminal_get_color(
+                    @intFromEnum(data),
+                    value != null,
+                    if (value) |v| v.r else 0,
+                    if (value) |v| v.g else 0,
+                    if (value) |v| v.b else 0,
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+
+        switch (data) {
+            .color_palette,
+            .color_palette_default,
+            => {
+                const value: color.PaletteC = switch (data) {
+                    .color_palette => color.paletteCval(&t.colors.palette.current),
+                    .color_palette_default => color.paletteCval(&t.colors.palette.original),
+                    else => unreachable,
+                };
+                return @enumFromInt(rust.ghostty_rust_terminal_get_palette(
+                    @intFromEnum(data),
+                    &value,
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+
+        switch (data) {
+            .kitty_graphics => {
+                return @enumFromInt(rust.ghostty_rust_terminal_get_pointer(
+                    @intFromEnum(data),
+                    comptime build_options.kitty_graphics,
+                    if (comptime build_options.kitty_graphics)
+                        @ptrCast(&t.screens.active.kitty_images)
+                    else
+                        null,
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+
+        switch (data) {
+            .selection => {
+                const maybe_value: ?selection_c.CSelection = if (t.screens.active.selection) |sel|
+                    selection_c.CSelection.fromZig(sel)
+                else
+                    null;
+                return @enumFromInt(rust.ghostty_rust_terminal_get_selection(
+                    @intFromEnum(data),
+                    maybe_value != null,
+                    if (maybe_value) |*value| value else null,
+                    @ptrCast(out),
+                ));
+            },
+            else => {},
+        }
+    }
+
     switch (data) {
         .invalid => return .invalid_value,
         .cols => out.* = t.cols,
@@ -746,9 +1433,19 @@ pub fn grid_ref(
 ) callconv(lib.calling_conv) Result {
     const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
     const zig_pt: point.Point = .fromC(pt);
-    const p = t.screens.active.pages.pin(zig_pt) orelse
-        return .invalid_value;
-    if (out_ref) |out| out.* = grid_ref_c.CGridRef.fromPin(p);
+    const p = t.screens.active.pages.pin(zig_pt);
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_terminal_grid_ref(
+            p != null,
+            if (p) |pin| @ptrCast(pin.node) else null,
+            if (p) |pin| pin.x else 0,
+            if (p) |pin| pin.y else 0,
+            out_ref,
+        ));
+    }
+
+    const pin = p orelse return .invalid_value;
+    if (out_ref) |out| out.* = grid_ref_c.CGridRef.fromPin(pin);
     return .success;
 }
 
@@ -757,6 +1454,14 @@ pub fn grid_ref_track(
     pt: point.Point.C,
     out_ref: ?*grid_ref_tracked_c.CTrackedGridRef,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_terminal_grid_ref_track_input(
+            terminal_ != null,
+            out_ref != null,
+        ));
+        if (result != .success) return result;
+    }
+
     const wrapper = terminal_ orelse return .invalid_value;
     const out = out_ref orelse return .invalid_value;
     out.* = null;
@@ -797,15 +1502,32 @@ pub fn grid_ref_track(
 
 pub fn point_from_grid_ref(
     terminal_: Terminal,
-    ref: *const grid_ref_c.CGridRef,
+    ref_: ?*const grid_ref_c.CGridRef,
     tag: point.Tag,
     out: ?*point.Coordinate,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.lib_vt_rust) {
+        const result: Result = @enumFromInt(rust.ghostty_rust_terminal_point_from_grid_ref_input(
+            terminal_ != null,
+            ref_ != null,
+        ));
+        if (result != .success) return result;
+    }
+
     const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
+    const ref = ref_ orelse return .invalid_value;
     const p = ref.toPin() orelse return .invalid_value;
-    const pt = t.screens.active.pages.pointFromPin(tag, p) orelse
-        return .no_value;
-    if (out) |o| o.* = pt.coord();
+    const pt = t.screens.active.pages.pointFromPin(tag, p);
+    if (comptime build_options.lib_vt_rust) {
+        return @enumFromInt(rust.ghostty_rust_terminal_point_from_grid_ref(
+            pt != null,
+            if (pt) |v| v.coord() else .{},
+            out,
+        ));
+    }
+
+    const value = pt orelse return .no_value;
+    if (out) |o| o.* = value.coord();
     return .success;
 }
 
@@ -986,6 +1708,30 @@ test "resize invalid value" {
 
     try testing.expectEqual(Result.invalid_value, resize(t, 0, 24, 9, 18));
     try testing.expectEqual(Result.invalid_value, resize(t, 80, 0, 9, 18));
+}
+
+test "resize saturates pixel dimensions" {
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{
+            .cols = 80,
+            .rows = 24,
+            .max_scrollback = 10_000,
+        },
+    ));
+    defer free(t);
+
+    try testing.expectEqual(Result.success, resize(
+        t,
+        2,
+        2,
+        std.math.maxInt(u32),
+        std.math.maxInt(u32),
+    ));
+    try testing.expectEqual(std.math.maxInt(u32), t.?.terminal.width_px);
+    try testing.expectEqual(std.math.maxInt(u32), t.?.terminal.height_px);
 }
 
 test "mode_get and mode_set" {
@@ -1181,6 +1927,84 @@ test "get cursor position" {
     try testing.expectEqual(0, y);
 }
 
+test "get cursor style" {
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{
+            .cols = 80,
+            .rows = 24,
+            .max_scrollback = 0,
+        },
+    ));
+    defer free(t);
+
+    var cursor_style: style_c.Style = undefined;
+    try testing.expectEqual(Result.success, get(t, .cursor_style, @ptrCast(&cursor_style)));
+    try testing.expect(style_c.style_is_default(&cursor_style));
+
+    vt_write(t, "\x1b[1;3;4m", 8);
+    try testing.expectEqual(Result.success, get(t, .cursor_style, @ptrCast(&cursor_style)));
+    try testing.expectEqual(@sizeOf(style_c.Style), cursor_style.size);
+    try testing.expectEqual(style_c.ColorTag.none, cursor_style.fg_color.tag);
+    try testing.expectEqual(style_c.ColorTag.none, cursor_style.bg_color.tag);
+    try testing.expect(cursor_style.bold);
+    try testing.expect(cursor_style.italic);
+    try testing.expectEqual(@as(c_int, 1), cursor_style.underline);
+}
+
+test "get cursor pending wrap" {
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{
+            .cols = 2,
+            .rows = 2,
+            .max_scrollback = 0,
+        },
+    ));
+    defer free(t);
+
+    var pending: bool = undefined;
+    try testing.expectEqual(Result.success, get(t, .cursor_pending_wrap, @ptrCast(&pending)));
+    try testing.expect(!pending);
+
+    vt_write(t, "ab", 2);
+    try testing.expectEqual(Result.success, get(t, .cursor_pending_wrap, @ptrCast(&pending)));
+    try testing.expect(pending);
+}
+
+test "get scalar dimensions" {
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{
+            .cols = 10,
+            .rows = 4,
+            .max_scrollback = 10_000,
+        },
+    ));
+    defer free(t);
+
+    try testing.expectEqual(Result.success, resize(t, 12, 5, 7, 9));
+
+    var total_rows: usize = undefined;
+    var scrollback_rows: usize = undefined;
+    var width_px: u32 = undefined;
+    var height_px: u32 = undefined;
+    try testing.expectEqual(Result.success, get(t, .total_rows, @ptrCast(&total_rows)));
+    try testing.expectEqual(Result.success, get(t, .scrollback_rows, @ptrCast(&scrollback_rows)));
+    try testing.expectEqual(Result.success, get(t, .width_px, @ptrCast(&width_px)));
+    try testing.expectEqual(Result.success, get(t, .height_px, @ptrCast(&height_px)));
+    try testing.expect(total_rows >= 5);
+    try testing.expectEqual(total_rows - 5, scrollback_rows);
+    try testing.expectEqual(@as(u32, 84), width_px);
+    try testing.expectEqual(@as(u32, 45), height_px);
+}
+
 test "get null" {
     var cols: size.CellCountInt = undefined;
     try testing.expectEqual(Result.invalid_value, get(null, .cols, @ptrCast(&cols)));
@@ -1300,6 +2124,121 @@ test "get mouse_tracking" {
     try testing.expectEqual(Result.success, mode_set(t, any_mode, false));
     try testing.expectEqual(Result.success, get(t, .mouse_tracking, @ptrCast(&tracking)));
     try testing.expect(!tracking);
+}
+
+test "get scrollbar" {
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{
+            .cols = 80,
+            .rows = 3,
+            .max_scrollback = 10_000,
+        },
+    ));
+    defer free(t);
+
+    var scrollbar: TerminalScrollbar = undefined;
+    try testing.expectEqual(Result.success, get(t, .scrollbar, @ptrCast(&scrollbar)));
+    try testing.expectEqual(@as(u64, 3), scrollbar.total);
+    try testing.expectEqual(@as(u64, 0), scrollbar.offset);
+    try testing.expectEqual(@as(u64, 3), scrollbar.len);
+
+    vt_write(t, "line1\r\nline2\r\nline3\r\nline4\r\nline5\r\n", 34);
+
+    try testing.expectEqual(Result.success, get(t, .scrollbar, @ptrCast(&scrollbar)));
+    try testing.expectEqual(@as(u64, 5), scrollbar.total);
+    try testing.expectEqual(@as(u64, 2), scrollbar.offset);
+    try testing.expectEqual(@as(u64, 3), scrollbar.len);
+}
+
+test "get kitty image settings" {
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{
+            .cols = 80,
+            .rows = 24,
+            .max_scrollback = 0,
+        },
+    ));
+    defer free(t);
+
+    var limit: u64 = undefined;
+    var medium_file: bool = undefined;
+    var medium_temp_file: bool = undefined;
+    var medium_shared_mem: bool = undefined;
+
+    if (comptime !build_options.kitty_graphics) {
+        try testing.expectEqual(Result.no_value, get(t, .kitty_image_storage_limit, @ptrCast(&limit)));
+        try testing.expectEqual(Result.no_value, get(t, .kitty_image_medium_file, @ptrCast(&medium_file)));
+        try testing.expectEqual(Result.no_value, get(t, .kitty_image_medium_temp_file, @ptrCast(&medium_temp_file)));
+        try testing.expectEqual(Result.no_value, get(t, .kitty_image_medium_shared_mem, @ptrCast(&medium_shared_mem)));
+        return;
+    }
+
+    try testing.expectEqual(Result.success, get(t, .kitty_image_storage_limit, @ptrCast(&limit)));
+    try testing.expectEqual(@as(u64, @intCast(t.?.terminal.screens.active.kitty_images.total_limit)), limit);
+    try testing.expectEqual(Result.success, get(t, .kitty_image_medium_file, @ptrCast(&medium_file)));
+    try testing.expect(!medium_file);
+    try testing.expectEqual(Result.success, get(t, .kitty_image_medium_temp_file, @ptrCast(&medium_temp_file)));
+    try testing.expect(!medium_temp_file);
+    try testing.expectEqual(Result.success, get(t, .kitty_image_medium_shared_mem, @ptrCast(&medium_shared_mem)));
+    try testing.expect(!medium_shared_mem);
+
+    const new_limit: u64 = 4096;
+    const enabled = true;
+    try testing.expectEqual(Result.success, set(t, .kitty_image_storage_limit, @ptrCast(&new_limit)));
+    try testing.expectEqual(Result.success, set(t, .kitty_image_medium_file, @ptrCast(&enabled)));
+    try testing.expectEqual(Result.success, set(t, .kitty_image_medium_temp_file, @ptrCast(&enabled)));
+    try testing.expectEqual(Result.success, set(t, .kitty_image_medium_shared_mem, @ptrCast(&enabled)));
+
+    try testing.expectEqual(Result.success, get(t, .kitty_image_storage_limit, @ptrCast(&limit)));
+    try testing.expectEqual(new_limit, limit);
+    try testing.expectEqual(Result.success, get(t, .kitty_image_medium_file, @ptrCast(&medium_file)));
+    try testing.expect(medium_file);
+    try testing.expectEqual(Result.success, get(t, .kitty_image_medium_temp_file, @ptrCast(&medium_temp_file)));
+    try testing.expect(medium_temp_file);
+    try testing.expectEqual(Result.success, get(t, .kitty_image_medium_shared_mem, @ptrCast(&medium_shared_mem)));
+    try testing.expect(medium_shared_mem);
+}
+
+test "set APC max bytes" {
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{
+            .cols = 80,
+            .rows = 24,
+            .max_scrollback = 0,
+        },
+    ));
+    defer free(t);
+
+    try testing.expectEqual(
+        apc.Protocol.defaultMaxBytes(.kitty),
+        t.?.stream.handler.apc_handler.max_bytes.get(.kitty).?,
+    );
+
+    const all: usize = 123;
+    try testing.expectEqual(Result.success, set(t, .apc_max_bytes, @ptrCast(&all)));
+    try testing.expectEqual(all, t.?.stream.handler.apc_handler.max_bytes.get(.kitty).?);
+
+    const kitty_max_bytes: usize = 456;
+    try testing.expectEqual(Result.success, set(t, .apc_max_bytes_kitty, @ptrCast(&kitty_max_bytes)));
+    try testing.expectEqual(kitty_max_bytes, t.?.stream.handler.apc_handler.max_bytes.get(.kitty).?);
+
+    try testing.expectEqual(Result.success, set(t, .apc_max_bytes_kitty, null));
+    try testing.expectEqual(@as(?usize, null), t.?.stream.handler.apc_handler.max_bytes.get(.kitty));
+
+    try testing.expectEqual(Result.success, set(t, .apc_max_bytes, @ptrCast(&all)));
+    try testing.expectEqual(all, t.?.stream.handler.apc_handler.max_bytes.get(.kitty).?);
+
+    try testing.expectEqual(Result.success, set(t, .apc_max_bytes, null));
+    try testing.expectEqual(@as(?usize, null), t.?.stream.handler.apc_handler.max_bytes.get(.kitty));
 }
 
 test "get total_rows" {
@@ -1802,6 +2741,47 @@ test "grid_ref null terminal" {
     }, &out_ref));
 }
 
+test "grid_ref null out succeeds" {
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{
+            .cols = 80,
+            .rows = 24,
+            .max_scrollback = 0,
+        },
+    ));
+    defer free(t);
+
+    vt_write(t, "Hello", 5);
+    try testing.expectEqual(Result.success, grid_ref(t, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 0, .y = 0 } },
+    }, null));
+}
+
+test "grid_ref_track invalid inputs" {
+    var out_ref: grid_ref_tracked_c.CTrackedGridRef = undefined;
+    try testing.expectEqual(Result.invalid_value, grid_ref_track(null, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 0, .y = 0 } },
+    }, &out_ref));
+
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{ .cols = 80, .rows = 24, .max_scrollback = 0 },
+    ));
+    defer free(t);
+
+    try testing.expectEqual(Result.invalid_value, grid_ref_track(t, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 0, .y = 0 } },
+    }, null));
+}
+
 test "point_from_grid_ref roundtrip active" {
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
@@ -1850,6 +2830,26 @@ test "point_from_grid_ref roundtrip viewport" {
     try testing.expectEqual(@as(u32, 0), coord.y);
 }
 
+test "point_from_grid_ref null out succeeds" {
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{ .cols = 80, .rows = 24, .max_scrollback = 10_000 },
+    ));
+    defer free(t);
+
+    vt_write(t, "Hello", 5);
+
+    var ref: grid_ref_c.CGridRef = .{};
+    try testing.expectEqual(Result.success, grid_ref(t, .{
+        .tag = .active,
+        .value = .{ .active = .{ .x = 0, .y = 0 } },
+    }, &ref));
+
+    try testing.expectEqual(Result.success, point_from_grid_ref(t, &ref, .active, null));
+}
+
 test "point_from_grid_ref history ref to active returns no_value" {
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
@@ -1883,6 +2883,18 @@ test "point_from_grid_ref history ref to active returns no_value" {
 test "point_from_grid_ref null terminal" {
     var ref: grid_ref_c.CGridRef = .{};
     try testing.expectEqual(Result.invalid_value, point_from_grid_ref(null, &ref, .active, null));
+}
+
+test "point_from_grid_ref null ref" {
+    var t: Terminal = null;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &t,
+        .{ .cols = 80, .rows = 24, .max_scrollback = 0 },
+    ));
+    defer free(t);
+
+    try testing.expectEqual(Result.invalid_value, point_from_grid_ref(t, null, .active, null));
 }
 
 test "point_from_grid_ref null node" {
