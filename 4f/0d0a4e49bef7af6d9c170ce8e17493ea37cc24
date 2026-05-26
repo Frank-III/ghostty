@@ -1,0 +1,69 @@
+src/terminal/rust/stream_core.rs
+  s_9e4f3539ac7376::t_bd7c602423c2e9 183-185
+src/terminal/rust/lib.rs
+  s_9e4f3539ac7376::t_6ce0a673126fab 39
+  s_036535f8a37cb4::t_7f839a72adea5e 251-252
+src/terminal/rust/stream_osc_parse.rs
+  s_9e4f3539ac7376::t_f3cc78e984dcbf 1-522
+src/build/GhosttyRust.zig
+  s_036535f8a37cb4::t_e0aa5c6002144d 109
+src/terminal/rust/terminal_methods.rs
+  s_bf6026ed1b3447::t_3cde87aa0c1a99 644-651
+  s_bf6026ed1b3447::t_7a83d1707de66d 440-447
+src/terminal/rust/page_list_methods.rs
+  s_bf6026ed1b3447::t_968792a71b2ccb 634-650
+  s_bf6026ed1b3447::t_564676312b58ba 462-469
+src/terminal/rust/formatter_page.rs
+  s_23f8c0d1c4784f::t_8b5a73d5134d26 252-257
+  s_23f8c0d1c4784f::t_9860f499283a1f 8
+  s_23f8c0d1c4784f::t_23351030fcbc09 371-374
+  s_23f8c0d1c4784f::t_62f847787b2662 330-333
+src/terminal/rust/screen_methods.rs
+  s_bf6026ed1b3447::t_51e438deb1c558 12
+  s_bf6026ed1b3447::t_89934a73915965 1509-1518
+  s_bf6026ed1b3447::t_56bcc0af747d96 1483-1489
+  s_bf6026ed1b3447::t_d38ec70640b0d2 820-853
+  s_bf6026ed1b3447::t_167db937574abf 1533-1535,1537-1539
+  s_bf6026ed1b3447::t_1ada2375037911 2029-2038
+  s_bf6026ed1b3447::t_9c7330a638044a 876-893
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f0d0a4e49bef7af6d9c170ce8e17493ea37cc24",
+  "prompts": {},
+  "sessions": {
+    "s_036535f8a37cb4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19b695b2dffenTbSSYtA9EpzF6",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_23f8c0d1c4784f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19960e3c9ffeKFI5XGw4tjEalJ",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_9e4f3539ac7376": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19960f4e7ffeGCi9jWXM6vgXTw",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_bf6026ed1b3447": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19960c957ffesaKVGjO38Lfsb6",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
