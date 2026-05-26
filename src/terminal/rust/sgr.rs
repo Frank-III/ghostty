@@ -30,6 +30,16 @@ pub unsafe extern "C" fn ghostty_rust_sgr_next(
     idx: *mut usize,
     result: *mut GhosttySgrAttribute,
 ) -> bool {
+    unsafe { sgr_next_impl(params, params_len, sep_mask, idx, result) }
+}
+
+pub(crate) unsafe fn sgr_next_impl(
+    params: *const u16,
+    params_len: usize,
+    sep_mask: u32,
+    idx: *mut usize,
+    result: *mut GhosttySgrAttribute,
+) -> bool {
     if idx.is_null() || result.is_null() {
         return false;
     }
