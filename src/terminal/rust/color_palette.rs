@@ -216,6 +216,18 @@ pub(crate) fn rgb_from_hex_component(value: &[u8]) -> Option<u8> {
     Some(((color * 0xff) / divisor) as u8)
 }
 
+pub(crate) fn rgb_parse(value: &[u8]) -> Option<GhosttyColorRgb> {
+    if value.is_empty() {
+        return None;
+    }
+
+    if value[0] == b'#' {
+        return rgb_parse_hash(value);
+    }
+
+    rgb_parse_hex_spec(value)
+}
+
 pub(crate) fn rgb_parse_hash(value: &[u8]) -> Option<GhosttyColorRgb> {
     if value.first().copied()? != b'#' {
         return None;
