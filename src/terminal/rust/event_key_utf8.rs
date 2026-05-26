@@ -10,6 +10,12 @@ pub unsafe extern "C" fn ghostty_rust_key_event_set_utf8(
     utf8: *const u8,
     len: usize,
 ) {
+    unsafe {
+        key_event_set_utf8_impl(event, utf8, len);
+    }
+}
+
+pub(crate) unsafe fn key_event_set_utf8_impl(event: *mut c_void, utf8: *const u8, len: usize) {
     let ptr = if utf8.is_null() {
         EMPTY_UTF8.as_ptr()
     } else {
@@ -32,6 +38,10 @@ pub unsafe extern "C" fn ghostty_rust_key_event_get_utf8(
     event: *mut c_void,
     len: *mut usize,
 ) -> *const u8 {
+    unsafe { key_event_get_utf8_impl(event, len) }
+}
+
+pub(crate) unsafe fn key_event_get_utf8_impl(event: *mut c_void, len: *mut usize) -> *const u8 {
     let utf8_len = unsafe { ptr::read(key_event_field::<usize>(event, KEY_EVENT_UTF8_LEN_OFFSET)) };
     if !len.is_null() {
         unsafe {
