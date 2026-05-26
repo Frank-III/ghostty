@@ -16,9 +16,6 @@ pub(crate) const GHOSTTY_OUT_OF_SPACE: c_int = -3;
 pub(crate) const GHOSTTY_NO_VALUE: c_int = -4;
 
 pub(crate) const GHOSTTY_FOCUS_LOST: c_int = 1;
-pub(crate) const SYS_OPT_USERDATA: c_int = 0;
-pub(crate) const SYS_OPT_DECODE_PNG: c_int = 1;
-pub(crate) const SYS_OPT_LOG: c_int = 2;
 pub(crate) const TERMINAL_OPT_USERDATA: c_int = 0;
 pub(crate) const TERMINAL_OPT_WRITE_PTY: c_int = 1;
 pub(crate) const TERMINAL_OPT_BELL: c_int = 2;
@@ -53,14 +50,6 @@ pub extern "C" fn ghostty_rust_terminal_new(cols: u16, rows: u16) -> c_int {
 #[no_mangle]
 pub extern "C" fn ghostty_rust_terminal_reset(has_terminal: bool) -> bool {
     has_terminal
-}
-
-#[no_mangle]
-pub extern "C" fn ghostty_rust_sys_set(option: c_int) -> c_int {
-    match option {
-        SYS_OPT_USERDATA | SYS_OPT_DECODE_PNG | SYS_OPT_LOG => GHOSTTY_SUCCESS,
-        _ => GHOSTTY_INVALID_VALUE,
-    }
 }
 
 #[no_mangle]
