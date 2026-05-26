@@ -80,6 +80,38 @@ pub unsafe extern "C" fn ghostty_rust_kitty_image_get_multi(
     data_ptr: *const u8,
     data_len: usize,
 ) -> c_int {
+    unsafe {
+        kitty_image_get_multi_impl(
+            count,
+            keys,
+            values,
+            out_written,
+            id,
+            number,
+            width,
+            height,
+            format,
+            compression,
+            data_ptr,
+            data_len,
+        )
+    }
+}
+
+pub(crate) unsafe fn kitty_image_get_multi_impl(
+    count: usize,
+    keys: *const c_int,
+    values: *const *mut c_void,
+    out_written: *mut usize,
+    id: u32,
+    number: u32,
+    width: u32,
+    height: u32,
+    format: c_int,
+    compression: c_int,
+    data_ptr: *const u8,
+    data_len: usize,
+) -> c_int {
     if keys.is_null() || values.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }
