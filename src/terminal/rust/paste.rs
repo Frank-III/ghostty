@@ -4,6 +4,7 @@ use core::ptr;
 use crate::constants::*;
 use crate::early::*;
 use crate::paste_bytes::*;
+use crate::paste_len::*;
 use crate::paste_safe::*;
 use crate::paste_sanitize::*;
 use crate::simple::*;
@@ -34,9 +35,7 @@ pub unsafe extern "C" fn ghostty_rust_paste_encode(
         }
     }
 
-    let prefix_len = if bracketed { PASTE_START.len() } else { 0 };
-    let suffix_len = if bracketed { PASTE_END.len() } else { 0 };
-    let total = prefix_len + actual_data_len + suffix_len;
+    let total = paste_encoded_len(actual_data_len, bracketed);
 
     unsafe {
         ptr::write(out_written, total);
