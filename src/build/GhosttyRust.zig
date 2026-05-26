@@ -128,6 +128,7 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/mode_report_written.rs",
     "src/terminal/rust/osc.rs",
     "src/terminal/rust/osc_command_data.rs",
+    "src/terminal/rust/osc_command_data_write.rs",
     "src/terminal/rust/osc_command_type.rs",
     "src/terminal/rust/palette_copy.rs",
     "src/terminal/rust/paste.rs",

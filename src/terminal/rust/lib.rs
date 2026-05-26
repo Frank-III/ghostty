@@ -138,6 +138,7 @@ mod mode_report_written;
 mod modes;
 mod osc;
 mod osc_command_data;
+mod osc_command_data_write;
 mod osc_command_type;
 mod key_options;
 mod key_bool_option;

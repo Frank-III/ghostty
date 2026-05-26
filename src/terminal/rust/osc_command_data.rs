@@ -1,7 +1,7 @@
 use core::ffi::{c_int, c_void};
-use core::ptr;
 
 use crate::osc::*;
+use crate::osc_command_data_write::*;
 
 pub(crate) unsafe fn osc_command_data_string(
     data: c_int,
@@ -13,9 +13,7 @@ pub(crate) unsafe fn osc_command_data_string(
         return false;
     }
 
-    unsafe {
-        ptr::write(out.cast::<*const u8>(), value);
-    }
+    unsafe { osc_command_data_write_string(value, out) };
 
     true
 }
