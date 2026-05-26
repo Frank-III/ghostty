@@ -18,6 +18,30 @@ pub unsafe extern "C" fn ghostty_rust_render_row_cell_get_color(
     bg_palette_color: GhosttyColorRgb,
     out: *mut c_void,
 ) -> c_int {
+    unsafe {
+        render_row_cell_get_color_impl(
+            data,
+            cell,
+            fg_color,
+            bg_color,
+            cell_palette_color,
+            fg_palette_color,
+            bg_palette_color,
+            out,
+        )
+    }
+}
+
+pub(crate) unsafe fn render_row_cell_get_color_impl(
+    data: c_int,
+    cell: u64,
+    fg_color: *const GhosttyStyleColor,
+    bg_color: *const GhosttyStyleColor,
+    cell_palette_color: GhosttyColorRgb,
+    fg_palette_color: GhosttyColorRgb,
+    bg_palette_color: GhosttyColorRgb,
+    out: *mut c_void,
+) -> c_int {
     if out.is_null() {
         return RENDER_RESULT_INVALID_VALUE;
     }
@@ -45,6 +69,40 @@ pub unsafe extern "C" fn ghostty_rust_render_row_cell_get_color(
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_render_row_cell_get_style(
+    fg_color: *const GhosttyStyleColor,
+    bg_color: *const GhosttyStyleColor,
+    underline_color: *const GhosttyStyleColor,
+    bold: bool,
+    italic: bool,
+    faint: bool,
+    blink: bool,
+    inverse: bool,
+    invisible: bool,
+    strikethrough: bool,
+    overline: bool,
+    underline: c_int,
+    out: *mut GhosttyStyle,
+) -> c_int {
+    unsafe {
+        render_row_cell_get_style_impl(
+            fg_color,
+            bg_color,
+            underline_color,
+            bold,
+            italic,
+            faint,
+            blink,
+            inverse,
+            invisible,
+            strikethrough,
+            overline,
+            underline,
+            out,
+        )
+    }
+}
+
+pub(crate) unsafe fn render_row_cell_get_style_impl(
     fg_color: *const GhosttyStyleColor,
     bg_color: *const GhosttyStyleColor,
     underline_color: *const GhosttyStyleColor,
