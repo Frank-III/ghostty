@@ -11,6 +11,7 @@ use crate::mouse_button::*;
 use crate::mouse_geometry::*;
 use crate::mouse_last_cell::*;
 use crate::mouse_out_written::*;
+use crate::mouse_size::*;
 use crate::mouse_types::*;
 use crate::mouse_write::*;
 use crate::simple::*;
@@ -45,7 +46,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
     next_last_cell_x: *mut u16,
     next_last_cell_y: *mut u32,
 ) -> c_int {
-    let size = GhosttyMouseSize {
+    let size = mouse_size_from_parts(
         screen_width,
         screen_height,
         cell_width,
@@ -54,9 +55,9 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encode(
         padding_bottom,
         padding_right,
         padding_left,
-    };
+    );
 
-    if size.cell_width == 0 || size.cell_height == 0 {
+    if !mouse_size_has_cell_size(size) {
         return GHOSTTY_INVALID_VALUE;
     }
 
