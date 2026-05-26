@@ -18,6 +18,7 @@ mod kitty_graphics;
 mod mouse_encode;
 mod simple;
 mod event_cell_style;
+mod color;
 
 pub(crate) use early::*;
 pub(crate) use constants::*;
@@ -29,6 +30,7 @@ pub(crate) use kitty_graphics::*;
 pub(crate) use mouse_encode::*;
 pub(crate) use simple::*;
 pub(crate) use event_cell_style::*;
+pub(crate) use color::*;
 
 #[panic_handler]
 fn panic(_: &PanicInfo<'_>) -> ! {
