@@ -1,9 +1,19 @@
-//! Search functionality for the terminal.
-//!
-//! Port of `src/terminal/search.zig`. Re-exports search types from
-//! sub-modules. Stub structs are provided until those sub-modules are ported.
+#[path = "search_sliding_window.rs"]
+pub mod search_sliding_window;
+#[path = "search_active.rs"]
+pub mod search_active;
+#[path = "search_pagelist.rs"]
+pub mod search_pagelist;
+#[path = "search_screen.rs"]
+pub mod search_screen;
+#[path = "search_viewport.rs"]
+pub mod search_viewport;
+#[path = "search_thread.rs"]
+pub mod search_thread;
 
-pub struct Active;
-pub struct PageList;
-pub struct Screen;
-pub struct Viewport;
+pub use search_sliding_window::SlidingWindow;
+pub use search_active::ActiveSearch;
+pub use search_pagelist::PageListSearch;
+pub use search_screen::ScreenSearch;
+pub use search_viewport::ViewportSearch;
+pub use search_thread::SearchThread;
