@@ -1,0 +1,51 @@
+src/terminal/rust/osc_parser_conemu.rs
+  s_3d23a3ff1b1019::t_f88985d0b3752f 1-500
+src/terminal/rust/osc_parser_color.rs
+  s_3d23a3ff1b1019::t_af49dc08f2f557 328-331
+  s_036535f8a37cb4::t_dd02007182a09d 91
+  s_3d23a3ff1b1019::t_e17c2611e9a56c 1-90,92-327,332-714
+src/terminal/rust/lib.rs
+  s_036535f8a37cb4::t_041ca19efe07bc 40-45,265-270
+src/terminal/rust/osc_parsers_basic.rs
+  s_0fcde423687f46::t_20543d9ecec52a 1-114
+src/terminal/rust/osc_parser_semantic.rs
+  s_3d23a3ff1b1019::t_4867fc5086a2f3 1-433
+src/terminal/rust/osc_parser_misc.rs
+  s_3d23a3ff1b1019::t_fe1a65c117b9d2 1-816
+src/build/GhosttyRust.zig
+  s_036535f8a37cb4::t_d45f41a7555088 116-121
+src/terminal/rust/osc_parser_kitty.rs
+  s_3d23a3ff1b1019::t_88963953730157 1-827
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ecfac862578b100ebd82727f04bee16d78a28665",
+  "prompts": {},
+  "sessions": {
+    "s_036535f8a37cb4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19b695b2dffenTbSSYtA9EpzF6",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_0fcde423687f46": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1993a05deffe7NYDTtmUiv1bS3",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_3d23a3ff1b1019": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1993a05ccffePOeCaNrPHR3ERs",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
