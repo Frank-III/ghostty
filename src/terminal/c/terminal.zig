@@ -1539,6 +1539,13 @@ pub fn clear_pwd_and_title(terminal_: Terminal) callconv(lib.calling_conv) void 
     t.title.clearRetainingCapacity();
 }
 
+/// Return pwd items pointer and length (called from the Rust port's formatter).
+pub fn pwd_items(terminal_: Terminal, out_ptr: *[*]const u8, out_len: *usize) callconv(lib.calling_conv) void {
+    const pwd = if (terminal_) |wrapper| (wrapper.terminal.getPwd() orelse "") else "";
+    out_ptr.* = pwd.ptr;
+    out_len.* = pwd.len;
+}
+
 pub fn free(terminal_: Terminal) callconv(lib.calling_conv) void {
     const wrapper = terminal_ orelse return;
     const t = wrapper.terminal;

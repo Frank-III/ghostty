@@ -41,6 +41,48 @@ extern "C" {
     fn inflateEnd(strm: *mut ZStream) -> c_int;
 }
 
+#[repr(C)]
+struct PngImage {
+    width: u32,
+    height: u32,
+    data: *const u8,
+    data_len: usize,
+}
+
+extern "C" {
+    fn ghostty_vt_system_png_available() -> bool;
+    fn ghostty_vt_system_decode_png(
+        data: *const u8,
+        data_len: usize,
+        buf: *mut u8,
+        buf_cap: usize,
+        out: *mut PngImage,
+    ) -> bool;
+}
+
+fn peek_png_dimensions(data: *const u8, len: usize) -> Option<(u32, u32)> {
+    if len < 24 {
+        return None;
+    }
+    unsafe {
+        let w_bytes = [
+            *data.add(16),
+            *data.add(17),
+            *data.add(18),
+            *data.add(19),
+        ];
+        let h_bytes = [
+            *data.add(20),
+            *data.add(21),
+            *data.add(22),
+            *data.add(23),
+        ];
+        let w = u32::from_be_bytes(w_bytes);
+        let h = u32::from_be_bytes(h_bytes);
+        Some((w, h))
+    }
+}
+
 #[cfg(not(target_os = "windows"))]
 mod zlib_mmap {
     use super::*;
@@ -239,12 +281,6 @@ impl LoadingImage {
             return Ok(result);
         }
 
-        // PNG decoding requires wuffs (linked in full Ghostty app, not lib-vt).
-        // See docs/PORTING.md for why this is unsupported.
-        if t.format == TransmissionFormat::Png {
-            return Err(ImageError::UnsupportedFormat);
-        }
-
         match t.medium {
             TransmissionMedium::Direct => return Err(ImageError::UnsupportedMedium),
             TransmissionMedium::File => {
@@ -387,7 +423,66 @@ impl LoadingImage {
     }
 
     fn decode_png(&mut self) -> Result<(), ImageError> {
-        Err(ImageError::UnsupportedFormat)
+        if unsafe { !ghostty_vt_system_png_available() } {
+            return Err(ImageError::UnsupportedFormat);
+        }
+
+        let (w, h) = match peek_png_dimensions(self.data_buf, self.data_len) {
+            Some(dims) => dims,
+            None => return Err(ImageError::InvalidData),
+        };
+        if w == 0 || h == 0 || w > MAX_DIMENSION || h > MAX_DIMENSION {
+            return Err(ImageError::InvalidData);
+        }
+        let rgba_size = (w as usize)
+            .wrapping_mul(h as usize)
+            .wrapping_mul(4);
+        if rgba_size == 0 || rgba_size > MAX_SIZE {
+            return Err(ImageError::InvalidData);
+        }
+
+        let buf: *mut u8 = unsafe { zlib_mmap::temp_alloc(rgba_size) };
+        if buf.is_null() {
+            return Err(ImageError::OutOfMemory);
+        }
+
+        let mut out: PngImage = PngImage {
+            width: 0,
+            height: 0,
+            data: ptr::null(),
+            data_len: 0,
+        };
+        let ok = unsafe {
+            ghostty_vt_system_decode_png(
+                self.data_buf,
+                self.data_len,
+                buf,
+                rgba_size,
+                &mut out,
+            )
+        };
+        if !ok || out.data.is_null() || out.data_len == 0 {
+            unsafe { zlib_mmap::temp_free(buf, rgba_size); }
+            return Err(ImageError::InvalidData);
+        }
+        if out.width != w || out.height != h || out.data_len != rgba_size {
+            unsafe { zlib_mmap::temp_free(buf, rgba_size); }
+            return Err(ImageError::InvalidData);
+        }
+        if rgba_size > self.data_cap {
+            unsafe { zlib_mmap::temp_free(buf, rgba_size); }
+            return Err(ImageError::OutOfMemory);
+        }
+
+        unsafe {
+            ptr::copy_nonoverlapping(out.data, self.data_buf, rgba_size);
+            zlib_mmap::temp_free(buf, rgba_size);
+        }
+        self.data_len = rgba_size;
+        self.image.width = w;
+        self.image.height = h;
+        self.image.format = TransmissionFormat::Rgba;
+        Ok(())
     }
 
     fn read_file(

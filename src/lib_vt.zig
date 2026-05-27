@@ -191,6 +191,12 @@ comptime {
         @export(&c.style_is_default, .{ .name = "ghostty_style_is_default" });
         @export(&c.sys_log_stderr, .{ .name = "ghostty_sys_log_stderr" });
         @export(&c.sys_set, .{ .name = "ghostty_sys_set" });
+        @export(&c.pin_create, .{ .name = "ghostty_vt_pin_create" });
+        @export(&c.pin_destroy, .{ .name = "ghostty_vt_pin_destroy" });
+        @export(&c.pool_alloc, .{ .name = "ghostty_vt_pool_alloc" });
+        @export(&c.pool_free, .{ .name = "ghostty_vt_pool_free" });
+        @export(&c.system_png_available, .{ .name = "ghostty_vt_system_png_available" });
+        @export(&c.system_decode_png, .{ .name = "ghostty_vt_system_decode_png" });
         @export(&c.cell_get, .{ .name = "ghostty_cell_get" });
         @export(&c.cell_get_multi, .{ .name = "ghostty_cell_get_multi" });
         @export(&c.row_get, .{ .name = "ghostty_row_get" });
@@ -234,6 +240,7 @@ comptime {
         @export(&c.terminal_free, .{ .name = "ghostty_terminal_free" });
         @export(&c.terminal_reset, .{ .name = "ghostty_terminal_reset" });
         @export(&c.terminal_clear_pwd_and_title, .{ .name = "ghostty_terminal_clear_pwd_and_title" });
+        @export(&c.terminal_pwd_items, .{ .name = "ghostty_terminal_pwd_items" });
         @export(&c.terminal_resize, .{ .name = "ghostty_terminal_resize" });
         @export(&c.terminal_set, .{ .name = "ghostty_terminal_set" });
         @export(&c.terminal_vt_write, .{ .name = "ghostty_terminal_vt_write" });

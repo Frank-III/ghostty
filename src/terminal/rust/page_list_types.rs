@@ -162,6 +162,7 @@ pub enum PageListDirection {
 pub struct PageListTrackedPinSet {
     pub keys: *mut *mut Pin,
     pub len: usize,
+    pub capacity: usize,
 }
 
 /// The PageList itself: a linked list of pages with viewport, pool,

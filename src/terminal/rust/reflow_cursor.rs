@@ -44,6 +44,7 @@ impl RefCountedSetContext<Style> for StyleContext {
 struct TrackedPinArray {
     keys: *mut *mut Pin,
     len: usize,
+    capacity: usize,
 }
 
 fn tracked_pins_slice(list: *const PageListType) -> (*mut *mut Pin, usize) {

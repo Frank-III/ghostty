@@ -41,6 +41,8 @@ pub const sgr = @import("sgr.zig");
 pub const size_report = @import("size_report.zig");
 pub const style = @import("style.zig");
 pub const sys = @import("sys.zig");
+pub const pin_bridge = @import("pin_bridge.zig");
+pub const system_bridge = @import("system_bridge.zig");
 pub const terminal = @import("terminal.zig");
 
 // The full C API, unexported.
@@ -159,10 +161,19 @@ pub const style_is_default = style.style_is_default;
 pub const sys_log_stderr = sys.logStderr;
 pub const sys_set = sys.set;
 
+pub const pin_create = pin_bridge.pinCreate;
+pub const pin_destroy = pin_bridge.pinDestroy;
+pub const pool_alloc = pin_bridge.poolAlloc;
+pub const pool_free = pin_bridge.poolFree;
+
+pub const system_png_available = system_bridge.systemPngAvailable;
+pub const system_decode_png = system_bridge.systemDecodePng;
+
 pub const terminal_new = terminal.new;
 pub const terminal_free = terminal.free;
 pub const terminal_reset = terminal.reset;
 pub const terminal_clear_pwd_and_title = terminal.clear_pwd_and_title;
+pub const terminal_pwd_items = terminal.pwd_items;
 pub const terminal_resize = terminal.resize;
 pub const terminal_set = terminal.set;
 pub const terminal_vt_write = terminal.vt_write;
@@ -224,6 +235,8 @@ test {
     _ = size_report;
     _ = style;
     _ = sys;
+    _ = pin_bridge;
+    _ = system_bridge;
     _ = terminal;
     _ = types;
 

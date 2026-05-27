@@ -18,6 +18,20 @@ fn std_size() -> usize { Page::layout(std_capacity()).total_size }
 struct TrackedPinArray {
     keys: *mut *mut Pin,
     len: usize,
+    capacity: usize,
+}
+
+extern "C" {
+    fn ghostty_vt_pin_create(
+        pool: *mut c_void,
+        node: *mut c_void,
+        y: u16,
+        x: u16,
+        garbage: bool,
+    ) -> *mut c_void;
+    fn ghostty_vt_pin_destroy(pool: *mut c_void, pin: *mut c_void);
+    fn ghostty_vt_pool_alloc(pool: *mut c_void, size: usize) -> *mut u8;
+    fn ghostty_vt_pool_free(pool: *mut c_void, ptr: *mut u8, size: usize);
 }
 
 pub const STD_CAPACITY_ROWS: CellCountInt = 215;
@@ -1072,44 +1086,100 @@ impl PageList {
     ///
     /// MEMORYPOOL-BOUND: Zig's `trackPin` (PageList.zig:3973) calls
     /// `self.pool.pins.create()` to allocate a `*Pin` from the pin pool,
-    /// then inserts it into `self.tracked_pins` (AutoArrayHashMapUnmanaged).
-    /// Both operations require the Zig-owned pool allocator. Until a Rust-side
-    /// pin allocator exists, this returns null to signal failure to callers
-    /// that can tolerate it, or must be called through the Zig FFI boundary.
-    pub fn track_pin(&mut self, _p: Pin) -> *mut Pin {
-        if self.pool.is_null() || self.tracked_pins.is_null() {
+    /// Track a pin so it survives reflow/scroll/resize mutations.
+    ///
+    /// Allocates a `Pin` from `self.pool.pins` via the Zig FFI bridge
+    /// (`ghostty_vt_pin_create`), then inserts the resulting pointer into
+    /// `self.tracked_pins`. The tracked-pins keys array grows lazily via
+    /// `ghostty_vt_pool_alloc`/`ghostty_vt_pool_free`.
+    pub fn track_pin(&mut self, p: Pin) -> *mut Pin {
+        if self.pool.is_null() {
             return ptr::null_mut();
         }
-        ptr::null_mut()
-    }
-
-    /// Untrack a previously tracked pin and free it.
-    ///
-    /// MEMORYPOOL-BOUND: Zig's `untrackPin` (PageList.zig:3989) also calls
-    /// `self.pool.pins.destroy(p)` to return the Pin to the pin pool.
-    /// The swap-remove below correctly removes the entry from the tracked
-    /// set, but the pool destroy step is missing because the pool is
-    /// Zig-owned. Callers using the Zig FFI boundary get the full cleanup.
-    pub fn untrack_pin(&mut self, p: *mut Pin) {
-        if self.tracked_pins.is_null() || p.is_null() {
-            return;
+        let pool_raw = self.pool as *mut c_void;
+        let pin_raw: *mut Pin = unsafe {
+            ghostty_vt_pin_create(
+                pool_raw,
+                p.node as *mut c_void,
+                p.y,
+                p.x,
+                p.garbage,
+            ) as *mut Pin
+        };
+        if pin_raw.is_null() {
+            return ptr::null_mut();
         }
         unsafe {
-            let tp = &mut *(self.tracked_pins as *mut TrackedPinArray);
-            if tp.keys.is_null() || tp.len == 0 {
-                return;
-            }
-            let keys = tp.keys;
-            let len = tp.len;
-            let mut i = 0usize;
-            while i < len {
-                if *keys.add(i) == p {
-                    let last = *keys.add(len - 1);
-                    *keys.add(i) = last;
-                    tp.len = len - 1;
-                    break;
+            if self.tracked_pins.is_null() {
+                let tp_size = core::mem::size_of::<PageListTrackedPinSet>();
+                let tp_ptr = ghostty_vt_pool_alloc(pool_raw, tp_size)
+                    as *mut PageListTrackedPinSet;
+                if tp_ptr.is_null() {
+                    ghostty_vt_pin_destroy(pool_raw, pin_raw as *mut c_void);
+                    return ptr::null_mut();
                 }
-                i += 1;
+                (*tp_ptr).keys = ptr::null_mut();
+                (*tp_ptr).len = 0;
+                (*tp_ptr).capacity = 0;
+                self.tracked_pins = tp_ptr;
+            }
+            let tp = &mut *self.tracked_pins;
+            if tp.len == tp.capacity {
+                let new_cap = if tp.capacity == 0 { 8 } else { tp.capacity * 2 };
+                let elem = core::mem::size_of::<*mut Pin>();
+                let new_size = new_cap * elem;
+                let new_keys = ghostty_vt_pool_alloc(pool_raw, new_size)
+                    as *mut *mut Pin;
+                if new_keys.is_null() {
+                    ghostty_vt_pin_destroy(pool_raw, pin_raw as *mut c_void);
+                    return ptr::null_mut();
+                }
+                if !tp.keys.is_null() && tp.len > 0 {
+                    core::ptr::copy_nonoverlapping(tp.keys, new_keys, tp.len);
+                    ghostty_vt_pool_free(
+                        pool_raw,
+                        tp.keys as *mut u8,
+                        tp.capacity * elem,
+                    );
+                }
+                tp.keys = new_keys;
+                tp.capacity = new_cap;
+            }
+            *tp.keys.add(tp.len) = pin_raw;
+            tp.len += 1;
+            pin_raw
+        }
+    }
+
+    /// Untrack a previously tracked pin and free it back to the pool.
+    ///
+    /// Removes the entry from `self.tracked_pins` via swap-remove, then
+    /// calls `ghostty_vt_pin_destroy` to return the `Pin` memory to the
+    /// Zig `PageListMemoryPool`.
+    pub fn untrack_pin(&mut self, p: *mut Pin) {
+        if p.is_null() {
+            return;
+        }
+        if !self.tracked_pins.is_null() {
+            unsafe {
+                let tp = &mut *self.tracked_pins;
+                if !tp.keys.is_null() && tp.len > 0 {
+                    let mut i = 0usize;
+                    while i < tp.len {
+                        if *tp.keys.add(i) == p {
+                            let last = *tp.keys.add(tp.len - 1);
+                            *tp.keys.add(i) = last;
+                            tp.len -= 1;
+                            break;
+                        }
+                        i += 1;
+                    }
+                }
+            }
+        }
+        if !self.pool.is_null() {
+            unsafe {
+                ghostty_vt_pin_destroy(self.pool as *mut c_void, p as *mut c_void);
             }
         }
     }

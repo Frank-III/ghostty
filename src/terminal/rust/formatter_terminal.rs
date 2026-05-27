@@ -225,7 +225,7 @@ impl TerminalFormatter {
             let mut ptr: *const u8 = core::ptr::null();
             let mut len: usize = 0;
             unsafe {
-                ghostty_rust_terminal_pwd_items(self.terminal, &mut ptr, &mut len);
+                ghostty_terminal_pwd_items(self.terminal, &mut ptr, &mut len);
             }
             if !ptr.is_null() && len > 0 {
                 let items = unsafe { core::slice::from_raw_parts(ptr, len) };
@@ -253,7 +253,7 @@ impl TerminalFormatter {
 }
 
 extern "C" {
-    fn ghostty_rust_terminal_pwd_items(
+    fn ghostty_terminal_pwd_items(
         terminal: *const c_void,
         out_ptr: *mut *const u8,
         out_len: *mut usize,
