@@ -32,7 +32,7 @@ x11: bool = false,
 wayland: bool = false,
 sentry: bool = true,
 simd: bool = true,
-lib_vt_rust: bool = false,
+lib_vt_rust: bool = true,
 rustc: []const u8 = "rustc",
 i18n: bool = true,
 wasm_shared: bool = true,
@@ -211,7 +211,7 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
         bool,
         "lib-vt-rust",
         "Build libghostty-vt C ABI entrypoints with Rust-backed implementations.",
-    ) orelse false;
+    ) orelse true;
     config.rustc = b.option(
         []const u8,
         "rustc",

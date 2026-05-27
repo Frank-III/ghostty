@@ -12,20 +12,21 @@ or runtime choices into Ghostty by default.
 
 ## Current Port Status
 
-The `libghostty-vt` Rust port is **substantially complete**. All core terminal
-emulation logic, from VT parsing through screen/terminal state management, is
-backed by Rust when building with `-Dlib-vt-rust=true`.
+The `libghostty-vt` Rust port is **default-ready on the validated macOS/iOS
+targets**. All core terminal emulation logic, from VT parsing through
+screen/terminal state management, is backed by Rust for C ABI builds unless
+explicitly disabled with `-Dlib-vt-rust=false`.
 
 ### Validation
 
 ```bash
-# Build Rust-backed lib-vt. Use an explicit rustc to avoid PATH surprises.
-zig build -Demit-lib-vt -Dlib-vt-rust=true -Demit-macos-app=false \
+# Build default Rust-backed lib-vt. Use an explicit rustc to avoid PATH surprises.
+zig build -Demit-lib-vt -Demit-macos-app=false \
   -Drustc=$HOME/.rustup/toolchains/1.95.0-aarch64-apple-darwin/bin/rustc \
   --summary all
 
-# Run lib-vt tests with Rust backing.
-zig build test-lib-vt -Dlib-vt-rust=true \
+# Run lib-vt tests with Rust backing by default.
+zig build test-lib-vt \
   -Drustc=$HOME/.rustup/toolchains/1.95.0-aarch64-apple-darwin/bin/rustc \
   --summary all
 ```
@@ -33,13 +34,13 @@ zig build test-lib-vt -Dlib-vt-rust=true \
 Latest verified result with the explicit rustc above:
 
 - Build summary: `80/80 steps succeeded`.
-- Test summary: `22/22 steps succeeded`; `4231/4249` tests passed, `18`
+- Test summary: `22/22 steps succeeded`; `4233/4251` tests passed, `18`
   skipped.
-- Rust-backed test leg: `2275` passed, `9` skipped.
+- Rust-backed test leg: `2277` passed, `9` skipped.
 - Rust compiler warnings: `0`.
 
-On local machines, plain `zig build ... -Dlib-vt-rust=true` uses `rustc` from
-`PATH`; that is intentionally not recorded as a portable validation command.
+On local machines, plain `zig build ...` uses `rustc` from `PATH`; pass
+`-Drustc=...` when the ambient toolchain is not reliable.
 
 ### Modules Ported (~50+ Rust files in `src/terminal/rust/`)
 
@@ -90,18 +91,16 @@ device status, mouse shape, SGR attribute types
 
 ### Known Gaps
 
-**PNG decoding** (`kitty_graphics_image.rs:decode_png`): Formally unsupported
-in the Rust `libghostty-vt`. `decode_png()` returns
-`ImageError::UnsupportedFormat`. Zig's wuffs decoder is not linked into the
-Rust library. The PNG format is part of the Kitty graphics protocol but
-requires an image codec that the standalone library deliberately omits.
+**PNG decoding** (`kitty_graphics_image.rs:decode_png`): Supported when the
+host installs a decoder with
+`ghostty_sys_set(GHOSTTY_SYS_OPT_DECODE_PNG, ...)`. The Rust path calls through
+the system bridge and returns `ImageError::UnsupportedFormat` only when no
+decoder is installed.
 
-**Tracked pins** (`page_list_methods.rs`): `track_pin` and `untrack_pin` are
-stubs. `track_pin` returns a null pointer; callers (screen resize, selection
-migration) handle the null return gracefully by falling back to untracked
-selections and stub behavior. Full implementation requires the Zig
-`std.heap.MemoryPool` allocator, which is Zig stdlib-specific and not
-portable as C FFI.
+**Tracked pins** (`page_list_methods.rs`): Functional through the Zig
+MemoryPool FFI bridge. Rust allocates/destroys pins through
+`ghostty_vt_pin_create` / `ghostty_vt_pin_destroy` and stores the tracked-pin
+array in Zig-owned pool memory.
 
 **MemoryPool fields** (page list types): `PageListMemoryPool.alloc`,
 `.nodes`, `.pages`, and `.pins` remain `*mut c_void` — they are Zig-owned
@@ -109,9 +108,9 @@ handles that Rust forwards back to Zig and never dereferences directly.
 
 **Kitty graphics file loading** (`kitty_graphics_image.rs`): A POSIX
 implementation reads files via `open`/`fstat`/`read` and shared memory via
-`shm_open`/`mmap`. The implementation uses platform-specific raw `stat` field
-offsets, so it needs targeted validation on each supported Unix target before
-being treated as low risk. Windows paths return `ImageError::UnsupportedMedium`.
+`shm_open`/`mmap`. The validated target set is currently macOS/iOS. Linux
+validation is still required before removing the Unix platform caveat. Windows
+paths return `ImageError::UnsupportedMedium`.
 
 **tmux integration** (`tmux/`): `tmux_control.rs`, `tmux_layout.rs`,
 `tmux_output.rs`, and `tmux_viewer.rs` are ported. `tmux_viewer.rs` now routes
@@ -123,14 +122,15 @@ the generic `libghostty-vt` suite.
 
 These behaviors return explicit error values and are not port gaps:
 
-- **PNG decoding** in the Rust `libghostty-vt` (no wuffs linkage).
-  `decode_png()` returns `ImageError::UnsupportedFormat`.
 - **File-based kitty graphics on Windows**. Returns
   `ImageError::UnsupportedMedium`.
 - **Shared-memory kitty graphics on Windows**. Returns
   `ImageError::UnsupportedMedium`.
 - **Animation frame playback**. Returns an `unimplemented` error from the
   Kitty graphics execution path.
+- **Highlight lifecycle cleanup** outside the C ABI terminal-core path.
+  This remains deferred until the broader app/surface highlight ownership
+  boundary moves with the port.
 
 ### Build Contract
 
@@ -165,9 +165,9 @@ Start with `libghostty-vt` and terminal C API slices. This boundary is small
 enough to validate with `zig build test-lib-vt`, and it already has public C
 headers and examples that make ABI regressions visible.
 
-The current Rust integration is opt-in:
+The current Rust integration is default-on for libghostty-vt C ABI builds:
 
-- Zig option: `-Dlib-vt-rust=true`
+- Zig option: `-Dlib-vt-rust=true` / `-Dlib-vt-rust=false`
 - Rust object source: `src/terminal/rust/lib.rs`
 - Zig build integration: `src/build/GhosttyRust.zig`
 - C ABI wrappers: `src/terminal/c/*.zig`
