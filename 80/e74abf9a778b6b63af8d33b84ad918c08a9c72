@@ -1,0 +1,20 @@
+src/terminal/rust/kitty_graphics_image.rs
+  s_036535f8a37cb4::t_4ec0d7445d5f42 332-381
+  s_036535f8a37cb4::t_43cdaa0698716e 1,6-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "80e74abf9a778b6b63af8d33b84ad918c08a9c72",
+  "prompts": {},
+  "sessions": {
+    "s_036535f8a37cb4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19b695b2dffenTbSSYtA9EpzF6",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
