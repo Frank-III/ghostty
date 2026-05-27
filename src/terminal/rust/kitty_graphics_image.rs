@@ -1,6 +1,110 @@
+use core::ffi::{c_char, c_int, c_uint, c_ulong, c_void};
 use core::ptr;
 
 use crate::kitty_graphics_command::*;
+
+// ---------------------------------------------------------------------------
+// zlib decompression via system libz (extern "C" - no crate dependency)
+// ---------------------------------------------------------------------------
+
+#[repr(C)]
+struct ZStream {
+    next_in: *const u8,
+    avail_in: c_uint,
+    total_in: c_ulong,
+    next_out: *mut u8,
+    avail_out: c_uint,
+    total_out: c_ulong,
+    msg: *const c_char,
+    state: *mut c_void,
+    zalloc: *mut c_void,
+    zfree: *mut c_void,
+    opaque: *mut c_void,
+    data_type: c_int,
+    adler: c_ulong,
+    reserved: c_ulong,
+}
+
+const Z_OK: c_int = 0;
+const Z_STREAM_END: c_int = 1;
+const Z_FINISH: c_int = 4;
+const ZLIB_VERSION: &[u8] = b"1.2.13\0";
+
+extern "C" {
+    fn inflateInit2_(
+        strm: *mut ZStream,
+        windowBits: c_int,
+        version: *const u8,
+        stream_size: c_int,
+    ) -> c_int;
+    fn inflate(strm: *mut ZStream, flush: c_int) -> c_int;
+    fn inflateEnd(strm: *mut ZStream) -> c_int;
+}
+
+#[cfg(not(target_os = "windows"))]
+mod zlib_mmap {
+    use super::*;
+
+    const PROT_READ: c_int = 0x1;
+    const PROT_WRITE: c_int = 0x2;
+    const MAP_PRIVATE: c_int = 0x02;
+    const MAP_ANONYMOUS: c_int = if cfg!(target_os = "macos") { 0x1000 } else { 0x20 };
+    const MAP_FAILED: *mut c_void = !0 as *mut c_void;
+
+    extern "C" {
+        fn mmap(
+            addr: *mut c_void,
+            len: usize,
+            prot: c_int,
+            flags: c_int,
+            fd: c_int,
+            offset: i64,
+        ) -> *mut c_void;
+        fn munmap(addr: *mut c_void, len: usize) -> c_int;
+    }
+
+    pub unsafe fn temp_alloc(n: usize) -> *mut u8 {
+        let p = unsafe {
+            mmap(ptr::null_mut(), n, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+        };
+        if p == MAP_FAILED || p.is_null() {
+            return ptr::null_mut();
+        }
+        p as *mut u8
+    }
+
+    pub unsafe fn temp_free(p: *mut u8, n: usize) {
+        if !p.is_null() {
+            unsafe { munmap(p as *mut c_void, n); }
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+mod zlib_mmap {
+    use super::*;
+
+    const MEM_COMMIT: u32 = 0x00001000;
+    const MEM_RESERVE: u32 = 0x00002000;
+    const MEM_RELEASE: u32 = 0x00008000;
+    const PAGE_READWRITE: u32 = 0x04;
+
+    extern "system" {
+        fn VirtualAlloc(addr: *mut c_void, size: usize, atype: u32, protect: u32) -> *mut c_void;
+        fn VirtualFree(addr: *mut c_void, size: usize, ftype: u32) -> i32;
+    }
+
+    pub unsafe fn temp_alloc(n: usize) -> *mut u8 {
+        let p = unsafe { VirtualAlloc(ptr::null_mut(), n, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) };
+        if p.is_null() { ptr::null_mut() } else { p as *mut u8 }
+    }
+
+    pub unsafe fn temp_free(p: *mut u8, _n: usize) {
+        if !p.is_null() {
+            unsafe { VirtualFree(p as *mut c_void, 0, MEM_RELEASE); }
+        }
+    }
+}
 
 pub(crate) const MAX_DIMENSION: u32 = 10000;
 pub(crate) const MAX_SIZE: usize = 400 * 1024 * 1024;
@@ -225,7 +329,56 @@ impl LoadingImage {
     }
 
     fn decompress_zlib(&mut self) -> Result<(), ImageError> {
-        Err(ImageError::DecompressionFailed)
+        if self.data_len == 0 || self.data_cap == 0 {
+            return Err(ImageError::DecompressionFailed);
+        }
+
+        let temp_size = self.data_cap;
+        let temp: *mut u8 = unsafe { zlib_mmap::temp_alloc(temp_size) };
+        if temp.is_null() {
+            return Err(ImageError::OutOfMemory);
+        }
+
+        let mut strm: ZStream = unsafe { core::mem::zeroed() };
+        strm.next_in = self.data_buf as *const u8;
+        strm.avail_in = self.data_len as c_uint;
+        strm.next_out = temp;
+        strm.avail_out = temp_size as c_uint;
+
+        let result = unsafe {
+            let init_ret = inflateInit2_(
+                &mut strm,
+                15,
+                ZLIB_VERSION.as_ptr(),
+                core::mem::size_of::<ZStream>() as c_int,
+            );
+            if init_ret != Z_OK {
+                zlib_mmap::temp_free(temp, temp_size);
+                return Err(ImageError::DecompressionFailed);
+            }
+
+            let inflate_ret = inflate(&mut strm, Z_FINISH);
+            inflateEnd(&mut strm);
+
+            if inflate_ret != Z_STREAM_END {
+                zlib_mmap::temp_free(temp, temp_size);
+                return Err(ImageError::DecompressionFailed);
+            }
+
+            let out_len = strm.total_out as usize;
+            if out_len > temp_size {
+                zlib_mmap::temp_free(temp, temp_size);
+                return Err(ImageError::InvalidData);
+            }
+
+            ptr::copy_nonoverlapping(temp, self.data_buf, out_len);
+            self.data_len = out_len;
+            self.image.compression = TransmissionCompression::None;
+            Ok(())
+        };
+
+        unsafe { zlib_mmap::temp_free(temp, temp_size); }
+        result
     }
 
     fn decode_png(&mut self) -> Result<(), ImageError> {
