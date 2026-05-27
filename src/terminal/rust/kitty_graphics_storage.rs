@@ -579,14 +579,10 @@ impl ImageStorage {
     fn evict_images(&mut self, req: usize) -> bool {
         let mut evicted: usize = 0;
 
-        let mut best_idx = MAX_IMAGES;
-        let mut best_used = true;
-        let mut best_time = u64::MAX;
-
         loop {
-            best_idx = MAX_IMAGES;
-            best_used = true;
-            best_time = u64::MAX;
+            let mut best_idx = MAX_IMAGES;
+            let mut best_used = true;
+            let mut best_time = u64::MAX;
 
             let mut i = 0;
             while i < MAX_IMAGES {

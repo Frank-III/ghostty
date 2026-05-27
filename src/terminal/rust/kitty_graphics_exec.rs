@@ -267,7 +267,7 @@ fn load_and_add_image(
         });
     }
 
-    let mut img = loading.complete()?;
+    let img = loading.complete()?;
     let image_id = img.id;
     let implicit_id = img.implicit_id;
     storage.add_image(img)?;

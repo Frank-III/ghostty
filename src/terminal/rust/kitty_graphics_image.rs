@@ -239,30 +239,35 @@ impl LoadingImage {
             return Ok(result);
         }
 
+        // PNG decoding requires wuffs (linked in full Ghostty app, not lib-vt).
+        // See docs/PORTING.md for why this is unsupported.
         if t.format == TransmissionFormat::Png {
-            return Err(ImageError::UnsupportedMedium);
+            return Err(ImageError::UnsupportedFormat);
         }
 
         match t.medium {
-            TransmissionMedium::Direct => {},
+            TransmissionMedium::Direct => return Err(ImageError::UnsupportedMedium),
             TransmissionMedium::File => {
                 if !limits.file {
                     return Err(ImageError::UnsupportedMedium);
                 }
+                result.read_file(&t, cmd.data_ptr, cmd.data_len, false)?;
             },
             TransmissionMedium::TemporaryFile => {
                 if !limits.temporary_file {
                     return Err(ImageError::UnsupportedMedium);
                 }
+                result.read_file(&t, cmd.data_ptr, cmd.data_len, true)?;
             },
             TransmissionMedium::SharedMemory => {
                 if !limits.shared_memory {
                     return Err(ImageError::UnsupportedMedium);
                 }
+                result.read_shared_memory(&t, cmd.data_ptr, cmd.data_len)?;
             },
         }
 
-        Err(ImageError::UnsupportedMedium)
+        Ok(result)
     }
 
     pub(crate) fn add_data(&mut self, src: *const u8, src_len: usize) -> Result<(), ImageError> {
@@ -383,6 +388,340 @@ impl LoadingImage {
 
     fn decode_png(&mut self) -> Result<(), ImageError> {
         Err(ImageError::UnsupportedFormat)
+    }
+
+    fn read_file(
+        &mut self,
+        t: &Transmission,
+        data_ptr: *const u8,
+        data_len: usize,
+        is_temp: bool,
+    ) -> Result<(), ImageError> {
+        #[cfg(not(target_os = "windows"))]
+        {
+            use core::ffi::c_void;
+
+            extern "C" {
+                fn open(path: *const i8, flags: c_int, ...) -> c_int;
+                fn close(fd: c_int) -> c_int;
+                fn read(fd: c_int, buf: *mut c_void, count: usize) -> isize;
+                fn fstat(fd: c_int, buf: *mut c_void) -> c_int;
+                fn lseek(fd: c_int, offset: i64, whence: c_int) -> i64;
+                fn unlink(path: *const i8) -> c_int;
+            }
+
+            const O_RDONLY: c_int = 0;
+            #[cfg(target_vendor = "apple")]
+            const O_NOFOLLOW: c_int = 0x100;
+            #[cfg(not(target_vendor = "apple"))]
+            const O_NOFOLLOW: c_int = 0x20000;
+
+            #[cfg(target_vendor = "apple")]
+            const STAT_MODE_OFFSET: usize = 4;
+            #[cfg(target_vendor = "apple")]
+            const STAT_SIZE_OFFSET: usize = 96;
+            #[cfg(not(target_vendor = "apple"))]
+            const STAT_MODE_OFFSET: usize = 24;
+            #[cfg(not(target_vendor = "apple"))]
+            const STAT_SIZE_OFFSET: usize = 48;
+
+            unsafe {
+                if data_len == 0 || data_len > 4096 {
+                    return Err(ImageError::InvalidData);
+                }
+                let mut path_buf = [0i8; 4097];
+                ptr::copy_nonoverlapping(data_ptr, path_buf.as_mut_ptr() as *mut u8, data_len);
+                *path_buf.as_mut_ptr().add(data_len) = 0;
+
+                let path_bytes = core::slice::from_raw_parts(data_ptr, data_len);
+
+                {
+                    let mut i = 0usize;
+                    while i < path_bytes.len() {
+                        if *path_bytes.get_unchecked(i) == 0 {
+                            return Err(ImageError::InvalidData);
+                        }
+                        i += 1;
+                    }
+                }
+
+                if path_bytes.starts_with(b"/proc/")
+                    || path_bytes.starts_with(b"/sys/")
+                    || (path_bytes.starts_with(b"/dev/") && !path_bytes.starts_with(b"/dev/shm/"))
+                {
+                    return Err(ImageError::InvalidData);
+                }
+
+                if is_temp {
+                    if !path_bytes.starts_with(b"/tmp/")
+                        && !path_bytes.starts_with(b"/var/folders/")
+                        && !path_bytes.starts_with(b"/private/var/folders/")
+                    {
+                        return Err(ImageError::TemporaryFileNotInTempDir);
+                    }
+                    let needle = b"tty-graphics-protocol";
+                    let needle_len = needle.len();
+                    let mut found = false;
+                    if path_bytes.len() >= needle_len {
+                        let end = path_bytes.len() - needle_len + 1;
+                        let mut wi = 0usize;
+                        while wi < end {
+                            let window = path_bytes.get_unchecked(wi..);
+                            let mut eq = true;
+                            let mut ni = 0usize;
+                            while ni < needle_len {
+                                if *window.get_unchecked(ni) != *needle.get_unchecked(ni) {
+                                    eq = false;
+                                    break;
+                                }
+                                ni += 1;
+                            }
+                            if eq {
+                                found = true;
+                                break;
+                            }
+                            wi += 1;
+                        }
+                    }
+                    if !found {
+                        return Err(ImageError::TemporaryFileNotNamedCorrectly);
+                    }
+                }
+
+                let fd = open(path_buf.as_ptr(), O_RDONLY | O_NOFOLLOW);
+                if fd < 0 {
+                    if is_temp {
+                        unlink(path_buf.as_ptr());
+                    }
+                    return Err(ImageError::InvalidData);
+                }
+
+                let mut stat_buf = [0u8; 256];
+                if fstat(fd, stat_buf.as_mut_ptr() as *mut c_void) != 0 {
+                    close(fd);
+                    if is_temp {
+                        unlink(path_buf.as_ptr());
+                    }
+                    return Err(ImageError::InvalidData);
+                }
+
+                let st_mode: u32 = if cfg!(target_vendor = "apple") {
+                    ptr::read_unaligned(stat_buf.as_ptr().add(STAT_MODE_OFFSET) as *const u16) as u32
+                } else {
+                    ptr::read_unaligned(stat_buf.as_ptr().add(STAT_MODE_OFFSET) as *const u32)
+                };
+                let st_size: i64 = ptr::read_unaligned(
+                    stat_buf.as_ptr().add(STAT_SIZE_OFFSET) as *const i64,
+                );
+
+                if st_mode & 0o170000 != 0o100000 {
+                    close(fd);
+                    if is_temp {
+                        unlink(path_buf.as_ptr());
+                    }
+                    return Err(ImageError::InvalidData);
+                }
+
+                if t.offset > 0 {
+                    if lseek(fd, t.offset as i64, 0) < 0 {
+                        close(fd);
+                        if is_temp {
+                            unlink(path_buf.as_ptr());
+                        }
+                        return Err(ImageError::InvalidData);
+                    }
+                }
+
+                let cap_remaining = self.data_cap.saturating_sub(self.data_len);
+                let to_read = if t.size > 0 {
+                    let max_from_file = (st_size as usize).saturating_sub(t.offset as usize);
+                    (t.size as usize).min(cap_remaining).min(max_from_file)
+                } else {
+                    (st_size as usize).saturating_sub(t.offset as usize).min(cap_remaining)
+                };
+
+                if to_read == 0 && st_size <= 0 {
+                    close(fd);
+                    if is_temp {
+                        unlink(path_buf.as_ptr());
+                    }
+                    return Err(ImageError::InvalidData);
+                }
+
+                let mut total_read = 0usize;
+                while total_read < to_read {
+                    let n = read(
+                        fd,
+                        self.data_buf.add(self.data_len + total_read) as *mut c_void,
+                        to_read - total_read,
+                    );
+                    if n <= 0 {
+                        break;
+                    }
+                    total_read += n as usize;
+                }
+
+                close(fd);
+
+                if is_temp {
+                    unlink(path_buf.as_ptr());
+                }
+
+                if total_read == 0 {
+                    return Err(ImageError::InvalidData);
+                }
+
+                self.data_len += total_read;
+                Ok(())
+            }
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let _ = (t, data_ptr, data_len, is_temp);
+            Err(ImageError::UnsupportedMedium)
+        }
+    }
+
+    fn read_shared_memory(
+        &mut self,
+        t: &Transmission,
+        data_ptr: *const u8,
+        data_len: usize,
+    ) -> Result<(), ImageError> {
+        #[cfg(not(target_os = "windows"))]
+        {
+            use core::ffi::c_void;
+
+            extern "C" {
+                fn shm_open(name: *const i8, oflag: c_int, mode: u32) -> c_int;
+                fn shm_unlink(name: *const i8) -> c_int;
+                fn fstat(fd: c_int, buf: *mut c_void) -> c_int;
+                fn mmap(
+                    addr: *mut c_void,
+                    len: usize,
+                    prot: c_int,
+                    flags: c_int,
+                    fd: c_int,
+                    offset: i64,
+                ) -> *mut c_void;
+                fn munmap(addr: *mut c_void, len: usize) -> c_int;
+                fn close(fd: c_int) -> c_int;
+            }
+
+            #[cfg(target_vendor = "apple")]
+            const STAT_SIZE_OFFSET: usize = 96;
+            #[cfg(not(target_vendor = "apple"))]
+            const STAT_SIZE_OFFSET: usize = 48;
+
+            const O_RDONLY: c_int = 0;
+            const PROT_READ: c_int = 1;
+            const MAP_SHARED: c_int = 1;
+            const MAP_FAILED: *mut c_void = !0 as *mut c_void;
+
+            unsafe {
+                if data_len == 0 || data_len > 256 {
+                    return Err(ImageError::InvalidData);
+                }
+                let name_bytes = core::slice::from_raw_parts(data_ptr, data_len);
+
+                {
+                    let mut k = 0usize;
+                    while k < name_bytes.len() {
+                        if *name_bytes.get_unchecked(k) == 0 {
+                            return Err(ImageError::InvalidData);
+                        }
+                        k += 1;
+                    }
+                }
+
+                if data_len < 1 || *name_bytes.get_unchecked(0) != b'/' {
+                    return Err(ImageError::InvalidData);
+                }
+                {
+                    let mut k = 1usize;
+                    while k < name_bytes.len() {
+                        if *name_bytes.get_unchecked(k) == b'/' {
+                            return Err(ImageError::InvalidData);
+                        }
+                        k += 1;
+                    }
+                }
+
+                let mut name_buf = [0i8; 257];
+                ptr::copy_nonoverlapping(data_ptr, name_buf.as_mut_ptr() as *mut u8, data_len);
+                *name_buf.as_mut_ptr().add(data_len) = 0;
+
+                let fd = shm_open(name_buf.as_ptr(), O_RDONLY, 0);
+                if fd < 0 {
+                    return Err(ImageError::InvalidData);
+                }
+
+                let mut stat_buf = [0u8; 256];
+                if fstat(fd, stat_buf.as_mut_ptr() as *mut c_void) != 0 {
+                    close(fd);
+                    return Err(ImageError::InvalidData);
+                }
+
+                let st_size: i64 = ptr::read_unaligned(
+                    stat_buf.as_ptr().add(STAT_SIZE_OFFSET) as *const i64,
+                );
+
+                if st_size <= 0 {
+                    close(fd);
+                    return Err(ImageError::InvalidData);
+                }
+
+                let map_len = st_size as usize;
+                let ptr = mmap(
+                    ptr::null_mut(),
+                    map_len,
+                    PROT_READ,
+                    MAP_SHARED,
+                    fd,
+                    0,
+                );
+                close(fd);
+
+                if ptr == MAP_FAILED || ptr.is_null() {
+                    return Err(ImageError::InvalidData);
+                }
+
+                let start = t.offset as usize;
+                let max_from_mapping = map_len.saturating_sub(start);
+                let cap_remaining = self.data_cap.saturating_sub(self.data_len);
+                let len = if t.size > 0 {
+                    (t.size as usize).min(cap_remaining).min(max_from_mapping)
+                } else {
+                    max_from_mapping.min(cap_remaining)
+                };
+
+                let copied = if start < map_len && len > 0 && self.data_len + len <= self.data_cap {
+                    ptr::copy_nonoverlapping(
+                        (ptr as *const u8).add(start),
+                        self.data_buf.add(self.data_len),
+                        len,
+                    );
+                    self.data_len += len;
+                    len > 0
+                } else {
+                    false
+                };
+
+                munmap(ptr, map_len);
+                shm_unlink(name_buf.as_ptr());
+
+                if !copied {
+                    return Err(ImageError::InvalidData);
+                }
+
+                Ok(())
+            }
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let _ = (t, data_ptr, data_len);
+            Err(ImageError::UnsupportedMedium)
+        }
     }
 }
 
