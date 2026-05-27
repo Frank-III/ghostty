@@ -1,0 +1,32 @@
+docs/PORTING.md
+  s_88f347f96884a6::t_3fe7747d88736b 22-26,28-30,42,44
+  s_88f347f96884a6::t_d799fb5ba96575 93-133
+  s_036535f8a37cb4::t_31990fe05f2467 13-21,27,31-41,43,45-92,134-136,152,156,158-162
+  s_88f347f96884a6::t_d309d51958f210 137-151,153-155,157
+.gitignore
+  s_036535f8a37cb4::t_c7d441a4160b52 32-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29311ab4c24668e7b181e71140d780323f4c83b3",
+  "prompts": {},
+  "sessions": {
+    "s_036535f8a37cb4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19b695b2dffenTbSSYtA9EpzF6",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_88f347f96884a6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19548963fffeQdkbWld8BJFCGb",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
