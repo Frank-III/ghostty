@@ -29,3 +29,9 @@ glad.zip
 
 vgcore.*
 
+.cachebro/
+*.o
+*.rlib
+/slate.json
+/references/
+

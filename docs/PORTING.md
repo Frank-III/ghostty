@@ -10,7 +10,156 @@ draft from the existing implementation, make compile boundaries explicit, fix
 real root causes, and run adversarial validation. Do not copy Bun's crate layout
 or runtime choices into Ghostty by default.
 
-## Current Scope
+## Current Port Status
+
+The `libghostty-vt` Rust port is **substantially complete**. All core terminal
+emulation logic, from VT parsing through screen/terminal state management, is
+backed by Rust when building with `-Dlib-vt-rust=true`.
+
+### Validation
+
+```bash
+# Build Rust-backed lib-vt. Use an explicit rustc to avoid PATH surprises.
+zig build -Demit-lib-vt -Dlib-vt-rust=true -Demit-macos-app=false \
+  -Drustc=$HOME/.rustup/toolchains/1.95.0-aarch64-apple-darwin/bin/rustc \
+  --summary all
+
+# Run lib-vt tests with Rust backing.
+zig build test-lib-vt -Dlib-vt-rust=true \
+  -Drustc=$HOME/.rustup/toolchains/1.95.0-aarch64-apple-darwin/bin/rustc \
+  --summary all
+```
+
+Latest verified result with the explicit rustc above:
+
+- Build summary: `80/80 steps succeeded`.
+- Test summary: `22/22 steps succeeded`; `4231/4249` tests passed, `18`
+  skipped.
+- Rust-backed test leg: `2275` passed, `9` skipped.
+- Rust compiler warnings: `0`.
+
+On local machines, plain `zig build ... -Dlib-vt-rust=true` uses `rustc` from
+`PATH`; that is intentionally not recorded as a portable validation command.
+
+### Modules Ported (~50+ Rust files in `src/terminal/rust/`)
+
+**Foundation types**: `ansi.zig` → `ansi.rs`, `size.zig` → `size_types.rs`,
+`point.zig` → `point.rs`, `style.zig` → `style_types.rs`, `cursor.zig` →
+`cursor_style.rs`
+
+**Parsing infrastructure**: `UTF8Decoder.zig` → `utf8_decoder.rs`,
+`Parser.zig` + `parse_table.zig` → `vt_parser.rs`, `charsets.zig` →
+`charsets.zig`, `csi.zig` → `csi.zig`, `modes.zig` → `mode_def.rs`
+
+**Stream layer**: `stream.zig` split across → `stream_types.rs`,
+`stream_handler.rs`, `stream_core.rs`, `stream_csi_dispatch.rs`,
+`stream_esc_dispatch.rs`, `stream_osc_dispatch.rs`, `stream_osc_parse.rs`,
+`sgr_attribute.rs`, `osc_types.rs`
+
+**Data structures**: `bitmap_allocator.zig` → `bitmap_allocator.rs`,
+`hash_map.zig` → `hash_map.rs`, `ref_counted_set.zig` → `ref_counted_set.rs`,
+`Tabstops.zig` → `tabstops.rs`
+
+**Page buffer** (the core cell/row storage):
+`page.zig` → `page_types.rs` (Cell/Row bitpacked u64 types),
+`page_core.rs` (Page struct + layout + init),
+`page_methods.rs` (cell move/swap/clear, hyperlink/grapheme/style operations,
+clone)
+
+**Page list + linked list**: `PageList.zig` → `page_list_types.rs` +
+`page_list_methods.rs` (2225 lines: linked list, Pin movement, iterators,
+resize with reflow via `ReflowCursor` from `reflow_cursor.rs`)
+
+**Screen + Terminal state**: `Screen.zig` → `screen_types.rs` +
+`screen_methods.rs` (2165 lines: cursor mgmt, erase, scroll, resize,
+SGR attributes). `Terminal.zig` → `terminal_types.rs` + `terminal_methods.rs`
+(1055 lines: modes, write loop, full reset). `stream_terminal.zig` →
+`stream_terminal.rs` (94 StreamHandler methods dispatching to Terminal)
+
+**Formatter**: `formatter.zig` → `formatter_types.rs`, `formatter_terminal.rs`,
+`formatter_screen.rs`, `formatter_page.rs`
+
+**Kitty graphics protocol**: `kitty/*.zig` → `kitty_graphics_command.rs`,
+`kitty_graphics_exec.rs`, `kitty_graphics_image.rs`, `kitty_graphics_storage.rs`,
+`kitty_graphics_unicode.rs`
+
+**Other**: `apc.zig`, `dcs.zig`, `hyperlink.zig`, `highlight.zig`,
+`Selection.zig`, `ScreenSet.zig`, `StringMap.zig`, `x11_color.zig`,
+`tmux/`, `search/`, `kitty/color.zig`, OSC parser modules, device attributes,
+device status, mouse shape, SGR attribute types
+
+### Known Gaps
+
+**PNG decoding** (`kitty_graphics_image.rs:decode_png`): Formally unsupported
+in the Rust `libghostty-vt`. `decode_png()` returns
+`ImageError::UnsupportedFormat`. Zig's wuffs decoder is not linked into the
+Rust library. The PNG format is part of the Kitty graphics protocol but
+requires an image codec that the standalone library deliberately omits.
+
+**Tracked pins** (`page_list_methods.rs`): `track_pin` and `untrack_pin` are
+stubs. `track_pin` returns a null pointer; callers (screen resize, selection
+migration) handle the null return gracefully by falling back to untracked
+selections and stub behavior. Full implementation requires the Zig
+`std.heap.MemoryPool` allocator, which is Zig stdlib-specific and not
+portable as C FFI.
+
+**MemoryPool fields** (page list types): `PageListMemoryPool.alloc`,
+`.nodes`, `.pages`, and `.pins` remain `*mut c_void` — they are Zig-owned
+handles that Rust forwards back to Zig and never dereferences directly.
+
+**Kitty graphics file loading** (`kitty_graphics_image.rs`): A POSIX
+implementation reads files via `open`/`fstat`/`read` and shared memory via
+`shm_open`/`mmap`. The implementation uses platform-specific raw `stat` field
+offsets, so it needs targeted validation on each supported Unix target before
+being treated as low risk. Windows paths return `ImageError::UnsupportedMedium`.
+
+**tmux integration** (`tmux/`): `tmux_control.rs`, `tmux_layout.rs`,
+`tmux_output.rs`, and `tmux_viewer.rs` are ported. `tmux_viewer.rs` now routes
+pane output, pane capture, and pane state into Rust `Terminal` instances where
+the viewer owns those handles. This area still needs behavioral coverage beyond
+the generic `libghostty-vt` suite.
+
+### Intentionally Unsupported
+
+These behaviors return explicit error values and are not port gaps:
+
+- **PNG decoding** in the Rust `libghostty-vt` (no wuffs linkage).
+  `decode_png()` returns `ImageError::UnsupportedFormat`.
+- **File-based kitty graphics on Windows**. Returns
+  `ImageError::UnsupportedMedium`.
+- **Shared-memory kitty graphics on Windows**. Returns
+  `ImageError::UnsupportedMedium`.
+- **Animation frame playback**. Returns an `unimplemented` error from the
+  Kitty graphics execution path.
+
+### Build Contract
+
+- `#![no_std]` crate with `panic = "abort"` — no standard library, no unwinding.
+  `core::` only; no heap allocator is pulled in from `std`.
+- `GhosttyAllocator` (in `allocator.rs`) is the only allocator: it wraps Zig's
+  vtable allocator through FFI (`GhosttyAllocatorVtable` with `alloc`/`resize`/
+  `free` function pointers). All Rust-land collections flow through it so
+  Zig-owned memory stays on Zig's ledger.
+- Debug `opt-level = 1` required. At `opt-level = 0` the compiler emits a
+  reference to the `panic_bounds_check` lang item, which no_std panic=abort
+  builds don't provide and which the linker rejects. `GhosttyRust.zig` sets
+  this explicitly for Debug builds.
+- No `#[derive(Debug)]`. `core::fmt` formatter symbols referenced by `Debug`
+  impls are not reachable from the final link in some configurations.
+- No `assert!`/`unwrap()`/`expect()`/`[]` indexing on the same linker grounds
+  when they would pull in panic-fmt symbols; use explicit bounds-checked
+  accessors and `if`/`match` branches that don't panic.
+- All unsafe operations in explicit `unsafe {}` blocks
+  (`#![deny(unsafe_op_in_unsafe_fn)]`).
+- All types crossing the FFI boundary use `#[repr(C)]`. `extern "C"` for
+  Zig-linked functions.
+- Zig sibling `.zig` files kept in `src/terminal/rust/` as semantic reference
+  (not compiled — Bun PR 30412 pattern).
+- System libc is linked (mmap, shm_open, fstat, etc. work). System libz is
+  linked for zlib decompression.
+
+
+
 
 Start with `libghostty-vt` and terminal C API slices. This boundary is small
 enough to validate with `zig build test-lib-vt`, and it already has public C
