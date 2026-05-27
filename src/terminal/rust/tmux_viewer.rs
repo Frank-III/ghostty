@@ -1,6 +1,12 @@
 use core::ffi::c_void;
 use core::ptr;
 use crate::allocator::*;
+use crate::csi::EraseDisplay;
+use crate::cursor_style::CursorVisualStyle;
+use crate::mode_def::ModeTag;
+use crate::screen_set::ScreenKey;
+use crate::size_types::CellCountInt;
+use crate::terminal_types::{Terminal, TABSTOP_INTERVAL};
 use super::control::*;
 use super::layout::*;
 use super::output::*;
@@ -616,8 +622,7 @@ impl Viewer {
             }
 
             NotificationTag::Output => {
-                // Output handling would go through terminal VT stream
-                // Stubbed for now - requires Terminal integration
+                self.received_output(n.id, n.data_ptr, n.data_len);
             }
 
             NotificationTag::SessionChanged => {
@@ -717,7 +722,12 @@ impl Viewer {
                 self.received_pane_state(content);
             }
             CommandTag::PaneHistory | CommandTag::PaneVisible => {
-                // Requires Terminal integration - stubbed
+                self.received_pane_capture(
+                    cmd.pane_id,
+                    cmd.screen_is_alternate,
+                    matches!(cmd.tag, CommandTag::PaneHistory),
+                    content,
+                );
             }
             CommandTag::User => {}
         }
@@ -832,7 +842,6 @@ impl Viewer {
             let total = core::mem::size_of::<ViewerWindow>() * old_cap;
             unsafe { alloc_free_impl(self.alloc, old_ptr as *mut u8, total); }
         }
-        core::mem::forget(new_windows);
     }
 
     fn received_pane_state(&mut self, content: &[u8]) {
@@ -880,13 +889,160 @@ impl Viewer {
                             pane_tabs_len: 0,
                         };
                         let _ = parse_pane_state_line(line, &mut state);
-                        // Terminal state application requires Terminal integration
-                        let _ = state;
+                        self.apply_pane_state(&state);
                     }
                 }
                 line_start = i + 1;
             }
             i += 1;
+        }
+    }
+
+    fn pane_terminal_mut(&mut self, pane_id: usize) -> Option<&mut Terminal> {
+        let pane = self.panes.get(pane_id)?;
+        let terminal = unsafe { (*pane).terminal };
+        if terminal.is_null() {
+            return None;
+        }
+        Some(unsafe { &mut *(terminal as *mut Terminal) })
+    }
+
+    fn switch_terminal_screen(t: &mut Terminal, screen_key: ScreenKey) -> bool {
+        if t.screens.get(screen_key).is_null() {
+            return false;
+        }
+        t.screens.switch_to(screen_key);
+        true
+    }
+
+    fn received_output(
+        &mut self,
+        pane_id: usize,
+        data_ptr: *const u8,
+        data_len: usize,
+    ) {
+        if data_ptr.is_null() || data_len == 0 {
+            return;
+        }
+        let Some(t) = self.pane_terminal_mut(pane_id) else {
+            return;
+        };
+        let data = unsafe { core::slice::from_raw_parts(data_ptr, data_len) };
+        t.write(data);
+    }
+
+    fn received_pane_capture(
+        &mut self,
+        pane_id: usize,
+        screen_is_alternate: bool,
+        is_history: bool,
+        content: &[u8],
+    ) {
+        let Some(t) = self.pane_terminal_mut(pane_id) else {
+            return;
+        };
+        let screen_key = if screen_is_alternate {
+            ScreenKey::Alternate
+        } else {
+            ScreenKey::Primary
+        };
+        if !Self::switch_terminal_screen(t, screen_key) {
+            return;
+        }
+
+        if is_history {
+            t.write(content);
+            t.carriage_return();
+            let mut row = 0;
+            while row < t.rows {
+                t.index();
+                row += 1;
+            }
+            t.cursor_set_cell(1, 1);
+        } else {
+            t.erase_display(EraseDisplay::Complete, false);
+            t.cursor_set_cell(1, 1);
+            t.write(content);
+        }
+    }
+
+    fn apply_pane_state(&mut self, state: &ParsedPaneState) {
+        let Some(t) = self.pane_terminal_mut(state.pane_id) else {
+            return;
+        };
+
+        let screen_key = if state.alternate_on {
+            ScreenKey::Alternate
+        } else {
+            ScreenKey::Primary
+        };
+        if Self::switch_terminal_screen(t, screen_key) {
+            let cursor_x = state.cursor_x as usize + 1;
+            let cursor_y = state.cursor_y as usize + 1;
+            if cursor_x <= t.cols as usize && cursor_y <= t.rows as usize {
+                t.cursor_set_cell(cursor_y, cursor_x);
+            }
+
+            let screen = t.active();
+            if !screen.is_null() && !state.cursor_shape_ptr.is_null() && state.cursor_shape_len > 0 {
+                let shape = unsafe {
+                    core::slice::from_raw_parts(
+                        state.cursor_shape_ptr,
+                        state.cursor_shape_len,
+                    )
+                };
+                unsafe {
+                    if bytes_eq(shape, b"block") {
+                        (*screen).cursor.cursor_style = CursorVisualStyle::Block;
+                    } else if bytes_eq(shape, b"underline") {
+                        (*screen).cursor.cursor_style = CursorVisualStyle::Underline;
+                    } else if bytes_eq(shape, b"bar") {
+                        (*screen).cursor.cursor_style = CursorVisualStyle::Bar;
+                    }
+                }
+            }
+        }
+
+        if Self::switch_terminal_screen(t, ScreenKey::Alternate) {
+            let alt_x = state.alternate_saved_x as usize + 1;
+            let alt_y = state.alternate_saved_y as usize + 1;
+            if alt_x <= t.cols as usize && alt_y <= t.rows as usize {
+                t.cursor_set_cell(alt_y, alt_x);
+            }
+        }
+        let _ = Self::switch_terminal_screen(t, screen_key);
+
+        t.mode_set(ModeTag { value: 25, ansi: false }, state.cursor_flag);
+        t.mode_set(ModeTag { value: 12, ansi: false }, state.cursor_blinking);
+        t.mode_set(ModeTag { value: 4, ansi: true }, state.insert_flag);
+        t.mode_set(ModeTag { value: 7, ansi: false }, state.wrap_flag);
+        t.mode_set(ModeTag { value: 66, ansi: false }, state.keypad_flag);
+        t.mode_set(ModeTag { value: 1, ansi: false }, state.keypad_cursor_flag);
+        t.mode_set(ModeTag { value: 6, ansi: false }, state.origin_flag);
+        t.mode_set(ModeTag { value: 1003, ansi: false }, state.mouse_all_flag);
+        t.mode_set(ModeTag { value: 1002, ansi: false }, state.mouse_any_flag);
+        t.mode_set(ModeTag { value: 1000, ansi: false }, state.mouse_button_flag);
+        t.mode_set(ModeTag { value: 9, ansi: false }, state.mouse_standard_flag);
+        t.mode_set(ModeTag { value: 1005, ansi: false }, state.mouse_utf8_flag);
+        t.mode_set(ModeTag { value: 1006, ansi: false }, state.mouse_sgr_flag);
+        t.mode_set(ModeTag { value: 1004, ansi: false }, state.focus_flag);
+        t.mode_set(ModeTag { value: 2004, ansi: false }, state.bracketed_paste);
+
+        t.scrolling_region.top = state.scroll_region_upper as CellCountInt;
+        t.scrolling_region.bottom = state.scroll_region_lower as CellCountInt;
+
+        t.tabstops.reset(0);
+        if !state.pane_tabs_ptr.is_null() && state.pane_tabs_len > 0 {
+            let tabs = unsafe {
+                core::slice::from_raw_parts(state.pane_tabs_ptr, state.pane_tabs_len)
+            };
+            for_each_usize_field(tabs, b',', |col| {
+                if col < t.cols as usize {
+                    t.tabstops.set(col);
+                }
+            });
+        } else {
+            t.tabstops.reset(TABSTOP_INTERVAL as usize);
         }
     }
 
@@ -953,8 +1109,12 @@ impl Viewer {
             match (*layout).content {
                 LayoutContent::Pane(id) => {
                     if !(*panes).contains(id) {
-                        let pane = ViewerPane {
-                            terminal: ptr::null_mut(),
+                        let pane = if let Some(existing) = self.panes.get(id) {
+                            ptr::read(existing)
+                        } else {
+                            ViewerPane {
+                                terminal: ptr::null_mut(),
+                            }
                         };
                         let _ = (*panes).insert(id, pane, self.alloc);
                     }
@@ -1203,4 +1363,52 @@ fn trim_ws(s: &[u8]) -> &[u8] {
         return &[];
     }
     unsafe { s.get_unchecked(start..end) }
+}
+
+fn bytes_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut i = 0usize;
+    while i < a.len() {
+        if unsafe { *a.get_unchecked(i) } != unsafe { *b.get_unchecked(i) } {
+            return false;
+        }
+        i += 1;
+    }
+    true
+}
+
+fn for_each_usize_field<F: FnMut(usize)>(s: &[u8], delim: u8, mut f: F) {
+    let mut start = 0usize;
+    let mut i = 0usize;
+    while i <= s.len() {
+        if i == s.len() || unsafe { *s.get_unchecked(i) } == delim {
+            if i > start {
+                if let Some(value) = parse_usize(unsafe { s.get_unchecked(start..i) }) {
+                    f(value);
+                }
+            }
+            start = i + 1;
+        }
+        i += 1;
+    }
+}
+
+fn parse_usize(s: &[u8]) -> Option<usize> {
+    if s.is_empty() {
+        return None;
+    }
+    let mut result = 0usize;
+    let mut i = 0usize;
+    while i < s.len() {
+        let c = unsafe { *s.get_unchecked(i) };
+        if c < b'0' || c > b'9' {
+            return None;
+        }
+        result = result.checked_mul(10)?;
+        result = result.checked_add((c - b'0') as usize)?;
+        i += 1;
+    }
+    Some(result)
 }
