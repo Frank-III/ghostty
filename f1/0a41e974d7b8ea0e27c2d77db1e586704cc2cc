@@ -1,0 +1,96 @@
+src/terminal/rust/highlight.rs
+  s_036535f8a37cb4::t_3fa424fc261a9a 25
+src/terminal/rust/page_methods.rs
+  s_036535f8a37cb4::t_7202a5e5ccc733 509-511
+  s_036535f8a37cb4::t_2585b048c565fd 557-558,565-566
+  s_036535f8a37cb4::t_26f408c3c27afc 348-349,356-357
+  s_036535f8a37cb4::t_4fe87d0388b214 229-231
+src/terminal/rust/screen_types.rs
+  s_036535f8a37cb4::t_544e295c2300cc 377
+  s_036535f8a37cb4::t_6048d0284f55d6 345
+  s_036535f8a37cb4::t_5f4b85ec3630b1 9
+src/terminal/rust/screen_set.rs
+  s_8ae3d39e921490::t_78b0772186dd82 75
+src/terminal/rust/screen_methods.rs
+  s_8ae3d39e921490::t_37508377e3b5d7 283-284
+  s_8ae3d39e921490::t_bea1d5497ff737 197
+  s_8ae3d39e921490::t_a4670541cb4767 187
+  s_8ae3d39e921490::t_1d2057b357fac5 231
+  s_8ae3d39e921490::t_61c479fb84452d 263
+  s_8ae3d39e921490::t_28f5dee7330633 1193
+  s_8ae3d39e921490::t_23439b15d1cd9e 156
+  s_8ae3d39e921490::t_3891b7b40a8fd0 209
+  s_8ae3d39e921490::t_cca7295c697965 248
+  s_8ae3d39e921490::t_2005fc8ba78641 171
+  s_6a9638ea4468bb::t_0f984533dd0933 917
+  s_8ae3d39e921490::t_61addbabde8599 1502
+src/terminal/rust/page_list_types.rs
+  s_552dbc3a31c98c::t_984822bb3a191a 32-37
+  s_036535f8a37cb4::t_945a17f1e88e4e 155-166,187-188,192
+  s_036535f8a37cb4::t_9075571a4e9533 7
+  s_036535f8a37cb4::t_4f5034269933b8 127
+src/terminal/rust/page_types.rs
+  s_036535f8a37cb4::t_b184b9bed8dd87 121,125,128,130,133,137
+  s_8ae3d39e921490::t_15811735946011 24
+  s_8ae3d39e921490::t_72d08132e8d362 71
+src/terminal/rust/page_list_methods.rs
+  s_552dbc3a31c98c::t_bee1b0b8f928da 2155
+  s_552dbc3a31c98c::t_7dea4dc2cdb6ec 2118
+  s_036535f8a37cb4::t_20c003008b82e4 2245
+  s_552dbc3a31c98c::t_1c0e91f5271790 1071-1078
+  s_552dbc3a31c98c::t_d818d248785ce2 1086-1092
+  s_552dbc3a31c98c::t_7d78fa710b845f 2120-2127
+  s_552dbc3a31c98c::t_32bceed72b8a2f 1747
+  s_552dbc3a31c98c::t_507993ad44a5bf 2196
+  s_552dbc3a31c98c::t_8d8bb8930dbde2 581-587,592-596,599-600
+  s_552dbc3a31c98c::t_6ab3f97e379769 502-513
+src/terminal/rust/apc.rs
+  s_8ae3d39e921490::t_6059731d5d0ab3 146,165
+  s_8ae3d39e921490::t_c8091a98148c74 185
+src/terminal/rust/selection_types.rs
+  s_036535f8a37cb4::t_4309e26fbcddb9 60,67
+  s_036535f8a37cb4::t_7be402b17ad256 112,122
+src/terminal/rust/reflow_cursor.rs
+  s_036535f8a37cb4::t_8e4588fc11b551 51-52,55
+  s_036535f8a37cb4::t_d55dcd6703bd46 227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f10a41e974d7b8ea0e27c2d77db1e586704cc2cc",
+  "prompts": {},
+  "sessions": {
+    "s_036535f8a37cb4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19b695b2dffenTbSSYtA9EpzF6",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_552dbc3a31c98c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_198e29915ffemmwQTcI43c5b7I",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_6a9638ea4468bb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_198e6aec4ffe7twl2W4G7J5akV",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_8ae3d39e921490": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_19548afd5ffecr5KvPIfYns2qv",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
