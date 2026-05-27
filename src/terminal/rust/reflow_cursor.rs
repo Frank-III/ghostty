@@ -48,11 +48,11 @@ struct TrackedPinArray {
 
 fn tracked_pins_slice(list: *const PageListType) -> (*mut *mut Pin, usize) {
     unsafe {
-        let raw: *mut c_void = (*list).tracked_pins;
-        if raw.is_null() {
+        let tp = (*list).tracked_pins;
+        if tp.is_null() {
             return (ptr::null_mut(), 0);
         }
-        let arr = &*(raw as *const TrackedPinArray);
+        let arr = &*(tp as *const TrackedPinArray);
         if arr.keys.is_null() || arr.len == 0 {
             return (ptr::null_mut(), 0);
         }
@@ -224,7 +224,7 @@ impl ReflowCursor {
 
     pub fn write_cell(
         &mut self,
-        list: *mut PageListType,
+        _list: *mut PageListType,
         cell: *const Cell,
         src_page: *const Page,
     ) -> Result<WriteOutcome, ReflowError> {

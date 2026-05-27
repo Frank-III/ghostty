@@ -1,4 +1,3 @@
-use core::ffi::c_void;
 use core::ptr;
 use crate::early::*;
 use crate::constants::*;
@@ -58,14 +57,14 @@ impl Selection {
         }
     }
 
-    pub fn deinit(self: Selection, pages: *mut c_void) {
+    pub fn deinit(self: Selection, pages: *mut PageList) {
         match self.bounds {
             SelectionBounds::Tracked(v) => {
                 if pages.is_null() {
                     return;
                 }
                 unsafe {
-                    let pl: &mut PageList = &mut *pages.cast::<PageList>();
+                    let pl: &mut PageList = &mut *pages;
                     if !v.start.is_null() {
                         pl.untrack_pin(v.start);
                     }
@@ -110,7 +109,7 @@ impl Selection {
         matches!(&self.bounds, SelectionBounds::Tracked(_))
     }
 
-    pub fn track(self: &Selection, pages: *mut c_void) -> Option<Selection> {
+    pub fn track(self: &Selection, pages: *mut PageList) -> Option<Selection> {
         debug_assert!(!self.is_tracked());
         if pages.is_null() {
             return None;
@@ -120,7 +119,7 @@ impl Selection {
             SelectionBounds::Tracked(_) => return None,
         };
         unsafe {
-            let pl: &mut PageList = &mut *pages.cast::<PageList>();
+            let pl: &mut PageList = &mut *pages;
             let tracked_start = pl.track_pin(u.start);
             if tracked_start.is_null() {
                 return None;

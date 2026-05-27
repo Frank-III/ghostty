@@ -98,8 +98,6 @@ impl Page {
                     (true, false) => self.move_grapheme(src, dst),
                     (false, true) => self.move_grapheme(dst, src),
                     (true, true) => {
-                        let base = self.memory;
-                        let gm_off = self.grapheme_map;
                         let src_offset = self.get_cell_offset(src);
                         let dst_offset = self.get_cell_offset(dst);
                         let mut map = self.grapheme_map.map(self.memory);
@@ -123,8 +121,6 @@ impl Page {
                     (true, false) => self.move_hyperlink(src, dst),
                     (false, true) => self.move_hyperlink(dst, src),
                     (true, true) => {
-                        let base = self.memory;
-                        let hm_off = self.hyperlink_map;
                         let src_offset = self.get_cell_offset(src);
                         let dst_offset = self.get_cell_offset(dst);
                         let mut map = self.hyperlink_map.map(self.memory);
@@ -230,11 +226,9 @@ impl Page {
         if self.hyperlink_map.metadata.offset == 0 {
             return None;
         }
-        unsafe {
-            let cell_offset = self.get_cell_offset(cell);
-            let map = self.hyperlink_map.map(self.memory);
-            map.get(&cell_offset, AutoContext).copied()
-        }
+        let cell_offset = self.get_cell_offset(cell);
+        let map = self.hyperlink_map.map(self.memory);
+        map.get(&cell_offset, AutoContext).copied()
     }
 
     pub unsafe fn clear_hyperlink(&mut self, cell: *mut Cell) {
@@ -351,20 +345,16 @@ impl Page {
         if self.hyperlink_map.metadata.offset == 0 {
             return 0;
         }
-        unsafe {
-            let map = self.hyperlink_map.map(self.memory);
-            map.count() as usize
-        }
+        let map = self.hyperlink_map.map(self.memory);
+        map.count() as usize
     }
 
     pub fn hyperlink_capacity(&self) -> usize {
         if self.hyperlink_map.metadata.offset == 0 {
             return 0;
         }
-        unsafe {
-            let map = self.hyperlink_map.map(self.memory);
-            map.capacity() as usize
-        }
+        let map = self.hyperlink_map.map(self.memory);
+        map.capacity() as usize
     }
 
     pub unsafe fn set_graphemes(
@@ -385,7 +375,6 @@ impl Page {
             }
 
             let base = self.memory;
-            let gm_off = self.grapheme_map;
 
             let alloc = self
                 .grapheme_alloc
@@ -429,7 +418,6 @@ impl Page {
             }
 
             let base = self.memory;
-            let gm_off = self.grapheme_map;
             let cell_offset = self.get_cell_offset(cell);
 
             if (*cell).content_tag() != ContentTag::CodepointGrapheme {
@@ -518,13 +506,9 @@ impl Page {
         }
         let src_offset = self.get_cell_offset(src);
         let dst_offset = self.get_cell_offset(dst);
-        unsafe {
-            let base = self.memory;
-            let gm_off = self.grapheme_map;
-            let mut map = self.grapheme_map.map(self.memory);
-            if let Some(kv) = map.fetch_remove(&src_offset, AutoContext) {
-                map.put_assume_capacity(dst_offset, kv.value, AutoContext);
-            }
+        let mut map = self.grapheme_map.map(self.memory);
+        if let Some(kv) = map.fetch_remove(&src_offset, AutoContext) {
+            map.put_assume_capacity(dst_offset, kv.value, AutoContext);
         }
     }
 
@@ -539,7 +523,6 @@ impl Page {
         unsafe {
             let cell_offset = self.get_cell_offset(cell);
             let base = self.memory;
-            let gm_off = self.grapheme_map;
             let mut map = self.grapheme_map.map(self.memory);
             if let Some(kv) = map.fetch_remove(&cell_offset, AutoContext) {
                 let os = kv.value;
@@ -571,20 +554,16 @@ impl Page {
         if self.grapheme_map.metadata.offset == 0 {
             return 0;
         }
-        unsafe {
-            let map = self.grapheme_map.map(self.memory);
-            map.count() as usize
-        }
+        let map = self.grapheme_map.map(self.memory);
+        map.count() as usize
     }
 
     pub fn grapheme_capacity(&self) -> usize {
         if self.grapheme_map.metadata.offset == 0 {
             return 0;
         }
-        unsafe {
-            let map = self.grapheme_map.map(self.memory);
-            map.capacity() as usize
-        }
+        let map = self.grapheme_map.map(self.memory);
+        map.capacity() as usize
     }
 
     pub unsafe fn update_row_styled_flag(&mut self, row: *mut Row) {
@@ -611,8 +590,6 @@ impl Page {
             debug_assert!(!(*dst).hyperlink());
             let src_offset = self.get_cell_offset(src);
             let dst_offset = self.get_cell_offset(dst);
-            let base = self.memory;
-            let hm_off = self.hyperlink_map;
             let mut map = self.hyperlink_map.map(self.memory);
             if let Some(kv) = map.fetch_remove(&src_offset, AutoContext) {
                 map.put_assume_capacity(dst_offset, kv.value, AutoContext);

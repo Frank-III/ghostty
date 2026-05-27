@@ -10,8 +10,8 @@ use crate::page_list_types::PageListNode;
 #[derive(Debug, Clone, Copy)]
 pub struct Pin {
     pub node: *mut PageListNode,
-    pub x: CellCountInt,
     pub y: CellCountInt,
+    pub x: CellCountInt,
     /// Flipped to `true` when the tracked page was pruned and the pin
     /// could not be moved to a meaningful location.
     pub garbage: bool,
@@ -21,8 +21,8 @@ impl Default for Pin {
     fn default() -> Self {
         Self {
             node: core::ptr::null_mut(),
-            x: 0,
             y: 0,
+            x: 0,
             garbage: false,
         }
     }

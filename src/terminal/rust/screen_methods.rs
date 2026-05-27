@@ -153,7 +153,7 @@ impl Screen {
         unsafe {
             let cols = (*self.cursor.page_pin).node;
             let page_cols = if cols.is_null() { 0 } else { (*cols).data.size.cols };
-            assert!(self.cursor.x + n < page_cols);
+            debug_assert!(self.cursor.x + n < page_cols);
 
             let cell = self.cursor.page_cell;
             self.cursor.page_cell = cell.add(n as usize);
@@ -168,7 +168,7 @@ impl Screen {
     /// cursor.x must be >= n.
     pub unsafe fn cursor_left(&mut self, n: CellCountInt) {
         unsafe {
-            assert!(self.cursor.x >= n);
+            debug_assert!(self.cursor.x >= n);
 
             let cell = self.cursor.page_cell;
             self.cursor.page_cell = cell.sub(n as usize);
@@ -184,7 +184,7 @@ impl Screen {
         unsafe {
             let cols_node = (*self.cursor.page_pin).node;
             let page_cols = if cols_node.is_null() { 0 } else { (*cols_node).data.size.cols };
-            assert!(self.cursor.x + n < page_cols);
+            debug_assert!(self.cursor.x + n < page_cols);
             self.cursor.page_cell.add(n as usize)
         }
     }
@@ -194,7 +194,7 @@ impl Screen {
     /// Safety: cursor.page_cell must be valid and cursor.x >= n.
     pub unsafe fn cursor_cell_left(&self, n: CellCountInt) -> *mut Cell {
         unsafe {
-            assert!(self.cursor.x >= n);
+            debug_assert!(self.cursor.x >= n);
             self.cursor.page_cell.sub(n as usize)
         }
     }
@@ -206,7 +206,7 @@ impl Screen {
     /// Safety: pin.up() must return a valid pin.
     pub unsafe fn cursor_up(&mut self, n: CellCountInt) {
         unsafe {
-            assert!(self.cursor.y >= n);
+            debug_assert!(self.cursor.y >= n);
 
             self.cursor.y -= n;
             let old_pin = *self.cursor.page_pin;
@@ -228,7 +228,7 @@ impl Screen {
         unsafe {
             let rows_node = (*self.cursor.page_pin).node;
             let page_rows = if rows_node.is_null() { 0 } else { (*rows_node).data.size.rows };
-            assert!(self.cursor.y + n < page_rows);
+            debug_assert!(self.cursor.y + n < page_rows);
 
             self.cursor.y += n;
             let old_pin = *self.cursor.page_pin;
@@ -245,7 +245,7 @@ impl Screen {
     /// Safety: pin.up() must return a valid pin.
     pub unsafe fn cursor_row_up(&self, n: CellCountInt) -> *mut Row {
         unsafe {
-            assert!(self.cursor.y >= n);
+            debug_assert!(self.cursor.y >= n);
             let old_pin = *self.cursor.page_pin;
             let new_pin = pin_up(old_pin, n);
             let row_cell = pin_row_and_cell_raw(new_pin);
@@ -260,7 +260,7 @@ impl Screen {
         unsafe {
             let cols_node = (*self.cursor.page_pin).node;
             let page_cols = if cols_node.is_null() { 0 } else { (*cols_node).data.size.cols };
-            assert!(x < page_cols);
+            debug_assert!(x < page_cols);
 
             (*self.cursor.page_pin).x = x;
             let row_cell = pin_row_and_cell(self.cursor.page_pin);
@@ -280,8 +280,8 @@ impl Screen {
             } else {
                 &(*node).data
             };
-            assert!(x < page.size.cols);
-            assert!(y < page.size.rows);
+            debug_assert!(x < page.size.cols);
+            debug_assert!(y < page.size.rows);
 
             let mut new_pin = if y < self.cursor.y {
                 pin_up(*self.cursor.page_pin, self.cursor.y - y)
@@ -463,7 +463,7 @@ impl Screen {
             return;
         }
         unsafe {
-            let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+            let pl: &mut PageList = &mut *self.pages;
             let pl_beh = match behavior {
                 ScreenScroll::Active => PageListScroll::Active,
                 ScreenScroll::Top => PageListScroll::Top,
@@ -482,7 +482,7 @@ impl Screen {
             return true;
         }
         unsafe {
-            let pl: &PageList = &*self.pages.cast::<PageList>();
+            let pl: &PageList = &*self.pages;
             pl.viewport == PageListViewport::Active
         }
     }
@@ -491,7 +491,7 @@ impl Screen {
     pub fn assert_integrity(&self) {
         if cfg!(debug_assertions) && !self.pages.is_null() && !self.cursor.page_pin.is_null() {
             unsafe {
-                let pl: &PageList = &*self.pages.cast::<PageList>();
+                let pl: &PageList = &*self.pages;
                 let pin = *self.cursor.page_pin;
                 if let Some((_x, y)) = pl.point_from_pin(PointTag::ACTIVE, pin) {
                     debug_assert!((self.cursor.x as u32) < (pl.cols as u32));
@@ -617,7 +617,7 @@ impl Screen {
             if self.pages.is_null() {
                 return;
             }
-            let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+            let pl: &mut PageList = &mut *self.pages;
             let cols = pl.cols;
 
             let (bl_tag, bl_x, bl_y_val): (Option<PointTag>, Option<CellCountInt>, Option<u32>) =
@@ -670,7 +670,7 @@ impl Screen {
     pub fn erase_history(&mut self, _bl: Option<(CellCountInt, CellCountInt)>) {
         if !self.pages.is_null() {
             unsafe {
-                let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                let pl: &mut PageList = &mut *self.pages;
                 let active_tl = pl.get_top_left(PointTag::ACTIVE);
                 let history_br = match _bl {
                     Some((x, y)) => Pin {
@@ -742,7 +742,7 @@ impl Screen {
             return;
         }
         unsafe {
-            let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+            let pl: &mut PageList = &mut *self.pages;
             let total_active = pl.rows as usize;
             if (y as usize) >= total_active {
                 self.cursor_reload();
@@ -890,7 +890,7 @@ impl Screen {
             let saved_cursor_pin: *mut Pin = if let Some(sc) = self.saved_cursor {
                 if !self.pages.is_null() {
                     unsafe {
-                        let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                        let pl: &mut PageList = &mut *self.pages;
                         let origin = pl.get_top_left(PointTag::ACTIVE);
                         pl.track_pin(Pin {
                             node: origin.node,
@@ -907,14 +907,14 @@ impl Screen {
             };
 
             {
-                let pl: &mut PageList = unsafe { &mut *self.pages.cast::<PageList>() };
+                let pl: &mut PageList = unsafe { &mut *self.pages };
                 let mut pl_resize = crate::page_list_types::PageListResize::default();
                 pl_resize.cols = opts.cols;
                 pl_resize.rows = opts.rows;
                 pl_resize.reflow = opts.reflow;
                 pl_resize.cursor_x = self.cursor.x;
                 pl_resize.cursor_y = self.cursor.y;
-                pl_resize.cursor_pin = self.cursor.page_pin.cast();
+                pl_resize.cursor_pin = self.cursor.page_pin;
                 pl_resize.has_cursor = !self.cursor.page_pin.is_null();
                 pl.resize(&pl_resize);
             }
@@ -946,7 +946,7 @@ impl Screen {
                 }
                 if !self.pages.is_null() {
                     unsafe {
-                        let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                        let pl: &mut PageList = &mut *self.pages;
                         pl.untrack_pin(saved_cursor_pin);
                     }
                 }
@@ -1190,7 +1190,7 @@ impl Screen {
             } else {
                 (*node).data.size.rows
             };
-            assert!(self.cursor.y == page_rows - 1);
+            debug_assert!(self.cursor.y == page_rows - 1);
 
             self.kitty_images_dirty_set();
 
@@ -1216,7 +1216,7 @@ impl Screen {
                 }
             } else {
                 let old_pin = *self.cursor.page_pin;
-                let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                let pl: &mut PageList = &mut *self.pages;
                 let _ = pl.grow();
                 ptr::write(self.cursor.page_pin, pin_down(old_pin, 1));
                 let row_cell = pin_row_and_cell(self.cursor.page_pin);
@@ -1261,7 +1261,7 @@ impl Screen {
             if self.pages.is_null() {
                 return Ok(());
             }
-            let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+            let pl: &mut PageList = &mut *self.pages;
 
             let node = (*self.cursor.page_pin).node;
             let page_rows = if node.is_null() {
@@ -1337,7 +1337,7 @@ impl Screen {
             if self.pages.is_null() || self.cursor.page_pin.is_null() {
                 return;
             }
-            let pl: &PageList = &*self.pages.cast::<PageList>();
+            let pl: &PageList = &*self.pages;
 
             let new_pin = match (*self.cursor.page_pin).down(1) {
                 Some(p) => p,
@@ -1499,7 +1499,7 @@ impl Screen {
     /// Safety: hyperlink_id must be non-zero and cursor must be valid.
     pub unsafe fn cursor_set_hyperlink(&mut self) -> Result<(), ScreenStyleError> {
         unsafe {
-            assert!(self.cursor.hyperlink_id != 0);
+            debug_assert!(self.cursor.hyperlink_id != 0);
             let node = (*self.cursor.page_pin).node;
             if node.is_null() {
                 return Ok(());
@@ -1570,7 +1570,7 @@ impl Screen {
     pub fn reset(&mut self) {
         if !self.pages.is_null() {
             unsafe {
-                let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                let pl: &mut PageList = &mut *self.pages;
                 pl.reset();
             }
         }
@@ -1853,7 +1853,7 @@ impl Screen {
                     if x < cols {
                         self.clear_cells(page, self.cursor.page_row, cells.add(x), cols - x);
                     }
-                    let pl: &PageList = &*self.pages.cast::<PageList>();
+                    let pl: &PageList = &*self.pages;
                     let total_rows = pl.rows as usize;
                     let below = (self.cursor.y as usize) + 1;
                     if below < total_rows {
@@ -1878,14 +1878,14 @@ impl Screen {
                     }
                 }
                 2 => {
-                    let pl: &PageList = &*self.pages.cast::<PageList>();
+                    let pl: &PageList = &*self.pages;
                     let total_rows = pl.rows as usize;
                     if total_rows > 0 {
                         self.clear_rows(0, Some((total_rows - 1) as CellCountInt), false);
                     }
                 }
                 3 => {
-                    let pl: &PageList = &*self.pages.cast::<PageList>();
+                    let pl: &PageList = &*self.pages;
                     let total_rows = pl.rows as usize;
                     if total_rows > 0 {
                         self.clear_rows(0, Some((total_rows - 1) as CellCountInt), false);
@@ -2113,7 +2113,7 @@ impl Screen {
         }
         if !self.pages.is_null() {
             unsafe {
-                let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                let pl: &mut PageList = &mut *self.pages;
                 pl.deinit_pages();
             }
         }
@@ -2187,7 +2187,7 @@ impl Screen {
             return None;
         }
         unsafe {
-            let pl: &PageList = &*self.pages.cast::<PageList>();
+            let pl: &PageList = &*self.pages;
             let (x, y) = pl.point_from_pin(PointTag::ACTIVE, pin)?;
             Some((x as usize, y as usize))
         }
@@ -2199,7 +2199,7 @@ impl Screen {
             return Pin::default();
         }
         unsafe {
-            let pl: &PageList = &*self.pages.cast::<PageList>();
+            let pl: &PageList = &*self.pages;
             pl.get_top_left(PointTag::ACTIVE)
         }
     }

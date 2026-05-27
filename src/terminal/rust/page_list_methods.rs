@@ -499,8 +499,18 @@ impl PageIterator {
             PageIteratorLimit::Count(ref mut limit) => unsafe {
                 let avail = ((*row.node).data.size.rows as usize) - (row.y as usize);
                 let len = if avail < *limit { avail } else { *limit };
-                if len > *limit {
-                    self.row = row.down(len);
+                if len < *limit {
+                    let next_ptr = (*row.node).next;
+                    self.row = if next_ptr.is_null() {
+                        None
+                    } else {
+                        Some(Pin {
+                            node: next_ptr,
+                            y: 0,
+                            x: 0,
+                            garbage: false,
+                        })
+                    };
                     *limit -= len;
                 } else {
                     self.row = None;
@@ -568,17 +578,26 @@ impl PageIterator {
                 })
             },
             PageIteratorLimit::Count(ref mut limit) => {
-                let len = core::cmp::min(row.y as usize, *limit);
-                if len > *limit {
-                    self.row = row.up(len);
+                let avail = row.y as usize + 1;
+                let len = if avail < *limit { avail } else { *limit };
+                if len < *limit {
+                    self.row = match row.up(len) {
+                        Some(p) => Some(p),
+                        None => None,
+                    };
                     *limit -= len;
                 } else {
                     self.row = None;
                 }
+                let start = if row.y as usize >= len {
+                    row.y - len as CellCountInt
+                } else {
+                    0
+                };
                 Some(PageIteratorChunk {
                     node: row.node,
-                    start: row.y - len as CellCountInt,
-                    end: row.y.saturating_sub(1) + (if row.y == 0 { 1 } else { 1 }),
+                    start,
+                    end: row.y + 1,
                 })
             }
             PageIteratorLimit::Row(limit_row) => unsafe {
@@ -1049,6 +1068,14 @@ impl PageList {
         false
     }
 
+    /// Track a pin so it remains valid across page mutations.
+    ///
+    /// MEMORYPOOL-BOUND: Zig's `trackPin` (PageList.zig:3973) calls
+    /// `self.pool.pins.create()` to allocate a `*Pin` from the pin pool,
+    /// then inserts it into `self.tracked_pins` (AutoArrayHashMapUnmanaged).
+    /// Both operations require the Zig-owned pool allocator. Until a Rust-side
+    /// pin allocator exists, this returns null to signal failure to callers
+    /// that can tolerate it, or must be called through the Zig FFI boundary.
     pub fn track_pin(&mut self, _p: Pin) -> *mut Pin {
         if self.pool.is_null() || self.tracked_pins.is_null() {
             return ptr::null_mut();
@@ -1056,6 +1083,13 @@ impl PageList {
         ptr::null_mut()
     }
 
+    /// Untrack a previously tracked pin and free it.
+    ///
+    /// MEMORYPOOL-BOUND: Zig's `untrackPin` (PageList.zig:3989) also calls
+    /// `self.pool.pins.destroy(p)` to return the Pin to the pin pool.
+    /// The swap-remove below correctly removes the entry from the tracked
+    /// set, but the pool destroy step is missing because the pool is
+    /// Zig-owned. Callers using the Zig FFI boundary get the full cleanup.
     pub fn untrack_pin(&mut self, p: *mut Pin) {
         if self.tracked_pins.is_null() || p.is_null() {
             return;
@@ -1710,7 +1744,7 @@ impl PageList {
         }
     }
 
-    // -- Resize (stubbed for allocator-dependent parts) ----------------------
+    // -- Resize ---------------------------------------------------------------
 
     pub fn resize(&mut self, opts: &PageListResize) {
         self.viewport_pin_row_offset = 0;
@@ -2081,8 +2115,16 @@ impl PageList {
         }
     }
 
-    // -- Init / deinit / reset (stubs) --------------------------------------
+    // -- Init / deinit / reset (init_new is MEMORYPOOL-BOUND) ---------------
 
+    /// Construct a zeroed PageList shell.
+    ///
+    /// MEMORYPOOL-BOUND: Zig's `PageList.init` (PageList.zig:358) allocates
+    /// a `MemoryPool`, initial pages via the pool, a `viewport_pin` from
+    /// `pool.pins.create()`, and a `tracked_pins` hash map. All of these
+    /// require the Zig allocator and cannot be replicated in pure Rust.
+    /// This constructor produces a structurally valid but pool-less shell
+    /// that callers must wire up through the Zig FFI before use.
     pub fn init_new(cols: CellCountInt, rows: CellCountInt) -> PageList {
         PageList {
             pool: ptr::null_mut(),
@@ -2110,7 +2152,7 @@ impl PageList {
         while !it.is_null() {
             unsafe {
                 let next = (*it).next;
-                (*it).data.deinit();
+                self.destroy_page_node_full(it);
                 it = next;
             }
         }
@@ -2150,8 +2192,8 @@ impl PageList {
                     (*it).data.size.cols = self.cols;
                     rows_left = rows_left.saturating_sub(page_rows);
                 } else {
-                    (*it).data.deinit();
                     self.pages.remove(it);
+                    self.destroy_page_node_full(it);
                 }
 
                 it = next;
@@ -2200,7 +2242,7 @@ impl PageList {
 
     // -- Helper: min max size calculation ------------------------------------
 
-    fn calc_min_max_size(&self, cols: CellCountInt, rows: CellCountInt) -> usize {
+    fn calc_min_max_size(&self, _cols: CellCountInt, rows: CellCountInt) -> usize {
         let cap = std_capacity();
         let pages_exact = if cap.rows >= rows {
             1usize

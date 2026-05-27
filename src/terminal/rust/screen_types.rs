@@ -6,6 +6,7 @@ use crate::early::*;
 use crate::constants::*;
 use crate::size_types::*;
 use crate::page_types::*;
+use crate::page_list_types::PageList;
 use crate::style_types::*;
 use crate::cursor_style::*;
 use crate::charsets::*;
@@ -341,7 +342,7 @@ impl Default for ScreenSelectLine {
 
 #[repr(C)]
 pub struct ScreenLineIterator {
-    pub screen: *const c_void,
+    pub screen: *const Screen,
     pub current: Option<Pin>,
 }
 
@@ -373,7 +374,7 @@ impl ScreenPromptClickMove {
 #[repr(C)]
 pub struct Screen {
     pub alloc: GhosttyAllocator,
-    pub pages: *mut c_void,
+    pub pages: *mut PageList,
     pub no_scrollback: bool,
     pub cursor: ScreenCursor,
     pub saved_cursor: Option<ScreenSavedCursor>,

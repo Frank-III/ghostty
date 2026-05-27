@@ -21,7 +21,7 @@ impl ContentTag {
             1 => Self::CodepointGrapheme,
             2 => Self::BgColorPalette,
             3 => Self::BgColorRgb,
-            _ => unreachable!(),
+            _ => unsafe { core::hint::unreachable_unchecked() },
         }
     }
 }
@@ -68,7 +68,7 @@ impl Wide {
             1 => Self::Wide,
             2 => Self::SpacerTail,
             3 => Self::SpacerHead,
-            _ => unreachable!(),
+            _ => unsafe { core::hint::unreachable_unchecked() },
         }
     }
 }
@@ -118,23 +118,23 @@ impl SemanticPrompt {
 const CONTENT_TAG_MASK: u64 = 0b11;
 const CONTENT_TAG_SHIFT: u32 = 0;
 
-const CONTENT_MASK: u64 = (1u64 << 21) - 1;
+const CONTENT_MASK: u64 = (1u64 << 24) - 1;
 const CONTENT_SHIFT: u32 = 2;
 
 const STYLE_ID_MASK: u64 = (1u64 << 16) - 1;
-const STYLE_ID_SHIFT: u32 = 23;
+const STYLE_ID_SHIFT: u32 = 26;
 
 const WIDE_MASK: u64 = 0b11;
-const WIDE_SHIFT: u32 = 39;
+const WIDE_SHIFT: u32 = 42;
 
-const PROTECTED_BIT: u32 = 41;
+const PROTECTED_BIT: u32 = 44;
 const PROTECTED_MASK: u64 = 1u64 << PROTECTED_BIT;
 
-const HYPERLINK_BIT: u32 = 42;
+const HYPERLINK_BIT: u32 = 45;
 const HYPERLINK_MASK: u64 = 1u64 << HYPERLINK_BIT;
 
 const SEMANTIC_CONTENT_MASK: u64 = 0b11;
-const SEMANTIC_CONTENT_SHIFT: u32 = 43;
+const SEMANTIC_CONTENT_SHIFT: u32 = 46;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, Default)]

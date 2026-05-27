@@ -4,6 +4,7 @@
 //! a doubly-linked list of pages representing the screen and scrollback.
 
 use core::ffi::c_void;
+use crate::highlight::Pin;
 use crate::page_core::Page;
 use crate::size_types::CellCountInt;
 
@@ -28,9 +29,12 @@ impl PageListNode {
 
 /// Memory pool used to allocate PageList nodes, page buffers, and pins.
 ///
-/// The real implementation is managed by Zig; we expose an opaque pointer
-/// stub here so that Rust code can hold and pass pool references without
-/// knowing the internal layout.
+/// TYPE-OPAQUE / Zig-owned: The real `MemoryPool` (PageList.zig:85-115)
+/// contains typed sub-pools (`NodePool`, `PagePool`, `PinPool`) backed by
+/// Zig's `MemoryPool` / `ArenaAllocator` infrastructure. Fields are exposed
+/// as raw `*mut c_void` here so Rust can hold and pass pool pointers
+/// without depending on Zig's internal layout. All pool operations
+/// (create/destroy nodes, pins, pages) must go through the Zig FFI.
 #[repr(C)]
 pub struct PageListMemoryPool {
     pub alloc: *mut c_void,
@@ -120,7 +124,7 @@ pub struct PageListResize {
     pub reflow: bool,
     pub cursor_x: CellCountInt,
     pub cursor_y: CellCountInt,
-    pub cursor_pin: *mut c_void,
+    pub cursor_pin: *mut Pin,
     pub has_cursor: bool,
 }
 
@@ -148,12 +152,20 @@ pub enum PageListDirection {
     RightDown = 1,
 }
 
+/// Set of tracked pins on a PageList. Backed by Zig's
+/// `AutoArrayHashMapUnmanaged(*Pin, void)`; exposed as a raw pointer array
+/// in Rust for layout-stable access.
+///
+/// `keys[i]` is a pointer to a tracked `Pin`; iteration walks the array to
+/// find or remove entries.
+#[repr(C)]
+pub struct PageListTrackedPinSet {
+    pub keys: *mut *mut Pin,
+    pub len: usize,
+}
+
 /// The PageList itself: a linked list of pages with viewport, pool,
 /// and bookkeeping state.
-///
-/// Most internal fields use opaque pointers for types defined elsewhere
-/// (e.g. `Pin`, `PinSet`) so that this struct can be constructed and
-/// passed around without circular dependencies.
 #[repr(C)]
 pub struct PageList {
     /// The pool from which nodes and pages are allocated.
@@ -172,12 +184,12 @@ pub struct PageList {
     pub min_max_size: usize,
     /// Total number of rows (scrollback + active) in the PageList.
     pub total_rows: usize,
-    /// Set of tracked pins (opaque; backed by Zig's `AutoArrayHashMapUnmanaged`).
-    pub tracked_pins: *mut c_void,
+    /// Set of tracked pins.
+    pub tracked_pins: *mut PageListTrackedPinSet,
     /// Current viewport location.
     pub viewport: PageListViewport,
     /// Pre-allocated pin used when viewport is `Pin` (avoids alloc on scroll).
-    pub viewport_pin: *mut c_void,
+    pub viewport_pin: *mut Pin,
     /// Cached row offset of `viewport_pin` from the top; null if uncomputed.
     /// Encoded as `usize + 1`, with 0 meaning "not calculated".
     pub viewport_pin_row_offset: usize,

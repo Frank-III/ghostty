@@ -143,7 +143,7 @@ impl ApcHandler {
 
     pub fn feed(&mut self, byte: u8, kitty_enabled: bool) {
         match self.state.tag {
-            ApcStateTag::Inactive => unreachable!(),
+            ApcStateTag::Inactive => unsafe { core::hint::unreachable_unchecked() },
             ApcStateTag::Ignore => {}
             ApcStateTag::Identify => {
                 match byte {
@@ -162,7 +162,7 @@ impl ApcHandler {
             }
             ApcStateTag::Kitty => {
                 if !kitty_enabled {
-                    unreachable!()
+                    unsafe { core::hint::unreachable_unchecked() }
                 }
             }
         }
@@ -182,7 +182,7 @@ impl ApcHandler {
 
     pub fn end(&mut self) -> Option<ApcCommand> {
         let cmd = match self.state.tag {
-            ApcStateTag::Inactive => unreachable!(),
+            ApcStateTag::Inactive => unsafe { core::hint::unreachable_unchecked() },
             ApcStateTag::Ignore | ApcStateTag::Identify => None,
             ApcStateTag::Kitty => Some(ApcCommand {
                 tag: ApcCommandTag::Kitty,

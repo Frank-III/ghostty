@@ -72,7 +72,7 @@ impl ScreenSet {
     }
 
     pub fn remove_screen(&mut self, key: ScreenKey) -> *mut c_void {
-        assert!(!key.is_primary());
+        debug_assert!(!key.is_primary());
         let idx = key.as_index();
         let screen = self.screens[idx];
         if !screen.is_null() {
