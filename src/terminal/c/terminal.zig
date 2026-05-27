@@ -1531,6 +1531,14 @@ pub fn point_from_grid_ref(
     return .success;
 }
 
+/// Clear pwd and title buffers (called from the Rust port's terminal.reset).
+pub fn clear_pwd_and_title(terminal_: Terminal) callconv(lib.calling_conv) void {
+    const wrapper = terminal_ orelse return;
+    const t = wrapper.terminal;
+    t.pwd.clearRetainingCapacity();
+    t.title.clearRetainingCapacity();
+}
+
 pub fn free(terminal_: Terminal) callconv(lib.calling_conv) void {
     const wrapper = terminal_ orelse return;
     const t = wrapper.terminal;

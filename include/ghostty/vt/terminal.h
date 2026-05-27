@@ -944,6 +944,20 @@ GHOSTTY_API void ghostty_terminal_free(GhosttyTerminal terminal);
 GHOSTTY_API void ghostty_terminal_reset(GhosttyTerminal terminal);
 
 /**
+ * Clear the terminal's pwd and title buffers (retaining their allocated
+ * capacity so they can be re-used without immediate re-allocation).
+ *
+ * This mirrors the `pwd.clearRetainingCapacity()` and
+ * `title.clearRetainingCapacity()` calls performed during Zig's
+ * `Terminal.fullReset()`, exposed for use by the Rust port.
+ *
+ * @param terminal The terminal handle (may be NULL, in which case this is a no-op)
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API void ghostty_terminal_clear_pwd_and_title(GhosttyTerminal terminal);
+
+/**
  * Resize the terminal to the given dimensions.
  *
  * Changes the number of columns and rows in the terminal. The primary

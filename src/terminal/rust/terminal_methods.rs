@@ -641,14 +641,27 @@ impl Terminal {
         } else {
             TerminalScrollingRegion::default()
         };
-        // TODO: pwd.clearRetainingCapacity(), title.clearRetainingCapacity()
-        // Zig (Terminal.zig:3172-3173):
-        //   self.pwd.clearRetainingCapacity();
-        //   self.title.clearRetainingCapacity();
-        // Types are std.ArrayList(u8) (Terminal.zig:66, 69).
-        // In Rust port: opaque *mut c_void (terminal_types.rs:278-279).
-        // Requires exposing ArrayList.clearRetainingCapacity via Zig FFI or
-        // a Rust-side ArrayList binding.
+        // Clear pwd and title ArrayLists (Zig: clearRetainingCapacity).
+        // Zig ArrayList(u8) layout: { items: []u8, capacity: usize, allocator }
+        // where []u8 = { ptr: *u8, len: usize }
+        // clearRetainingCapacity just sets items.len = 0.
+        #[repr(C)]
+        struct ArrayListLayout {
+            _items_ptr: *mut u8,
+            items_len: usize,
+        }
+        if !self.pwd.is_null() {
+            unsafe {
+                let list = &mut *self.pwd.cast::<ArrayListLayout>();
+                list.items_len = 0;
+            }
+        }
+        if !self.title.is_null() {
+            unsafe {
+                let list = &mut *self.title.cast::<ArrayListLayout>();
+                list.items_len = 0;
+            }
+        }
         let primary = self.screens.get(ScreenKey::Primary);
         if !primary.is_null() {
             unsafe { (*primary.cast::<Screen>()).reset(); }

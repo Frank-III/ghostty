@@ -26,6 +26,19 @@ pub struct GhosttyAllocator {
     vtable: *const GhosttyAllocatorVtable,
 }
 
+impl GhosttyAllocator {
+    pub fn null() -> Self {
+        GhosttyAllocator {
+            ctx: ptr::null_mut(),
+            vtable: ptr::null(),
+        }
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.ctx.is_null() || self.vtable.is_null()
+    }
+}
+
 const ALIGN_U8: u8 = 0;
 const RETURN_ADDRESS_UNKNOWN: usize = 0;
 

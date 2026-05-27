@@ -1,7 +1,10 @@
+use core::ffi::c_void;
+use core::ptr;
 use crate::early::*;
 use crate::constants::*;
 use crate::size_types::*;
 use crate::highlight::Pin;
+use crate::page_list_types::PageList;
 
 #[repr(u8)]
 pub enum SelectionOrder {
@@ -55,10 +58,21 @@ impl Selection {
         }
     }
 
-    pub fn deinit(self: Selection) {
+    pub fn deinit(self: Selection, pages: *mut c_void) {
         match self.bounds {
-            SelectionBounds::Tracked(_v) => {
-                // TODO: requires screen.untrackPin
+            SelectionBounds::Tracked(v) => {
+                if pages.is_null() {
+                    return;
+                }
+                unsafe {
+                    let pl: &mut PageList = &mut *pages.cast::<PageList>();
+                    if !v.start.is_null() {
+                        pl.untrack_pin(v.start);
+                    }
+                    if !v.end.is_null() {
+                        pl.untrack_pin(v.end);
+                    }
+                }
             }
             SelectionBounds::Untracked(_) => {}
         }
@@ -94,6 +108,36 @@ impl Selection {
 
     pub fn is_tracked(&self) -> bool {
         matches!(&self.bounds, SelectionBounds::Tracked(_))
+    }
+
+    pub fn track(self: &Selection, pages: *mut c_void) -> Option<Selection> {
+        debug_assert!(!self.is_tracked());
+        if pages.is_null() {
+            return None;
+        }
+        let u = match &self.bounds {
+            SelectionBounds::Untracked(u) => u,
+            SelectionBounds::Tracked(_) => return None,
+        };
+        unsafe {
+            let pl: &mut PageList = &mut *pages.cast::<PageList>();
+            let tracked_start = pl.track_pin(u.start);
+            if tracked_start.is_null() {
+                return None;
+            }
+            let tracked_end = pl.track_pin(u.end);
+            if tracked_end.is_null() {
+                pl.untrack_pin(tracked_start);
+                return None;
+            }
+            Some(Selection {
+                bounds: SelectionBounds::Tracked(SelectionBoundsTracked {
+                    start: tracked_start,
+                    end: tracked_end,
+                }),
+                rectangle: self.rectangle,
+            })
+        }
     }
 
     pub fn eql(self: &Selection, other: &Selection) -> bool {

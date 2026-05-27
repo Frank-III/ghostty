@@ -19,6 +19,9 @@ use crate::ref_counted_set::{AddError, RefCountedSetContext};
 use crate::sgr_attribute::{Attribute, Name};
 use crate::screen_types::*;
 use crate::selection_types::*;
+use crate::allocator::{GhosttyAllocator, alloc_free_impl};
+use crate::hyperlink::Hyperlink;
+use core::mem;
 
 pub struct StyleContext;
 
@@ -51,6 +54,29 @@ pub enum ScreenStyleError {
 }
 
 impl Screen {
+    #[inline]
+    fn ghostty_alloc(&self) -> *const GhosttyAllocator {
+        &self.alloc
+    }
+
+    unsafe fn hyperlink_deinit(&mut self, link: *mut Hyperlink) {
+        if link.is_null() {
+            return;
+        }
+        let alloc = self.ghostty_alloc();
+        if alloc.is_null() {
+            return;
+        }
+        unsafe {
+            let uri_ptr = (*link).uri_ptr;
+            let uri_len = (*link).uri_len;
+            if !uri_ptr.is_null() && uri_len > 0 {
+                alloc_free_impl(alloc, uri_ptr as *mut u8, uri_len);
+            }
+            alloc_free_impl(alloc, link as *mut u8, mem::size_of::<Hyperlink>());
+        }
+    }
+
     fn page_cols(&self) -> CellCountInt {
         if self.pages.is_null() {
             return 0;
@@ -425,7 +451,7 @@ impl Screen {
     /// Clear the selection, if any, and mark the dirty flag.
     pub fn clear_selection(&mut self) {
         if let Some(sel) = self.selection.take() {
-            sel.deinit();
+            sel.deinit(self.pages);
             self.dirty.selection = true;
         }
     }
@@ -785,11 +811,12 @@ impl Screen {
             let _ = self.manual_style_update();
 
             // If we have a hyperlink, release it from the old page so the
-            // resize doesn't invalidate it.
-            let hyperlink_saved: Option<(*const u8, usize)> = if self.cursor.hyperlink.is_null() {
+            // resize doesn't invalidate it. Keep the heap-allocated
+            // Hyperlink alive so we can re-establish the link on the new page.
+            let hyperlink_saved: Option<*mut Hyperlink> = if self.cursor.hyperlink.is_null() {
                 None
             } else {
-                Some(((*self.cursor.hyperlink).uri_ptr, (*self.cursor.hyperlink).uri_len))
+                Some(self.cursor.hyperlink)
             };
             if self.cursor.hyperlink_id != 0 {
                 let node = (*self.cursor.page_pin).node;
@@ -856,16 +883,41 @@ impl Screen {
                 }
             }
 
-            let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
-            let mut pl_resize = crate::page_list_types::PageListResize::default();
-            pl_resize.cols = opts.cols;
-            pl_resize.rows = opts.rows;
-            pl_resize.reflow = opts.reflow;
-            pl_resize.cursor_x = self.cursor.x;
-            pl_resize.cursor_y = self.cursor.y;
-            pl_resize.cursor_pin = self.cursor.page_pin.cast();
-            pl_resize.has_cursor = !self.cursor.page_pin.is_null();
-            pl.resize(&pl_resize);
+            // Track a pin at the saved cursor position so it survives reflow.
+            // track_pin returns null when the underlying pool/tracked-pins
+            // infrastructure is not yet available; in that case the saved
+            // cursor coordinates stay unchanged after resize.
+            let saved_cursor_pin: *mut Pin = if let Some(sc) = self.saved_cursor {
+                if !self.pages.is_null() {
+                    unsafe {
+                        let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                        let origin = pl.get_top_left(PointTag::ACTIVE);
+                        pl.track_pin(Pin {
+                            node: origin.node,
+                            y: sc.y,
+                            x: sc.x,
+                            garbage: false,
+                        })
+                    }
+                } else {
+                    ptr::null_mut()
+                }
+            } else {
+                ptr::null_mut()
+            };
+
+            {
+                let pl: &mut PageList = unsafe { &mut *self.pages.cast::<PageList>() };
+                let mut pl_resize = crate::page_list_types::PageListResize::default();
+                pl_resize.cols = opts.cols;
+                pl_resize.rows = opts.rows;
+                pl_resize.reflow = opts.reflow;
+                pl_resize.cursor_x = self.cursor.x;
+                pl_resize.cursor_y = self.cursor.y;
+                pl_resize.cursor_pin = self.cursor.page_pin.cast();
+                pl_resize.has_cursor = !self.cursor.page_pin.is_null();
+                pl.resize(&pl_resize);
+            }
 
             if self.no_scrollback {
                 self.erase_history(None);
@@ -873,34 +925,47 @@ impl Screen {
 
             self.cursor_reload();
 
-            // TODO: update saved_cursor x/y by tracking a pin through resize.
-            // Requires PageList.track_pin to be implemented (currently a stub
-            // returning null at page_list_methods.rs:1027).
-            //
-            // Zig implementation (Screen.zig:1699-1816):
-            //   1. Before resize:
-            //      - Get saved_cursor (sc), compute active pin via
-            //        self.pages.pin(.{ .active = .{ .x = sc.x, .y = sc.y } })
-            //      - Track the pin: try self.pages.trackPin(pin) -> *Pin
-            //   2. After cursorReload:
-            //      - let pt = self.pages.pointFromPin(.active, p.*)
-            //      - If Some: sc.x = pt.active.x, sc.y = pt.active.y
-            //        If sc.pending_wrap and sc.x != opts.cols - 1:
-            //          sc.pending_wrap = false; sc.x += 1
-            //      - If None: sc.x = 0; sc.y = 0; sc.pending_wrap = false
-            //   3. defer: self.pages.untrackPin(p)
-            //
-            // For now saved_cursor coordinates may be incorrect after reflow.
+            // Update saved cursor coordinates using the tracked pin.
+            if !saved_cursor_pin.is_null() {
+                let tracked = unsafe { *saved_cursor_pin };
+                let result = self.point_from_pin_active(tracked);
+
+                if let Some(ref mut sc) = self.saved_cursor {
+                    if let Some((nx, ny)) = result {
+                        sc.x = nx as CellCountInt;
+                        sc.y = ny as CellCountInt;
+                        if sc.pending_wrap && opts.cols > 0 && sc.x != opts.cols - 1 {
+                            sc.pending_wrap = false;
+                            sc.x += 1;
+                        }
+                    } else {
+                        sc.x = 0;
+                        sc.y = 0;
+                        sc.pending_wrap = false;
+                    }
+                }
+                if !self.pages.is_null() {
+                    unsafe {
+                        let pl: &mut PageList = &mut *self.pages.cast::<PageList>();
+                        pl.untrack_pin(saved_cursor_pin);
+                    }
+                }
+            }
 
             // Restore the cursor style.
             self.cursor.style = cursor_style;
             let _ = self.manual_style_update();
 
             // Re-add our hyperlink if we had one before resize.
-            if let Some((uri_ptr, uri_len)) = hyperlink_saved {
-                if !uri_ptr.is_null() && uri_len > 0 {
-                    let uri_slice = core::slice::from_raw_parts(uri_ptr, uri_len);
-                    let _ = self.start_hyperlink(uri_slice, None);
+            if let Some(link) = hyperlink_saved {
+                if !link.is_null() {
+                    let uri_ptr = (*link).uri_ptr;
+                    let uri_len = (*link).uri_len;
+                    if !uri_ptr.is_null() && uri_len > 0 {
+                        let uri_slice = core::slice::from_raw_parts(uri_ptr, uri_len);
+                        let _ = self.start_hyperlink(uri_slice, None);
+                    }
+                    self.hyperlink_deinit(link);
                 }
             }
         }
@@ -1420,6 +1485,10 @@ impl Screen {
                     &mut (*node).data.hyperlink_set;
                 (*set).release((*node).data.memory, self.cursor.hyperlink_id);
             }
+            let link = self.cursor.hyperlink;
+            if !link.is_null() {
+                self.hyperlink_deinit(link);
+            }
             self.cursor.hyperlink_id = 0;
             self.cursor.hyperlink = ptr::null_mut();
         }
@@ -1477,17 +1546,21 @@ impl Screen {
             Some(new_sel) => {
                 // Untrack prior selection.
                 if let Some(old) = self.selection.take() {
-                    old.deinit();
+                    old.deinit(self.pages);
                 }
-                // TODO: if untracked, convert to tracked via sel.track(self).
-                // Zig: Selection.zig:131-149, track() calls:
-                //   s.pages.trackPin(start_pin) -> *Pin
-                //   s.pages.trackPin(end_pin) -> *Pin
-                //   returns Selection { bounds: .tracked = { start, end }, rectangle }
-                // Requires PageList.track_pin to be fully implemented (currently
-                // a stub returning null at page_list_methods.rs:1027) and an
-                // allocator exposed on Screen.
-                self.selection = Some(new_sel);
+                // If the incoming selection is untracked, convert to tracked
+                // so its pins survive scrollback/resize operations. When
+                // track_pin is unavailable (stub) we fall back to storing
+                // the untracked selection as-is.
+                let final_sel = if new_sel.is_tracked() {
+                    Some(new_sel)
+                } else {
+                    match new_sel.track(self.pages) {
+                        Some(tracked) => Some(tracked),
+                        None => Some(new_sel),
+                    }
+                };
+                self.selection = final_sel;
                 self.dirty.selection = true;
             }
         }
@@ -1506,18 +1579,15 @@ impl Screen {
             // our cursor pin, which should be at the top-left.
             if !self.cursor.page_pin.is_null() {
                 let cursor_rac = pin_row_and_cell(self.cursor.page_pin);
-                // Release hyperlink from the page set.
-                // TODO: free the Hyperlink struct and its uri_ptr bytes.
-                // Zig (Screen.zig:389): self.cursor.deinit(self.alloc)
-                //   -> Cursor.deinit (Screen.zig:179-184):
-                //      link.deinit(alloc) -> Hyperlink.deinit (hyperlink.zig:45):
-                //        alloc.free(self.uri)  // free uri bytes
-                //        if .explicit: alloc.free(v)  // free explicit id bytes
-                //      alloc.destroy(link)  // free Hyperlink struct
-                // Rust Hyperlink (hyperlink.rs:122) holds uri_ptr/uri_len but
-                // the Screen alloc field is *mut c_void, so free() is unavailable.
+                // Release cursor hyperlink: end_hyperlink frees the
+                // heap-allocated Hyperlink struct and URI bytes (Zig:
+                // Cursor.deinit -> Hyperlink.deinit + alloc.destroy),
+                // and releases the reference against the page set.
                 if self.cursor.hyperlink_id != 0 {
                     self.end_hyperlink();
+                } else if !self.cursor.hyperlink.is_null() {
+                    self.hyperlink_deinit(self.cursor.hyperlink);
+                    self.cursor.hyperlink = ptr::null_mut();
                 }
                 self.cursor.pending_wrap = false;
                 self.cursor.protected = false;
@@ -1529,14 +1599,25 @@ impl Screen {
                 self.cursor.page_cell = cursor_rac.1;
             }
         }
-        // TODO: kitty_images.deinit + reset to default.
+        // Reset kitty graphics storage.
         // Zig (Screen.zig:396-400):
         //   self.kitty_images.deinit(self.alloc, self);
         //   self.kitty_images = .{ .dirty = true };
-        // kitty_images is an opaque *mut c_void pointing to the KittyGraphics
-        // struct (Screen.zig:85-90). The Rust port does not expose the
-        // KittyImage type; implementing this requires a Rust binding for
-        // KittyGraphics.deinit and the struct's default init with dirty=true.
+        //
+        // kitty_images is conditionally compiled (build_options.kitty_graphics)
+        // and is either kitty.graphics.ImageStorage or an empty struct. When
+        // enabled it requires:
+        //   (a) a Zig FFI wrapper such as
+        //       `ghostty_screen_kitty_images_reset(screen_ptr)` in
+        //       c/kitty_graphics.zig that calls
+        //       `screen.kitty_images.deinit(screen.alloc, &screen)` then
+        //       `screen.kitty_images = .{ .dirty = true }`, and
+        //   (b) the corresponding `@export` in lib_vt.zig.
+        //
+        // The Rust-side `kitty_images_dirty_set()` is currently a no-op
+        // placeholder for part (b); once the Zig wrapper is added, call
+        // it here via `extern "C"`.
+        self.kitty_images_dirty_set();
         self.saved_cursor = None;
         self.charset = ScreenCharsetState::default();
         self.kitty_keyboard = KittyKeyFlagStack::default();
@@ -2026,17 +2107,8 @@ impl Screen {
 
     /// Cleanly shut down the screen, releasing pages and cursor resources.
     pub fn deinit(&mut self) {
-        // TODO: free cursor.hyperlink (the Hyperlink struct and its uri_ptr).
-        // Zig (Screen.zig:336): self.cursor.deinit(self.alloc)
-        //   -> Cursor.deinit (Screen.zig:179-184):
-        //      if hyperlink is non-null:
-        //        Hyperlink.deinit(alloc)  (hyperlink.zig:45):
-        //          alloc.free(self.uri)       // free URI bytes
-        //          if .explicit: alloc.free(v) // free explicit id bytes
-        //        alloc.destroy(link)          // free Hyperlink struct
-        // Screen.alloc is *mut c_void; no Rust-accessible free() available.
-        // Until allocator is exposed, we just null the pointer (leak).
         if !self.cursor.hyperlink.is_null() {
+            unsafe { self.hyperlink_deinit(self.cursor.hyperlink); }
             self.cursor.hyperlink = ptr::null_mut();
         }
         if !self.pages.is_null() {

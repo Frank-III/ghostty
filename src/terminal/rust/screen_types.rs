@@ -14,6 +14,7 @@ use crate::ansi::*;
 use crate::selection_types::*;
 use crate::highlight::Pin;
 use crate::hyperlink::*;
+use crate::allocator::GhosttyAllocator;
 
 #[repr(C)]
 pub struct ScreenDirty {
@@ -371,7 +372,7 @@ impl ScreenPromptClickMove {
 
 #[repr(C)]
 pub struct Screen {
-    pub alloc: *mut c_void,
+    pub alloc: GhosttyAllocator,
     pub pages: *mut c_void,
     pub no_scrollback: bool,
     pub cursor: ScreenCursor,
@@ -388,7 +389,7 @@ pub struct Screen {
 impl Default for Screen {
     fn default() -> Self {
         Self {
-            alloc: core::ptr::null_mut(),
+            alloc: GhosttyAllocator::null(),
             pages: core::ptr::null_mut(),
             no_scrollback: false,
             cursor: ScreenCursor::default(),
