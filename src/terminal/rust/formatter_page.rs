@@ -1,5 +1,5 @@
 use crate::color_palette::Palette;
-use crate::formatter_types::{Format, format_styled, Options};
+use crate::formatter_types::{CodepointReplacement, Format, format_styled, Options};
 use crate::page_core::Page;
 use crate::page_types::*;
 use crate::point::Coordinate;
@@ -187,7 +187,7 @@ impl<'a> PageFormatter<'a> {
             let mut ci = 0usize;
             while ci < subset.len() {
                 let cell = unsafe { *subset.as_ptr().add(ci) };
-                let x = row_start_x + ci as CellCountInt;
+                let _x = row_start_x + ci as CellCountInt;
 
                 match cell.wide() {
                     Wide::SpacerHead | Wide::SpacerTail => {
@@ -327,11 +327,69 @@ impl<'a> PageFormatter<'a> {
     }
 
     fn write_codepoint_with_replacement(&self, writer: &mut dyn FormatterWriter, cp: u32) {
-        // codepoint_map is not yet supported: Options lacks a codepoint_map field.
-        // When ported, each codepoint would be reverse-searched in the map's ranges;
-        // on hit the replacement codepoint (or string) is emitted instead of `cp`.
-        // Until then, fall through to write_codepoint which emits cp verbatim.
-        self.write_codepoint(writer, cp);
+        if let Some(replacement) = self.opts.codepoint_map.find_replacement(cp) {
+            match replacement {
+                CodepointReplacement::Codepoint(rcp) => {
+                    self.write_codepoint(writer, rcp);
+                }
+                CodepointReplacement::String { data, len } => {
+                    let mut i = 0usize;
+                    while i < len {
+                        let b = unsafe { *data.add(i) };
+                        let mut buf = [0u8; 4];
+                        let consumed;
+                        let codepoint;
+                        if b < 0x80 {
+                            codepoint = b as u32;
+                            consumed = 1;
+                        } else if b < 0xC0 {
+                            codepoint = 0xFFFD;
+                            consumed = 1;
+                        } else if b < 0xE0 {
+                            if i + 1 < len {
+                                let b1 = unsafe { *data.add(i + 1) };
+                                codepoint = ((b as u32 & 0x1F) << 6) | (b1 as u32 & 0x3F);
+                                consumed = 2;
+                            } else {
+                                codepoint = 0xFFFD;
+                                consumed = 1;
+                            }
+                        } else if b < 0xF0 {
+                            if i + 2 < len {
+                                let b1 = unsafe { *data.add(i + 1) };
+                                let b2 = unsafe { *data.add(i + 2) };
+                                codepoint = ((b as u32 & 0x0F) << 12)
+                                    | ((b1 as u32 & 0x3F) << 6)
+                                    | (b2 as u32 & 0x3F);
+                                consumed = 3;
+                            } else {
+                                codepoint = 0xFFFD;
+                                consumed = 1;
+                            }
+                        } else {
+                            if i + 3 < len {
+                                let b1 = unsafe { *data.add(i + 1) };
+                                let b2 = unsafe { *data.add(i + 2) };
+                                let b3 = unsafe { *data.add(i + 3) };
+                                codepoint = ((b as u32 & 0x07) << 18)
+                                    | ((b1 as u32 & 0x3F) << 12)
+                                    | ((b2 as u32 & 0x3F) << 6)
+                                    | (b3 as u32 & 0x3F);
+                                consumed = 4;
+                            } else {
+                                codepoint = 0xFFFD;
+                                consumed = 1;
+                            }
+                        };
+                        let ulen = encode_utf8(codepoint, &mut buf);
+                        writer.write_bytes(&buf[..ulen]);
+                        i += consumed;
+                    }
+                }
+            }
+        } else {
+            self.write_codepoint(writer, cp);
+        }
     }
 
     fn write_codepoint(&self, writer: &mut dyn FormatterWriter, cp: u32) {
