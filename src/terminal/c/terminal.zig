@@ -318,6 +318,12 @@ const rust_owned = if (build_options.terminal_rust_owned) struct {
         out: ?*anyopaque,
     ) callconv(.c) c_int;
 
+    extern fn ghostty_rust_terminal_owned_get_scrollbar(
+        handle: ?*anyopaque,
+        data: c_int,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
     extern fn ghostty_rust_terminal_owned_get_color(
         handle: ?*anyopaque,
         data: c_int,
@@ -1112,7 +1118,7 @@ pub fn resize(
 
     if (comptime build_options.terminal_rust_owned) {
         if (rustOwnedHandle(wrapper)) |handle| {
-            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_resize(
+            const result: Result = @enumFromInt(rust_owned.ghostty_rust_terminal_owned_resize(
                 handle,
                 rustOwnedAlloc(wrapper),
                 cols,
@@ -1122,6 +1128,39 @@ pub fn resize(
                 &width_px,
                 &height_px,
             ));
+            if (result != .success) return result;
+
+            const synchronized_output: modes.ModeTag.Backing = @bitCast(modes.ModeTag{
+                .value = 2026,
+                .ansi = false,
+            });
+            _ = rust_owned.ghostty_rust_terminal_owned_mode_set(handle, synchronized_output, false);
+
+            const in_band_size_reports: modes.ModeTag.Backing = @bitCast(modes.ModeTag{
+                .value = 2048,
+                .ansi = false,
+            });
+            var in_band: bool = undefined;
+            if (rust_owned.ghostty_rust_terminal_owned_mode_get(handle, in_band_size_reports, &in_band) == @intFromEnum(Result.success) and
+                in_band)
+                in_band:
+            {
+                const func = wrapper.effects.write_pty orelse break :in_band;
+
+                var buf: [1024]u8 = undefined;
+                var writer: std.Io.Writer = .fixed(&buf);
+                size_report.encode(&writer, .mode_2048, .{
+                    .rows = rows,
+                    .columns = cols,
+                    .cell_width = cell_width_px,
+                    .cell_height = cell_height_px,
+                }) catch break :in_band;
+
+                const data = writer.buffered();
+                func(@ptrCast(wrapper), wrapper.effects.userdata, data.ptr, data.len);
+            }
+
+            return .success;
         }
     }
 
@@ -1523,6 +1562,11 @@ fn getTyped(
                     @ptrCast(out),
                 )),
                 .cursor_style => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_style(
+                    handle,
+                    @intFromEnum(data),
+                    @ptrCast(out),
+                )),
+                .scrollbar => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_scrollbar(
                     handle,
                     @intFromEnum(data),
                     @ptrCast(out),
@@ -2558,7 +2602,6 @@ test "get mouse_tracking" {
 }
 
 test "get scrollbar" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3227,7 +3270,6 @@ test "grid_ref_track invalid inputs" {
 }
 
 test "point_from_grid_ref roundtrip active" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3253,7 +3295,6 @@ test "point_from_grid_ref roundtrip active" {
 }
 
 test "point_from_grid_ref roundtrip viewport" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3297,7 +3338,6 @@ test "point_from_grid_ref null out succeeds" {
 }
 
 test "point_from_grid_ref history ref to active returns no_value" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4111,7 +4151,6 @@ test "get title set via vt_write" {
 }
 
 test "resize updates pixel dimensions" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4126,13 +4165,15 @@ test "resize updates pixel dimensions" {
 
     try testing.expectEqual(Result.success, resize(t, 100, 40, 9, 18));
 
-    const zt = zigTerminalForTest(t) orelse return;
-    try testing.expectEqual(@as(u32, 100 * 9), zt.width_px);
-    try testing.expectEqual(@as(u32, 40 * 18), zt.height_px);
+    var width_px: u32 = undefined;
+    var height_px: u32 = undefined;
+    try testing.expectEqual(Result.success, get(t, .width_px, @ptrCast(&width_px)));
+    try testing.expectEqual(Result.success, get(t, .height_px, @ptrCast(&height_px)));
+    try testing.expectEqual(@as(u32, 100 * 9), width_px);
+    try testing.expectEqual(@as(u32, 40 * 18), height_px);
 }
 
 test "resize pixel overflow saturates" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4147,13 +4188,15 @@ test "resize pixel overflow saturates" {
 
     try testing.expectEqual(Result.success, resize(t, 100, 40, std.math.maxInt(u32), std.math.maxInt(u32)));
 
-    const zt = zigTerminalForTest(t) orelse return;
-    try testing.expectEqual(std.math.maxInt(u32), zt.width_px);
-    try testing.expectEqual(std.math.maxInt(u32), zt.height_px);
+    var width_px: u32 = undefined;
+    var height_px: u32 = undefined;
+    try testing.expectEqual(Result.success, get(t, .width_px, @ptrCast(&width_px)));
+    try testing.expectEqual(Result.success, get(t, .height_px, @ptrCast(&height_px)));
+    try testing.expectEqual(std.math.maxInt(u32), width_px);
+    try testing.expectEqual(std.math.maxInt(u32), height_px);
 }
 
 test "resize disables synchronized output" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4166,15 +4209,20 @@ test "resize disables synchronized output" {
     ));
     defer free(t);
 
-    const zt = zigTerminalForTest(t) orelse return;
-    zt.modes.set(.synchronized_output, true);
+    const synchronized_output: modes.ModeTag.Backing = @bitCast(modes.ModeTag{
+        .value = 2026,
+        .ansi = false,
+    });
+    try testing.expectEqual(Result.success, mode_set(t, synchronized_output, true));
 
     try testing.expectEqual(Result.success, resize(t, 100, 40, 9, 18));
-    try testing.expect(!zt.modes.get(.synchronized_output));
+
+    var value: bool = undefined;
+    try testing.expectEqual(Result.success, mode_get(t, synchronized_output, &value));
+    try testing.expect(!value);
 }
 
 test "resize sends in-band size report" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4204,8 +4252,11 @@ test "resize sends in-band size report" {
 
     try testing.expectEqual(Result.success, set(t, .write_pty, @ptrCast(&S.writePty)));
 
-    // Enable in-band size reports (mode 2048)
-    (zigTerminalForTest(t) orelse return).modes.set(.in_band_size_reports, true);
+    const in_band_size_reports: modes.ModeTag.Backing = @bitCast(modes.ModeTag{
+        .value = 2048,
+        .ansi = false,
+    });
+    try testing.expectEqual(Result.success, mode_set(t, in_band_size_reports, true));
 
     try testing.expectEqual(Result.success, resize(t, 100, 40, 9, 18));
 
@@ -4216,7 +4267,6 @@ test "resize sends in-band size report" {
 }
 
 test "resize no size report without mode 2048" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4245,7 +4295,6 @@ test "resize no size report without mode 2048" {
 }
 
 test "resize in-band report without write_pty callback" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4258,8 +4307,11 @@ test "resize in-band report without write_pty callback" {
     ));
     defer free(t);
 
-    // Enable mode 2048 but don't set a write_pty callback — should not crash
-    (zigTerminalForTest(t) orelse return).modes.set(.in_band_size_reports, true);
+    const in_band_size_reports: modes.ModeTag.Backing = @bitCast(modes.ModeTag{
+        .value = 2048,
+        .ansi = false,
+    });
+    try testing.expectEqual(Result.success, mode_set(t, in_band_size_reports, true));
     try testing.expectEqual(Result.success, resize(t, 100, 40, 9, 18));
 }
 

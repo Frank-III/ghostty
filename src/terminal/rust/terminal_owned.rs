@@ -9,7 +9,8 @@ use crate::constants::{
     TERMINAL_DATA_COLOR_BACKGROUND, TERMINAL_DATA_COLOR_BACKGROUND_DEFAULT,
     TERMINAL_DATA_COLOR_CURSOR, TERMINAL_DATA_COLOR_CURSOR_DEFAULT,
     TERMINAL_DATA_COLOR_FOREGROUND, TERMINAL_DATA_COLOR_FOREGROUND_DEFAULT,
-    TERMINAL_DATA_CURSOR_STYLE, TERMINAL_DATA_PWD, TERMINAL_DATA_TITLE,
+    TERMINAL_DATA_CURSOR_STYLE, TERMINAL_DATA_PWD, TERMINAL_DATA_SCROLLBAR,
+    TERMINAL_DATA_TITLE,
     STYLE_COLOR_NONE, STYLE_COLOR_PALETTE, STYLE_COLOR_RGB,
 };
 use crate::mode_def::{mode_find_index, ModeTag as ModeTagType};
@@ -18,7 +19,7 @@ use crate::style::{
 };
 use crate::style_types::{Color, Style, rgb_to_ghostty};
 use crate::terminal_get_color::terminal_get_color_impl;
-use crate::terminal_get_style::terminal_get_style_impl;
+use crate::terminal_get_style::{terminal_get_scrollbar_impl, terminal_get_style_impl};
 use crate::terminal_set_color::terminal_set_rgb_impl;
 use crate::terminal_get_string::terminal_get_string_impl;
 use crate::terminal_set_string::terminal_set_string_impl;
@@ -157,14 +158,12 @@ impl RustTerminalOwned {
     }
 
     pub unsafe fn mode_set(&mut self, tag_backing: u16, value: bool) -> c_int {
-        unsafe {
-            let tag = ModeTagType::from_u16(tag_backing);
-            if mode_find_index(tag.value, tag.ansi).is_none() {
-                return GHOSTTY_INVALID_VALUE;
-            }
-            self.terminal.mode_set(tag, value);
-            GHOSTTY_SUCCESS
+        let tag = ModeTagType::from_u16(tag_backing);
+        if mode_find_index(tag.value, tag.ansi).is_none() {
+            return GHOSTTY_INVALID_VALUE;
         }
+        self.terminal.mode_set(tag, value);
+        GHOSTTY_SUCCESS
     }
 
     pub unsafe fn set_string(
@@ -222,6 +221,27 @@ impl RustTerminalOwned {
             let style = (*screen).cursor.style;
             let ghostty = style_to_ghostty_style(&style);
             terminal_get_style_impl(data, &ghostty, out)
+        }
+    }
+
+    pub unsafe fn get_scrollbar(&self, data: c_int, out: *mut c_void) -> c_int {
+        unsafe {
+            let screen = self.terminal.active();
+            if screen.is_null() {
+                return GHOSTTY_INVALID_VALUE;
+            }
+            let pages = (*screen).pages;
+            if pages.is_null() {
+                return GHOSTTY_INVALID_VALUE;
+            }
+            let sb = (*pages).scrollbar();
+            terminal_get_scrollbar_impl(
+                data,
+                sb.total as u64,
+                sb.offset as u64,
+                sb.len as u64,
+                out,
+            )
         }
     }
 
@@ -678,6 +698,21 @@ pub unsafe extern "C" fn ghostty_rust_terminal_owned_get_style(
         }
         let owned = &*(handle as *mut RustTerminalOwned);
         owned.get_style(data, out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_get_scrollbar(
+    handle: *mut c_void,
+    data: c_int,
+    out: *mut c_void,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        owned.get_scrollbar(data, out)
     }
 }
 
