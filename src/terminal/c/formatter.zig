@@ -2,6 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 const lib = @import("../lib.zig");
 const CAllocator = lib.alloc.Allocator;
+const build_options = @import("terminal_options");
 const terminal_c = @import("terminal.zig");
 const grid_ref = @import("grid_ref.zig");
 const selection_c = @import("selection.zig");
@@ -9,13 +10,68 @@ const ZigTerminal = @import("../Terminal.zig");
 const formatterpkg = @import("../formatter.zig");
 const Result = @import("result.zig").Result;
 
+const rust_owned = if (build_options.terminal_rust_owned) struct {
+    const OwnedFormatterExtra = extern struct {
+        size: usize,
+        palette: bool,
+        modes: bool,
+        scrolling_region: bool,
+        tabstops: bool,
+        pwd: bool,
+        keyboard: bool,
+        screen_size: usize,
+        screen_cursor: bool,
+        screen_style: bool,
+        screen_hyperlink: bool,
+        screen_protection: bool,
+        screen_kitty_keyboard: bool,
+        screen_charsets: bool,
+    };
+
+    const OwnedFormatterOptions = extern struct {
+        size: usize,
+        emit: u8,
+        unwrap: bool,
+        trim: bool,
+        extra: OwnedFormatterExtra,
+        selection: ?*const selection_c.CSelection,
+    };
+
+    extern fn ghostty_rust_terminal_owned_formatter_new(
+        handle: ?*anyopaque,
+        alloc: ?*const CAllocator,
+        opts: *const OwnedFormatterOptions,
+    ) callconv(.c) ?*anyopaque;
+
+    extern fn ghostty_rust_terminal_owned_formatter_free(
+        alloc: ?*const CAllocator,
+        fmt: ?*anyopaque,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_owned_formatter_format_buf(
+        fmt: ?*anyopaque,
+        out: ?[*]u8,
+        out_len: usize,
+        out_written: *usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_formatter_format_alloc(
+        alloc: ?*const CAllocator,
+        fmt: ?*anyopaque,
+        out_ptr: *?[*]u8,
+        out_len: *usize,
+    ) callconv(.c) c_int;
+} else struct {};
+
 /// Wrapper around formatter that tracks the allocator for C API usage.
 const FormatterWrapper = struct {
     kind: Kind,
     alloc: std.mem.Allocator,
+    c_alloc: ?*const CAllocator = null,
 
     const Kind = union(enum) {
         terminal: formatterpkg.TerminalFormatter,
+        rust: *anyopaque,
     };
 };
 
@@ -124,6 +180,32 @@ pub fn terminal_new(
     return .success;
 }
 
+fn ownedFormatterOptions(opts: TerminalOptions) rust_owned.OwnedFormatterOptions {
+    return .{
+        .size = @sizeOf(rust_owned.OwnedFormatterOptions),
+        .emit = @intCast(@intFromEnum(opts.emit)),
+        .unwrap = opts.unwrap,
+        .trim = opts.trim,
+        .extra = .{
+            .size = @sizeOf(rust_owned.OwnedFormatterExtra),
+            .screen_size = @sizeOf(ScreenOptions.Extra),
+            .palette = opts.extra.palette,
+            .modes = opts.extra.modes,
+            .scrolling_region = opts.extra.scrolling_region,
+            .tabstops = opts.extra.tabstops,
+            .pwd = opts.extra.pwd,
+            .keyboard = opts.extra.keyboard,
+            .screen_cursor = opts.extra.screen.cursor,
+            .screen_style = opts.extra.screen.style,
+            .screen_hyperlink = opts.extra.screen.hyperlink,
+            .screen_protection = opts.extra.screen.protection,
+            .screen_kitty_keyboard = opts.extra.screen.kitty_keyboard,
+            .screen_charsets = opts.extra.screen.charsets,
+        },
+        .selection = opts.selection,
+    };
+}
+
 fn terminal_new_(
     alloc_: ?*const CAllocator,
     terminal_: terminal_c.Terminal,
@@ -132,6 +214,30 @@ fn terminal_new_(
     InvalidValue,
     OutOfMemory,
 }!*FormatterWrapper {
+    const wrapper = terminal_ orelse return error.InvalidValue;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.rustOwnedHandle(wrapper)) |handle| {
+            const alloc = lib.alloc.default(alloc_);
+            var ropts = ownedFormatterOptions(opts);
+            const fmt = rust_owned.ghostty_rust_terminal_owned_formatter_new(
+                handle,
+                alloc_,
+                &ropts,
+            ) orelse return error.OutOfMemory;
+            const ptr = alloc.create(FormatterWrapper) catch {
+                rust_owned.ghostty_rust_terminal_owned_formatter_free(alloc_, fmt);
+                return error.OutOfMemory;
+            };
+            ptr.* = .{
+                .kind = .{ .rust = fmt },
+                .alloc = alloc,
+                .c_alloc = alloc_,
+            };
+            return ptr;
+        }
+    }
+
     const t: *ZigTerminal = terminal_c.terminalZig(terminal_) orelse return error.InvalidValue;
 
     const alloc = lib.alloc.default(alloc_);
@@ -184,6 +290,14 @@ pub fn format_buf(
                 return .out_of_space;
             },
         },
+        .rust => |fmt| {
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_formatter_format_buf(
+                fmt,
+                out_,
+                out_len,
+                out_written,
+            ));
+        },
     }
 
     out_written.* = writer.end;
@@ -204,6 +318,14 @@ pub fn format_alloc(
 
     switch (wrapper.kind) {
         .terminal => |*t| t.format(&aw.writer) catch return .out_of_memory,
+        .rust => |fmt| {
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_formatter_format_alloc(
+                wrapper.c_alloc,
+                fmt,
+                out_ptr,
+                out_len,
+            ));
+        },
     }
 
     const buf = aw.toOwnedSlice() catch return .out_of_memory;
@@ -215,6 +337,15 @@ pub fn format_alloc(
 pub fn free(formatter_: Formatter) callconv(lib.calling_conv) void {
     const wrapper = formatter_ orelse return;
     const alloc = wrapper.alloc;
+    switch (wrapper.kind) {
+        .terminal => {},
+        .rust => |fmt| {
+            rust_owned.ghostty_rust_terminal_owned_formatter_free(
+                wrapper.c_alloc,
+                fmt,
+            );
+        },
+    }
     alloc.destroy(wrapper);
 }
 

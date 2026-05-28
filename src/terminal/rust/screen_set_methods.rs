@@ -1,10 +1,12 @@
 use core::ffi::c_void;
 use core::ptr;
 
-use crate::allocator::{GhosttyAllocator, alloc_alloc_impl, alloc_free_impl};
+use crate::allocator::{alloc_alloc_impl, alloc_free_impl, GhosttyAllocator};
 use crate::early::*;
 use crate::highlight::Pin;
+use crate::kitty_graphics_storage::{ImageStorage, DEFAULT_SCRATCH_CAP};
 use crate::page_list_types::PageList;
+use crate::screen_methods::pin_row_and_cell;
 use crate::screen_set::ScreenKey;
 use crate::screen_set::ScreenSet;
 use crate::screen_types::Screen;
@@ -12,6 +14,42 @@ use crate::size_types::CellCountInt;
 use crate::tabstops::Tabstops;
 use crate::terminal_byte_list::{byte_list_from_void, ByteList};
 use crate::terminal_types::{Terminal, TerminalOptions, TABSTOP_INTERVAL};
+
+unsafe fn kitty_images_init(alloc: *const GhosttyAllocator) -> *mut c_void {
+    unsafe {
+        let scratch = alloc_alloc_impl(alloc, DEFAULT_SCRATCH_CAP) as *mut u8;
+        if scratch.is_null() {
+            return ptr::null_mut();
+        }
+        let storage_ptr =
+            alloc_alloc_impl(alloc, core::mem::size_of::<ImageStorage>()) as *mut ImageStorage;
+        if storage_ptr.is_null() {
+            alloc_free_impl(alloc, scratch, DEFAULT_SCRATCH_CAP);
+            return ptr::null_mut();
+        }
+        ptr::write(storage_ptr, ImageStorage::new(scratch, DEFAULT_SCRATCH_CAP));
+        storage_ptr as *mut c_void
+    }
+}
+
+unsafe fn kitty_images_deinit(alloc: *const GhosttyAllocator, storage: *mut c_void) {
+    if storage.is_null() {
+        return;
+    }
+    unsafe {
+        let storage = storage as *mut ImageStorage;
+        let scratch = (*storage).scratch_buf_mut();
+        let scratch_cap = (*storage).scratch_cap();
+        alloc_free_impl(
+            alloc,
+            storage as *mut u8,
+            core::mem::size_of::<ImageStorage>(),
+        );
+        if !scratch.is_null() {
+            alloc_free_impl(alloc, scratch, scratch_cap);
+        }
+    }
+}
 
 impl ScreenSet {
     pub unsafe fn bootstrap_init(
@@ -34,12 +72,12 @@ impl ScreenSet {
     pub unsafe fn bootstrap_deinit(&mut self, alloc: *const GhosttyAllocator) {
         unsafe {
             for i in 0..2 {
-                let screen = self.screens[i];
+                let screen = *self.screens.get_unchecked(i);
                 if !screen.is_null() {
                     let s = screen as *mut Screen;
                     (*s).bootstrap_deinit(alloc);
                     alloc_free_impl(alloc, s as *mut u8, core::mem::size_of::<Screen>());
-                    self.screens[i] = ptr::null_mut();
+                    *self.screens.get_unchecked_mut(i) = ptr::null_mut();
                 }
             }
             self.active = ptr::null_mut();
@@ -60,7 +98,11 @@ impl Screen {
 
             let first = (*pages_ptr).pages.first;
             if first.is_null() {
-                alloc_free_impl(alloc, pages_ptr as *mut u8, core::mem::size_of::<PageList>());
+                alloc_free_impl(
+                    alloc,
+                    pages_ptr as *mut u8,
+                    core::mem::size_of::<PageList>(),
+                );
                 return None;
             }
 
@@ -72,14 +114,21 @@ impl Screen {
             });
             if page_pin.is_null() {
                 (*pages_ptr).deinit_full(alloc);
-                alloc_free_impl(alloc, pages_ptr as *mut u8, core::mem::size_of::<PageList>());
+                alloc_free_impl(
+                    alloc,
+                    pages_ptr as *mut u8,
+                    core::mem::size_of::<PageList>(),
+                );
                 return None;
             }
 
             let mut cursor = crate::screen_types::ScreenCursor::default();
             cursor.page_pin = page_pin;
+            let (row, cell) = pin_row_and_cell(page_pin);
+            cursor.page_row = row;
+            cursor.page_cell = cell;
 
-            Some(Screen {
+            let mut screen = Screen {
                 alloc: core::ptr::read(alloc),
                 pages: pages_ptr,
                 no_scrollback: max_scrollback == 0,
@@ -89,18 +138,26 @@ impl Screen {
                 charset: crate::screen_types::ScreenCharsetState::default(),
                 protected_mode: crate::ansi::ProtectedMode::OFF,
                 kitty_keyboard: crate::kitty_key::KittyKeyFlagStack::default(),
-                kitty_images: ptr::null_mut(),
+                kitty_images: kitty_images_init(alloc),
                 semantic_prompt: crate::screen_types::ScreenSemanticPrompt::default(),
                 dirty: crate::screen_types::ScreenDirty::default(),
-            })
+            };
+            screen.cursor_reload();
+            Some(screen)
         }
     }
 
     pub unsafe fn bootstrap_deinit(&mut self, alloc: *const GhosttyAllocator) {
         unsafe {
+            kitty_images_deinit(alloc, self.kitty_images);
+            self.kitty_images = ptr::null_mut();
             if !self.pages.is_null() {
                 (*self.pages).deinit_full(alloc);
-                alloc_free_impl(alloc, self.pages as *mut u8, core::mem::size_of::<PageList>());
+                alloc_free_impl(
+                    alloc,
+                    self.pages as *mut u8,
+                    core::mem::size_of::<PageList>(),
+                );
                 self.pages = ptr::null_mut();
             }
         }

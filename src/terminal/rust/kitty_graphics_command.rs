@@ -139,13 +139,27 @@ impl Transmission {
             };
         }
 
-        if let Some(v) = kv.get(b's') { result.width = v; }
-        if let Some(v) = kv.get(b'v') { result.height = v; }
-        if let Some(v) = kv.get(b'S') { result.size = v; }
-        if let Some(v) = kv.get(b'O') { result.offset = v; }
-        if let Some(v) = kv.get(b'i') { result.image_id = v; }
-        if let Some(v) = kv.get(b'I') { result.image_number = v; }
-        if let Some(v) = kv.get(b'p') { result.placement_id = v; }
+        if let Some(v) = kv.get(b's') {
+            result.width = v;
+        }
+        if let Some(v) = kv.get(b'v') {
+            result.height = v;
+        }
+        if let Some(v) = kv.get(b'S') {
+            result.size = v;
+        }
+        if let Some(v) = kv.get(b'O') {
+            result.offset = v;
+        }
+        if let Some(v) = kv.get(b'i') {
+            result.image_id = v;
+        }
+        if let Some(v) = kv.get(b'I') {
+            result.image_number = v;
+        }
+        if let Some(v) = kv.get(b'p') {
+            result.placement_id = v;
+        }
 
         if let Some(v) = kv.get(b'o') {
             let c = v as u8;
@@ -214,17 +228,39 @@ impl Display {
     pub(crate) fn parse(kv: &KvMap) -> Option<Self> {
         let mut result = Self::new();
 
-        if let Some(v) = kv.get(b'i') { result.image_id = v; }
-        if let Some(v) = kv.get(b'I') { result.image_number = v; }
-        if let Some(v) = kv.get(b'p') { result.placement_id = v; }
-        if let Some(v) = kv.get(b'x') { result.x = v; }
-        if let Some(v) = kv.get(b'y') { result.y = v; }
-        if let Some(v) = kv.get(b'w') { result.width = v; }
-        if let Some(v) = kv.get(b'h') { result.height = v; }
-        if let Some(v) = kv.get(b'X') { result.x_offset = v; }
-        if let Some(v) = kv.get(b'Y') { result.y_offset = v; }
-        if let Some(v) = kv.get(b'c') { result.columns = v; }
-        if let Some(v) = kv.get(b'r') { result.rows = v; }
+        if let Some(v) = kv.get(b'i') {
+            result.image_id = v;
+        }
+        if let Some(v) = kv.get(b'I') {
+            result.image_number = v;
+        }
+        if let Some(v) = kv.get(b'p') {
+            result.placement_id = v;
+        }
+        if let Some(v) = kv.get(b'x') {
+            result.x = v;
+        }
+        if let Some(v) = kv.get(b'y') {
+            result.y = v;
+        }
+        if let Some(v) = kv.get(b'w') {
+            result.width = v;
+        }
+        if let Some(v) = kv.get(b'h') {
+            result.height = v;
+        }
+        if let Some(v) = kv.get(b'X') {
+            result.x_offset = v;
+        }
+        if let Some(v) = kv.get(b'Y') {
+            result.y_offset = v;
+        }
+        if let Some(v) = kv.get(b'c') {
+            result.columns = v;
+        }
+        if let Some(v) = kv.get(b'r') {
+            result.rows = v;
+        }
 
         if let Some(v) = kv.get(b'C') {
             result.cursor_movement = match v {
@@ -242,11 +278,21 @@ impl Display {
             };
         }
 
-        if let Some(v) = kv.get(b'z') { result.z = v as i32; }
-        if let Some(v) = kv.get(b'P') { result.parent_id = v; }
-        if let Some(v) = kv.get(b'Q') { result.parent_placement_id = v; }
-        if let Some(v) = kv.get(b'H') { result.horizontal_offset = v as i32; }
-        if let Some(v) = kv.get(b'V') { result.vertical_offset = v as i32; }
+        if let Some(v) = kv.get(b'z') {
+            result.z = v as i32;
+        }
+        if let Some(v) = kv.get(b'P') {
+            result.parent_id = v;
+        }
+        if let Some(v) = kv.get(b'Q') {
+            result.parent_placement_id = v;
+        }
+        if let Some(v) = kv.get(b'H') {
+            result.horizontal_offset = v as i32;
+        }
+        if let Some(v) = kv.get(b'V') {
+            result.vertical_offset = v as i32;
+        }
 
         Some(result)
     }
@@ -262,7 +308,12 @@ pub(crate) struct AnimationBackground {
 
 impl AnimationBackground {
     pub(crate) fn new() -> Self {
-        Self { r: 0, g: 0, b: 0, a: 0 }
+        Self {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        }
     }
 
     pub(crate) fn from_u32(v: u32) -> Self {
@@ -302,11 +353,21 @@ impl AnimationFrameLoading {
     pub(crate) fn parse(kv: &KvMap) -> Option<Self> {
         let mut result = Self::new();
 
-        if let Some(v) = kv.get(b'x') { result.x = v; }
-        if let Some(v) = kv.get(b'y') { result.y = v; }
-        if let Some(v) = kv.get(b'c') { result.create_frame = v; }
-        if let Some(v) = kv.get(b'r') { result.edit_frame = v; }
-        if let Some(v) = kv.get(b'z') { result.gap_ms = v; }
+        if let Some(v) = kv.get(b'x') {
+            result.x = v;
+        }
+        if let Some(v) = kv.get(b'y') {
+            result.y = v;
+        }
+        if let Some(v) = kv.get(b'c') {
+            result.create_frame = v;
+        }
+        if let Some(v) = kv.get(b'r') {
+            result.edit_frame = v;
+        }
+        if let Some(v) = kv.get(b'z') {
+            result.gap_ms = v;
+        }
 
         if let Some(v) = kv.get(b'X') {
             result.composition_mode = match v {
@@ -355,14 +416,30 @@ impl AnimationFrameComposition {
     pub(crate) fn parse(kv: &KvMap) -> Option<Self> {
         let mut result = Self::new();
 
-        if let Some(v) = kv.get(b'c') { result.frame = v; }
-        if let Some(v) = kv.get(b'r') { result.edit_frame = v; }
-        if let Some(v) = kv.get(b'x') { result.x = v; }
-        if let Some(v) = kv.get(b'y') { result.y = v; }
-        if let Some(v) = kv.get(b'w') { result.width = v; }
-        if let Some(v) = kv.get(b'h') { result.height = v; }
-        if let Some(v) = kv.get(b'X') { result.left_edge = v; }
-        if let Some(v) = kv.get(b'Y') { result.top_edge = v; }
+        if let Some(v) = kv.get(b'c') {
+            result.frame = v;
+        }
+        if let Some(v) = kv.get(b'r') {
+            result.edit_frame = v;
+        }
+        if let Some(v) = kv.get(b'x') {
+            result.x = v;
+        }
+        if let Some(v) = kv.get(b'y') {
+            result.y = v;
+        }
+        if let Some(v) = kv.get(b'w') {
+            result.width = v;
+        }
+        if let Some(v) = kv.get(b'h') {
+            result.height = v;
+        }
+        if let Some(v) = kv.get(b'X') {
+            result.left_edge = v;
+        }
+        if let Some(v) = kv.get(b'Y') {
+            result.top_edge = v;
+        }
 
         if let Some(v) = kv.get(b'C') {
             result.composition_mode = match v {
@@ -409,10 +486,18 @@ impl AnimationControl {
             };
         }
 
-        if let Some(v) = kv.get(b'r') { result.frame = v; }
-        if let Some(v) = kv.get(b'z') { result.gap_ms = v; }
-        if let Some(v) = kv.get(b'c') { result.current_frame = v; }
-        if let Some(v) = kv.get(b'v') { result.loops = v; }
+        if let Some(v) = kv.get(b'r') {
+            result.frame = v;
+        }
+        if let Some(v) = kv.get(b'z') {
+            result.gap_ms = v;
+        }
+        if let Some(v) = kv.get(b'c') {
+            result.current_frame = v;
+        }
+        if let Some(v) = kv.get(b'v') {
+            result.loops = v;
+        }
 
         Some(result)
     }
@@ -503,10 +588,14 @@ impl Delete {
                     image_id: 0,
                     placement_id: 0,
                 };
-                if let Some(v) = kv.get(b'i') { result.image_id = v; }
-                if let Some(v) = kv.get(b'p') { result.placement_id = v; }
+                if let Some(v) = kv.get(b'i') {
+                    result.image_id = v;
+                }
+                if let Some(v) = kv.get(b'p') {
+                    result.placement_id = v;
+                }
                 Some(Delete::Id(result))
-            },
+            }
 
             b'n' | b'N' => {
                 let mut result = DeleteByNewest {
@@ -514,10 +603,14 @@ impl Delete {
                     image_number: 0,
                     placement_id: 0,
                 };
-                if let Some(v) = kv.get(b'I') { result.image_number = v; }
-                if let Some(v) = kv.get(b'p') { result.placement_id = v; }
+                if let Some(v) = kv.get(b'I') {
+                    result.image_number = v;
+                }
+                if let Some(v) = kv.get(b'p') {
+                    result.placement_id = v;
+                }
                 Some(Delete::Newest(result))
-            },
+            }
 
             b'c' | b'C' => Some(Delete::IntersectCursor(what == b'C')),
             b'f' | b'F' => Some(Delete::AnimationFrames(what == b'F')),
@@ -528,10 +621,14 @@ impl Delete {
                     x: 0,
                     y: 0,
                 };
-                if let Some(v) = kv.get(b'x') { result.x = v; }
-                if let Some(v) = kv.get(b'y') { result.y = v; }
+                if let Some(v) = kv.get(b'x') {
+                    result.x = v;
+                }
+                if let Some(v) = kv.get(b'y') {
+                    result.y = v;
+                }
                 Some(Delete::IntersectCell(result))
-            },
+            }
 
             b'q' | b'Q' => {
                 let mut result = DeleteIntersectCellZ {
@@ -540,49 +637,63 @@ impl Delete {
                     y: 0,
                     z: 0,
                 };
-                if let Some(v) = kv.get(b'x') { result.x = v; }
-                if let Some(v) = kv.get(b'y') { result.y = v; }
-                if let Some(v) = kv.get(b'z') { result.z = v as i32; }
+                if let Some(v) = kv.get(b'x') {
+                    result.x = v;
+                }
+                if let Some(v) = kv.get(b'y') {
+                    result.y = v;
+                }
+                if let Some(v) = kv.get(b'z') {
+                    result.z = v as i32;
+                }
                 Some(Delete::IntersectCellZ(result))
-            },
+            }
 
             b'r' | b'R' => {
                 let x = kv.get(b'x')?;
                 let y = kv.get(b'y')?;
-                if x > y { return None; }
+                if x > y {
+                    return None;
+                }
                 Some(Delete::Range(DeleteRange {
                     delete: what == b'R',
                     first: x,
                     last: y,
                 }))
-            },
+            }
 
             b'x' | b'X' => {
                 let mut result = DeleteColumn {
                     delete: what == b'X',
                     x: 0,
                 };
-                if let Some(v) = kv.get(b'x') { result.x = v; }
+                if let Some(v) = kv.get(b'x') {
+                    result.x = v;
+                }
                 Some(Delete::Column(result))
-            },
+            }
 
             b'y' | b'Y' => {
                 let mut result = DeleteRow {
                     delete: what == b'Y',
                     y: 0,
                 };
-                if let Some(v) = kv.get(b'y') { result.y = v; }
+                if let Some(v) = kv.get(b'y') {
+                    result.y = v;
+                }
                 Some(Delete::Row(result))
-            },
+            }
 
             b'z' | b'Z' => {
                 let mut result = DeleteZ {
                     delete: what == b'Z',
                     z: 0,
                 };
-                if let Some(v) = kv.get(b'z') { result.z = v as i32; }
+                if let Some(v) = kv.get(b'z') {
+                    result.z = v as i32;
+                }
                 Some(Delete::Z(result))
-            },
+            }
 
             _ => None,
         }
@@ -593,7 +704,10 @@ impl Delete {
 pub(crate) enum CommandControl {
     Query(Transmission),
     Transmit(Transmission),
-    TransmitAndDisplay { transmission: Transmission, display: Display },
+    TransmitAndDisplay {
+        transmission: Transmission,
+        display: Display,
+    },
     Display(Display),
     Delete(Delete),
     TransmitAnimationFrame(AnimationFrameLoading),
@@ -660,10 +774,10 @@ impl Response {
     }
 
     pub(crate) fn ok(&self) -> bool {
-        self.message_len == 2 && unsafe {
-            ptr::read(self.message_ptr) == b'O' &&
-            ptr::read(self.message_ptr.add(1)) == b'K'
-        }
+        self.message_len == 2
+            && unsafe {
+                ptr::read(self.message_ptr) == b'O' && ptr::read(self.message_ptr.add(1)) == b'K'
+            }
     }
 
     pub(crate) fn empty(&self) -> bool {
@@ -673,7 +787,9 @@ impl Response {
     pub(crate) fn encode(&self, buf: *mut u8, buf_len: usize, out_written: *mut usize) -> bool {
         if self.id == 0 && self.image_number == 0 {
             if !out_written.is_null() {
-                unsafe { ptr::write(out_written, 0); }
+                unsafe {
+                    ptr::write(out_written, 0);
+                }
             }
             return true;
         }
@@ -682,16 +798,24 @@ impl Response {
 
         macro_rules! write_byte {
             ($b:expr) => {
-                if pos >= buf_len { return false; }
-                unsafe { ptr::write(buf.add(pos), $b); }
+                if pos >= buf_len {
+                    return false;
+                }
+                unsafe {
+                    ptr::write(buf.add(pos), $b);
+                }
                 pos += 1;
             };
         }
 
         macro_rules! write_bytes {
             ($ptr:expr, $len:expr) => {
-                if pos + $len > buf_len { return false; }
-                unsafe { ptr::copy_nonoverlapping($ptr, buf.add(pos), $len); }
+                if pos + $len > buf_len {
+                    return false;
+                }
+                unsafe {
+                    ptr::copy_nonoverlapping($ptr, buf.add(pos), $len);
+                }
                 pos += $len;
             };
         }
@@ -705,21 +829,33 @@ impl Response {
         if self.id > 0 {
             prior = true;
             let n = write_u32_to_buf(unsafe { buf.add(pos) }, buf_len - pos, b"i=", 2);
-            if n == 0 { return false; }
+            if n == 0 {
+                return false;
+            }
             pos += n;
         }
 
         if self.image_number > 0 {
-            if prior { write_byte!(b','); } else { prior = true; }
+            if prior {
+                write_byte!(b',');
+            } else {
+                prior = true;
+            }
             let n = write_u32_to_buf(unsafe { buf.add(pos) }, buf_len - pos, b"I=", 2);
-            if n == 0 { return false; }
+            if n == 0 {
+                return false;
+            }
             pos += n;
         }
 
         if self.placement_id > 0 {
-            if prior { write_byte!(b','); }
+            if prior {
+                write_byte!(b',');
+            }
             let n = write_u32_to_buf(unsafe { buf.add(pos) }, buf_len - pos, b"p=", 2);
-            if n == 0 { return false; }
+            if n == 0 {
+                return false;
+            }
             pos += n;
         }
 
@@ -729,7 +865,9 @@ impl Response {
         write_byte!(b'\\');
 
         if !out_written.is_null() {
-            unsafe { ptr::write(out_written, pos); }
+            unsafe {
+                ptr::write(out_written, pos);
+            }
         }
 
         true
@@ -860,11 +998,11 @@ impl CommandParser {
                         self.state = ParserState::ControlValue;
                     }
                     true
-                },
+                }
                 b';' => {
                     self.state = ParserState::Data;
                     true
-                },
+                }
                 _ => self.accumulate_value(c, ParserState::ControlKeyIgnore),
             },
 
@@ -872,7 +1010,7 @@ impl CommandParser {
                 b'=' => {
                     self.state = ParserState::ControlValueIgnore;
                     true
-                },
+                }
                 _ => true,
             },
 
@@ -886,11 +1024,11 @@ impl CommandParser {
                 b',' => {
                     self.state = ParserState::ControlKeyIgnore;
                     true
-                },
+                }
                 b';' => {
                     self.state = ParserState::Data;
                     true
-                },
+                }
                 _ => true,
             },
 
@@ -906,7 +1044,7 @@ impl CommandParser {
                 }
                 self.data_len += 1;
                 true
-            },
+            }
         }
     }
 
@@ -917,16 +1055,18 @@ impl CommandParser {
                 if !self.finish_value(ParserState::Data) {
                     return None;
                 }
-            },
-            ParserState::ControlValueIgnore => {},
-            ParserState::Data => {},
+            }
+            ParserState::ControlValueIgnore => {}
+            ParserState::Data => {}
         }
 
         let action_byte: u8 = match self.kv.get(b'a') {
             Some(v) => {
-                if v > 127 { return None; }
+                if v > 127 {
+                    return None;
+                }
                 v as u8
-            },
+            }
             None => b't',
         };
 
@@ -934,36 +1074,39 @@ impl CommandParser {
             b'q' => {
                 let t = Transmission::parse(&self.kv)?;
                 CommandControl::Query(t)
-            },
+            }
             b't' => {
                 let t = Transmission::parse(&self.kv)?;
                 CommandControl::Transmit(t)
-            },
+            }
             b'T' => {
                 let t = Transmission::parse(&self.kv)?;
                 let d = Display::parse(&self.kv)?;
-                CommandControl::TransmitAndDisplay { transmission: t, display: d }
-            },
+                CommandControl::TransmitAndDisplay {
+                    transmission: t,
+                    display: d,
+                }
+            }
             b'p' => {
                 let d = Display::parse(&self.kv)?;
                 CommandControl::Display(d)
-            },
+            }
             b'd' => {
                 let d = Delete::parse(&self.kv)?;
                 CommandControl::Delete(d)
-            },
+            }
             b'f' => {
                 let a = AnimationFrameLoading::parse(&self.kv)?;
                 CommandControl::TransmitAnimationFrame(a)
-            },
+            }
             b'a' => {
                 let a = AnimationControl::parse(&self.kv)?;
                 CommandControl::ControlAnimation(a)
-            },
+            }
             b'c' => {
                 let a = AnimationFrameComposition::parse(&self.kv)?;
                 CommandControl::ComposeAnimation(a)
-            },
+            }
             _ => return None,
         };
 
@@ -1007,7 +1150,9 @@ impl CommandParser {
         if self.kv_temp_len == 1 {
             let c = unsafe { *self.kv_temp.get_unchecked(0) };
             if c < b'0' || c > b'9' {
-                return self.kv.put(self.kv_current, c as u32);
+                let ok = self.kv.put(self.kv_current, c as u32);
+                self.kv_temp_len = 0;
+                return ok;
             }
         }
 
@@ -1021,7 +1166,7 @@ impl CommandParser {
                     if !self.kv.put(self.kv_current, as_u32) {
                         return false;
                     }
-                },
+                }
                 None => return false,
             }
         } else {
@@ -1030,7 +1175,7 @@ impl CommandParser {
                     if !self.kv.put(self.kv_current, v) {
                         return false;
                     }
-                },
+                }
                 None => return false,
             }
         }
@@ -1140,10 +1285,12 @@ fn base64_decode_in_place(data: *mut u8, len: usize) -> Option<usize> {
                 if bits >= 8 {
                     bits -= 8;
                     let byte = ((accum >> bits) & 0xFF) as u8;
-                    unsafe { ptr::write(data.add(write_pos), byte); }
+                    unsafe {
+                        ptr::write(data.add(write_pos), byte);
+                    }
                     write_pos += 1;
                 }
-            },
+            }
             None => {
                 if c == b'=' {
                     continue;
@@ -1152,7 +1299,7 @@ fn base64_decode_in_place(data: *mut u8, len: usize) -> Option<usize> {
                     continue;
                 }
                 return None;
-            },
+            }
         }
     }
 

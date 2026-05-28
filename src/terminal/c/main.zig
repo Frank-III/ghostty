@@ -42,6 +42,7 @@ pub const size_report = @import("size_report.zig");
 pub const style = @import("style.zig");
 pub const sys = @import("sys.zig");
 pub const pin_bridge = @import("pin_bridge.zig");
+pub const render_owned_bridge = @import("render_owned_bridge.zig");
 pub const system_bridge = @import("system_bridge.zig");
 pub const terminal = @import("terminal.zig");
 
@@ -70,6 +71,10 @@ pub const formatter_free = formatter.free;
 pub const render_state_new = render.new;
 pub const render_state_free = render.free;
 pub const render_state_update = render.update;
+pub const render_owned_begin = render_owned_bridge.renderOwnedBegin;
+pub const render_owned_row = render_owned_bridge.renderOwnedRow;
+pub const render_owned_cell_style = render_owned_bridge.renderOwnedCellStyle;
+pub const render_owned_end = render_owned_bridge.renderOwnedEnd;
 pub const render_state_get = render.get;
 pub const render_state_get_multi = render.get_multi;
 pub const render_state_set = render.set;
@@ -242,6 +247,7 @@ test {
     _ = style;
     _ = sys;
     _ = pin_bridge;
+    _ = render_owned_bridge;
     _ = system_bridge;
     _ = terminal;
     _ = types;

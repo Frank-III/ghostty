@@ -10,6 +10,9 @@ const page = @import("../page.zig");
 const size = @import("../size.zig");
 const Style = @import("../style.zig").Style;
 const terminal_c = @import("terminal.zig");
+const point = @import("../point.zig");
+const grid_ref_c = @import("grid_ref.zig");
+const selection_c = @import("selection.zig");
 const ZigTerminal = @import("../Terminal.zig");
 const renderpkg = @import("../render.zig");
 const Result = @import("result.zig").Result;
@@ -17,6 +20,14 @@ const row = @import("row.zig");
 const style_c = @import("style.zig");
 
 const log = std.log.scoped(.render_state_c);
+
+const rust_owned = if (build_options.terminal_rust_owned) struct {
+    extern fn ghostty_rust_terminal_owned_render_state_update(
+        handle: ?*anyopaque,
+        state: RenderState,
+        alloc: ?*const CAllocator,
+    ) callconv(.c) c_int;
+} else struct {};
 
 const rust = if (build_options.lib_vt_rust) struct {
     extern fn ghostty_rust_render_index_next(
@@ -237,7 +248,7 @@ const rust = if (build_options.lib_vt_rust) struct {
     ) callconv(.c) c_int;
 } else struct {};
 
-const RenderStateWrapper = struct {
+pub const RenderStateWrapper = struct {
     alloc: std.mem.Allocator,
     state: renderpkg.RenderState = .empty,
 };
@@ -402,6 +413,18 @@ pub fn update(
     terminal_: terminal_c.Terminal,
 ) callconv(lib.calling_conv) Result {
     const state = state_ orelse return .invalid_value;
+    const wrapper = terminal_ orelse return .invalid_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.rustOwnedHandle(wrapper)) |handle| {
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_render_state_update(
+                handle,
+                state_,
+                terminal_c.rustOwnedAlloc(wrapper),
+            ));
+        }
+    }
+
     const t: *ZigTerminal = terminal_c.terminalZig(terminal_) orelse return .invalid_value;
 
     state.state.update(state.alloc, t) catch return .out_of_memory;
@@ -1743,6 +1766,36 @@ test "render: row get/set dirty" {
     try testing.expect(!dirty);
 }
 
+fn testSetSelection(
+    terminal: terminal_c.Terminal,
+    start: point.Coordinate,
+    end: point.Coordinate,
+) !void {
+    if (comptime build_options.terminal_rust_owned) {
+        var start_ref: grid_ref_c.CGridRef = undefined;
+        try testing.expectEqual(Result.success, terminal_c.grid_ref(terminal, .{
+            .tag = .active,
+            .value = .{ .active = start },
+        }, &start_ref));
+        var end_ref: grid_ref_c.CGridRef = undefined;
+        try testing.expectEqual(Result.success, terminal_c.grid_ref(terminal, .{
+            .tag = .active,
+            .value = .{ .active = end },
+        }, &end_ref));
+        const sel: selection_c.CSelection = .{ .start = start_ref, .end = end_ref };
+        try testing.expectEqual(Result.success, terminal_c.set(terminal, .selection, @ptrCast(&sel)));
+        return;
+    }
+
+    const t = terminal_c.terminalZig(terminal).?;
+    const screen = t.screens.active;
+    try screen.select(.init(
+        screen.pages.pin(.{ .active = start }).?,
+        screen.pages.pin(.{ .active = end }).?,
+        false,
+    ));
+}
+
 test "render: row get selection" {
     var terminal: terminal_c.Terminal = null;
     try testing.expectEqual(Result.success, terminal_c.new(
@@ -1756,13 +1809,7 @@ test "render: row get selection" {
     ));
     defer terminal_c.free(terminal);
 
-    const t = terminal_c.terminalZig(terminal).?;
-    const screen = t.screens.active;
-    try screen.select(.init(
-        screen.pages.pin(.{ .active = .{ .x = 2, .y = 1 } }).?,
-        screen.pages.pin(.{ .active = .{ .x = 4, .y = 1 } }).?,
-        false,
-    ));
+    try testSetSelection(terminal, .{ .x = 2, .y = 1 }, .{ .x = 4, .y = 1 });
 
     var state: RenderState = null;
     try testing.expectEqual(Result.success, new(
@@ -1836,13 +1883,7 @@ test "render: row cells get selected" {
     ));
     defer terminal_c.free(terminal);
 
-    const t = terminal_c.terminalZig(terminal).?;
-    const screen = t.screens.active;
-    try screen.select(.init(
-        screen.pages.pin(.{ .active = .{ .x = 2, .y = 1 } }).?,
-        screen.pages.pin(.{ .active = .{ .x = 4, .y = 1 } }).?,
-        false,
-    ));
+    try testSetSelection(terminal, .{ .x = 2, .y = 1 }, .{ .x = 4, .y = 1 });
 
     var state: RenderState = null;
     try testing.expectEqual(Result.success, new(
@@ -2262,7 +2303,7 @@ test "render: cursor primitive getters" {
     try testing.expectEqual(@as(size.CellCountInt, 1), y);
     try testing.expect(!wide_tail);
 
-    terminal_c.terminalZig(terminal).?.scrollViewport(.top);
+    terminal_c.scroll_viewport(terminal, .{ .tag = .top, .value = undefined });
     try testing.expectEqual(Result.success, update(state, terminal));
 
     has_viewport = true;

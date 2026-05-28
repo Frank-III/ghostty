@@ -390,6 +390,12 @@ const rust_owned = if (build_options.terminal_rust_owned) struct {
         out: ?*anyopaque,
     ) callconv(.c) c_int;
 
+    extern fn ghostty_rust_terminal_owned_get_kitty_graphics(
+        handle: ?*anyopaque,
+        enabled: bool,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
     extern fn ghostty_rust_terminal_owned_set_color_override(
         handle: ?*anyopaque,
         data: c_int,
@@ -401,6 +407,77 @@ const rust_owned = if (build_options.terminal_rust_owned) struct {
         index: u8,
         value: ?*const color.RGB.C,
     ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_clear_pwd_and_title(
+        handle: ?*anyopaque,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_owned_set_modify_other_keys_2(
+        handle: ?*anyopaque,
+        value: bool,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_owned_scroll_viewport(
+        handle: ?*anyopaque,
+        tag: u8,
+        delta: isize,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_owned_pwd_items(
+        handle: ?*anyopaque,
+        out_ptr: *[*]const u8,
+        out_len: *usize,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_owned_key_encoder_from_terminal(
+        handle: ?*anyopaque,
+        out_alt_esc_prefix: *bool,
+        out_cursor_key_application: *bool,
+        out_keypad_key_application: *bool,
+        out_backarrow_key_mode: *bool,
+        out_ignore_keypad_with_numlock: *bool,
+        out_modify_other_keys_state_2: *bool,
+        out_macos_option_as_alt: *c_int,
+        out_kitty_flags: *u8,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_owned_grid_ref_track(
+        handle: ?*anyopaque,
+        pt: *const point.Point.C,
+        out_pin: *?*PageList.Pin,
+        out_screen_key: *u8,
+        out_screen_generation: *usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_tracked_page_list(
+        handle: ?*anyopaque,
+        screen_key: TerminalScreen,
+        generation: usize,
+        out_pages: *?*PageList,
+    ) callconv(.c) bool;
+
+    extern fn ghostty_rust_tracked_pin_garbage(pin: *PageList.Pin) callconv(.c) bool;
+
+    extern fn ghostty_rust_tracked_pin_to_grid_ref(
+        pin: *PageList.Pin,
+        out_ref: ?*grid_ref_c.CGridRef,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_tracked_pin_point(
+        pages: *PageList,
+        tag: point.Tag,
+        pin: *PageList.Pin,
+        out: ?*point.Coordinate,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_tracked_grid_ref_set(
+        handle: ?*anyopaque,
+        pt: *const point.Point.C,
+        old_pin: *PageList.Pin,
+        out_pin: *?*PageList.Pin,
+        out_screen_key: *u8,
+        out_screen_generation: *usize,
+    ) callconv(.c) c_int;
 } else struct {};
 
 pub fn rustOwnedHandle(wrapper: *TerminalWrapper) ?*anyopaque {
@@ -410,7 +487,7 @@ pub fn rustOwnedHandle(wrapper: *TerminalWrapper) ?*anyopaque {
     };
 }
 
-fn rustOwnedAlloc(wrapper: *const TerminalWrapper) ?*const CAllocator {
+pub fn rustOwnedAlloc(wrapper: *const TerminalWrapper) ?*const CAllocator {
     return switch (wrapper.state) {
         .rust => |r| r.alloc,
         .zig => null,
@@ -1318,6 +1395,22 @@ pub fn scroll_viewport(
     terminal_: Terminal,
     behavior: ScrollViewport,
 ) callconv(lib.calling_conv) void {
+    const wrapper = terminal_ orelse return;
+    if (comptime build_options.terminal_rust_owned) {
+        if (rustOwnedHandle(wrapper)) |handle| {
+            const delta: isize = switch (behavior.tag) {
+                .top, .bottom => 0,
+                .delta => behavior.value.delta,
+            };
+            const tag: u8 = switch (behavior.tag) {
+                .top => 0,
+                .bottom => 1,
+                .delta => 2,
+            };
+            rust_owned.ghostty_rust_terminal_owned_scroll_viewport(handle, tag, delta);
+            return;
+        }
+    }
     const t: *ZigTerminal = terminalZig(terminal_) orelse return;
     t.scrollViewport(switch (behavior.tag) {
         .top => .top,
@@ -1834,6 +1927,11 @@ fn getTyped(
                     comptime build_options.kitty_graphics,
                     @ptrCast(out),
                 )),
+                .kitty_graphics => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_kitty_graphics(
+                    handle,
+                    comptime build_options.kitty_graphics,
+                    @ptrCast(out),
+                )),
                 .selection => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_selection(
                     handle,
                     @ptrCast(out),
@@ -2152,6 +2250,40 @@ pub fn grid_ref_track(
     const out = out_ref orelse return .invalid_value;
     out.* = null;
 
+    if (comptime build_options.terminal_rust_owned) {
+        if (rustOwnedHandle(wrapper)) |handle| {
+            var tracked_pin: ?*PageList.Pin = null;
+            var screen_key_byte: u8 = 0;
+            var screen_generation: usize = 0;
+            const result: Result = @enumFromInt(rust_owned.ghostty_rust_terminal_owned_grid_ref_track(
+                handle,
+                &pt,
+                &tracked_pin,
+                &screen_key_byte,
+                &screen_generation,
+            ));
+            if (result != .success) return result;
+
+            const alloc = lib.alloc.default(rustOwnedAlloc(wrapper));
+            const ref = alloc.create(grid_ref_tracked_c.TrackedGridRef) catch {
+                return .out_of_memory;
+            };
+            ref.* = .{
+                .alloc = alloc,
+                .terminal = wrapper,
+                .screen_key = @enumFromInt(screen_key_byte),
+                .screen_generation = screen_generation,
+                .pin = tracked_pin.?,
+            };
+            wrapper.tracked_grid_refs.putNoClobber(alloc, ref, {}) catch {
+                alloc.destroy(ref);
+                return .out_of_memory;
+            };
+            out.* = ref;
+            return .success;
+        }
+    }
+
     const t: *ZigTerminal = wrapper.zigTerminal() orelse return .invalid_value;
     const list = &t.screens.active.pages;
     const p = list.pin(.fromC(pt)) orelse return .invalid_value;
@@ -2229,8 +2361,14 @@ pub fn point_from_grid_ref(
     return .success;
 }
 
-/// Clear pwd and title buffers (called from the Rust port's terminal.reset).
 pub fn clear_pwd_and_title(terminal_: Terminal) callconv(lib.calling_conv) void {
+    const wrapper = terminal_ orelse return;
+    if (comptime build_options.terminal_rust_owned) {
+        if (rustOwnedHandle(wrapper)) |handle| {
+            rust_owned.ghostty_rust_terminal_owned_clear_pwd_and_title(handle);
+            return;
+        }
+    }
     const t = terminalZig(terminal_) orelse return;
     t.pwd.clearRetainingCapacity();
     t.title.clearRetainingCapacity();
@@ -2238,6 +2376,17 @@ pub fn clear_pwd_and_title(terminal_: Terminal) callconv(lib.calling_conv) void 
 
 /// Return pwd items pointer and length (called from the Rust port's formatter).
 pub fn pwd_items(terminal_: Terminal, out_ptr: *[*]const u8, out_len: *usize) callconv(lib.calling_conv) void {
+    const wrapper = terminal_ orelse {
+        out_ptr.* = "";
+        out_len.* = 0;
+        return;
+    };
+    if (comptime build_options.terminal_rust_owned) {
+        if (rustOwnedHandle(wrapper)) |handle| {
+            rust_owned.ghostty_rust_terminal_owned_pwd_items(handle, out_ptr, out_len);
+            return;
+        }
+    }
     const pwd = if (terminalZig(terminal_)) |zt| (zt.getPwd() orelse "") else "";
     out_ptr.* = pwd.ptr;
     out_len.* = pwd.len;
@@ -2257,6 +2406,9 @@ pub fn free(terminal_: Terminal) callconv(lib.calling_conv) void {
         },
         .rust => |r| blk: {
             if (comptime build_options.terminal_rust_owned) {
+                const gpa = lib.alloc.default(rustOwnedAlloc(wrapper));
+                for (wrapper.tracked_grid_refs.keys()) |tracked_ref| tracked_ref.terminal = null;
+                wrapper.tracked_grid_refs.deinit(gpa);
                 rust_owned.ghostty_rust_terminal_destroy(r.alloc, r.handle);
             }
             break :blk lib.alloc.default(r.alloc);

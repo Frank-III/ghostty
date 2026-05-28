@@ -10,9 +10,29 @@ const OptionAsAlt = @import("../../input/config.zig").OptionAsAlt;
 const Result = @import("result.zig").Result;
 const KeyEvent = @import("key_event.zig").Event;
 const Terminal = @import("terminal.zig").Terminal;
+const terminal_c = @import("terminal.zig");
 const ZigTerminal = @import("../Terminal.zig");
 
 const log = std.log.scoped(.key_encode);
+
+const rust_owned = if (build_options.terminal_rust_owned) struct {
+    extern fn ghostty_rust_terminal_owned_set_modify_other_keys_2(
+        handle: ?*anyopaque,
+        value: bool,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_owned_key_encoder_from_terminal(
+        handle: ?*anyopaque,
+        out_alt_esc_prefix: *bool,
+        out_cursor_key_application: *bool,
+        out_keypad_key_application: *bool,
+        out_backarrow_key_mode: *bool,
+        out_ignore_keypad_with_numlock: *bool,
+        out_modify_other_keys_state_2: *bool,
+        out_macos_option_as_alt: *c_int,
+        out_kitty_flags: *u8,
+    ) callconv(.c) void;
+} else struct {};
 
 const rust = if (build_options.lib_vt_rust) struct {
     extern fn ghostty_rust_key_encoder_setopt_bool(
@@ -184,7 +204,29 @@ pub fn setopt_from_terminal(
     terminal_: Terminal,
 ) callconv(lib.calling_conv) void {
     const wrapper = encoder_ orelse return;
-    const t: *ZigTerminal = @import("terminal.zig").terminalZig(terminal_) orelse return;
+    const term_wrapper = terminal_ orelse return;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.rustOwnedHandle(term_wrapper)) |handle| {
+            const opts = &wrapper.opts;
+            var kitty_raw: u8 = undefined;
+            rust_owned.ghostty_rust_terminal_owned_key_encoder_from_terminal(
+                handle,
+                &opts.alt_esc_prefix,
+                &opts.cursor_key_application,
+                &opts.keypad_key_application,
+                &opts.backarrow_key_mode,
+                &opts.ignore_keypad_with_numlock,
+                &opts.modify_other_keys_state_2,
+                @ptrCast(&opts.macos_option_as_alt),
+                &kitty_raw,
+            );
+            opts.kitty_flags = @bitCast(@as(u5, @truncate(kitty_raw)));
+            return;
+        }
+    }
+
+    const t: *ZigTerminal = terminal_c.terminalZig(terminal_) orelse return;
     if (comptime build_options.lib_vt_rust) {
         const opts = &wrapper.opts;
         rust.ghostty_rust_key_encoder_from_terminal(
@@ -342,7 +384,6 @@ test "setopt macos option as alt" {
 
 test "setopt_from_terminal" {
     const testing = std.testing;
-    const terminal_c = @import("terminal.zig");
     const modes = @import("../modes.zig");
 
     // Create encoder
@@ -370,7 +411,12 @@ test "setopt_from_terminal" {
     try testing.expectEqual(Result.success, terminal_c.mode_set(t, keypad_keys, true));
     try testing.expectEqual(Result.success, terminal_c.mode_set(t, backarrow_key_mode, true));
     try testing.expectEqual(Result.success, terminal_c.mode_set(t, ignore_keypad_with_numlock, false));
-    @import("terminal.zig").terminalZig(t).?.flags.modify_other_keys_2 = true;
+    if (comptime build_options.terminal_rust_owned) {
+        const handle = terminal_c.rustOwnedHandle(t.?) orelse return;
+        rust_owned.ghostty_rust_terminal_owned_set_modify_other_keys_2(handle, true);
+    } else {
+        terminal_c.terminalZig(t).?.flags.modify_other_keys_2 = true;
+    }
 
     const opt_true: OptionAsAlt = .true;
     setopt(e, .macos_option_as_alt, &opt_true);
@@ -397,7 +443,6 @@ test "setopt_from_terminal null" {
     const testing = std.testing;
 
     // Encoder null with valid terminal
-    const terminal_c = @import("terminal.zig");
     var t: Terminal = undefined;
     try testing.expectEqual(Result.success, terminal_c.new(
         &lib.alloc.test_allocator,

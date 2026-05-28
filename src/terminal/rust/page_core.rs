@@ -54,7 +54,11 @@ const fn ceil_power_of_two_usize(v: usize) -> usize {
 }
 
 const fn max_usize(a: usize, b: usize) -> usize {
-    if a >= b { a } else { b }
+    if a >= b {
+        a
+    } else {
+        b
+    }
 }
 
 fn zero_offset() -> Offset {
@@ -90,6 +94,7 @@ pub struct PageLayout {
     pub capacity: PageCapacity,
 }
 
+#[repr(C)]
 pub struct Page {
     pub memory: *mut u8,
     pub memory_len: usize,
@@ -121,10 +126,7 @@ impl Page {
             core::mem::size_of::<Style>(),
             core::mem::align_of::<Style>(),
         );
-        let styles_align = max_usize(
-            core::mem::align_of::<Style>(),
-            core::mem::align_of::<u32>(),
-        );
+        let styles_align = max_usize(core::mem::align_of::<Style>(), core::mem::align_of::<u32>());
         let styles_start = align_forward(cells_end, styles_align);
         let styles_end = styles_start + styles_layout.total_size;
 
@@ -384,9 +386,10 @@ pub fn std_capacity() -> PageCapacity {
     PageCapacity {
         cols: 215,
         rows: 215,
-        styles: 16,
-        hyperlink_bytes: 0,
-        grapheme_bytes: 0,
-        string_bytes: 0,
+        styles: 128,
+        hyperlink_bytes: (HYPERLINK_COUNT_DEFAULT as usize
+            * core::mem::size_of::<HyperlinkPageEntry>()) as u16,
+        grapheme_bytes: 512,
+        string_bytes: (StringAlloc::BITMAP_BIT_SIZE * STRING_CHUNK) as u32,
     }
 }

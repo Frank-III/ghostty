@@ -200,7 +200,7 @@ impl Selection {
                             break;
                         };
                         let row = next.row_ptr();
-                        let cells = unsafe {
+                        let cells = {
                             let page = &(*next.node).data;
                             core::slice::from_raw_parts(
                                 page.row_cells_ptr(row),
@@ -220,7 +220,7 @@ impl Selection {
                     let _ = it.next();
                     while let Some(next) = it.next() {
                         let (_row, cell) = next.row_and_cell_ptr();
-                        if unsafe { (*cell).has_text() } {
+                        if (*cell).has_text() {
                             *end_pin = next;
                             break;
                         }
@@ -232,7 +232,7 @@ impl Selection {
                     let _ = it.next();
                     while let Some(next) = it.next() {
                         let (_row, cell) = next.row_and_cell_ptr();
-                        if unsafe { (*cell).has_text() } {
+                        if (*cell).has_text() {
                             *end_pin = next;
                             break;
                         }
@@ -269,7 +269,7 @@ impl Selection {
                     );
                     while let Some(next) = row_it.next() {
                         let row = next.row_ptr();
-                        let cells = unsafe {
+                        let cells = {
                             let page = &(*next.node).data;
                             core::slice::from_raw_parts(
                                 page.row_cells_ptr(row),
@@ -287,37 +287,37 @@ impl Selection {
                     (*end_pin).x = 0;
                 }
                 SelectionAdjustment::EndOfLine => {
-                    (*end_pin).x = unsafe { (*(*end_pin).node).data.size.cols } - 1;
+                    (*end_pin).x = (*(*end_pin).node).data.size.cols - 1;
                 }
             }
         }
     }
 }
 
-pub(crate) unsafe fn terminal_owned_selection_adjust_impl(
+pub(crate) fn terminal_owned_selection_adjust_impl(
     screen: *mut Screen,
     selection: *mut GhosttySelection,
     adjustment: c_int,
 ) -> c_int {
+    if screen.is_null() || selection.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
+
+    let adjustment = match adjustment {
+        0 => SelectionAdjustment::Left,
+        1 => SelectionAdjustment::Right,
+        2 => SelectionAdjustment::Up,
+        3 => SelectionAdjustment::Down,
+        4 => SelectionAdjustment::Home,
+        5 => SelectionAdjustment::End,
+        6 => SelectionAdjustment::PageUp,
+        7 => SelectionAdjustment::PageDown,
+        8 => SelectionAdjustment::BeginningOfLine,
+        9 => SelectionAdjustment::EndOfLine,
+        _ => return GHOSTTY_INVALID_VALUE,
+    };
+
     unsafe {
-        if screen.is_null() || selection.is_null() {
-            return GHOSTTY_INVALID_VALUE;
-        }
-
-        let adjustment = match adjustment {
-            0 => SelectionAdjustment::Left,
-            1 => SelectionAdjustment::Right,
-            2 => SelectionAdjustment::Up,
-            3 => SelectionAdjustment::Down,
-            4 => SelectionAdjustment::Home,
-            5 => SelectionAdjustment::End,
-            6 => SelectionAdjustment::PageUp,
-            7 => SelectionAdjustment::PageDown,
-            8 => SelectionAdjustment::BeginningOfLine,
-            9 => SelectionAdjustment::EndOfLine,
-            _ => return GHOSTTY_INVALID_VALUE,
-        };
-
         let sel_c = ptr::read(selection);
         let Some(mut sel) = selection_from_ghostty(&sel_c) else {
             return GHOSTTY_INVALID_VALUE;
@@ -330,16 +330,16 @@ pub(crate) unsafe fn terminal_owned_selection_adjust_impl(
     }
 }
 
-pub(crate) unsafe fn terminal_owned_selection_order_impl(
+pub(crate) fn terminal_owned_selection_order_impl(
     screen: *const Screen,
     selection: *const GhosttySelection,
     out_order: *mut c_int,
 ) -> c_int {
-    unsafe {
-        if screen.is_null() || selection.is_null() || out_order.is_null() {
-            return GHOSTTY_INVALID_VALUE;
-        }
+    if screen.is_null() || selection.is_null() || out_order.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
 
+    unsafe {
         let sel_c = ptr::read(selection);
         let Some(sel) = selection_from_ghostty(&sel_c) else {
             return GHOSTTY_INVALID_VALUE;
@@ -352,25 +352,25 @@ pub(crate) unsafe fn terminal_owned_selection_order_impl(
     }
 }
 
-pub(crate) unsafe fn terminal_owned_selection_ordered_impl(
+pub(crate) fn terminal_owned_selection_ordered_impl(
     screen: *const Screen,
     selection: *const GhosttySelection,
     desired: c_int,
     out: *mut GhosttySelection,
 ) -> c_int {
+    if screen.is_null() || selection.is_null() || out.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
+
+    let desired_order = match desired {
+        0 => SelectionOrder::Forward,
+        1 => SelectionOrder::Reverse,
+        2 => SelectionOrder::MirroredForward,
+        3 => SelectionOrder::MirroredReverse,
+        _ => return GHOSTTY_INVALID_VALUE,
+    };
+
     unsafe {
-        if screen.is_null() || selection.is_null() || out.is_null() {
-            return GHOSTTY_INVALID_VALUE;
-        }
-
-        let desired_order = match desired {
-            0 => SelectionOrder::Forward,
-            1 => SelectionOrder::Reverse,
-            2 => SelectionOrder::MirroredForward,
-            3 => SelectionOrder::MirroredReverse,
-            _ => return GHOSTTY_INVALID_VALUE,
-        };
-
         let sel_c = ptr::read(selection);
         let Some(sel) = selection_from_ghostty(&sel_c) else {
             return GHOSTTY_INVALID_VALUE;
@@ -384,7 +384,7 @@ pub(crate) unsafe fn terminal_owned_selection_ordered_impl(
     }
 }
 
-pub(crate) unsafe fn terminal_owned_selection_contains_impl(
+pub(crate) fn terminal_owned_selection_contains_impl(
     screen: *const Screen,
     selection: *const GhosttySelection,
     point_tag: u8,
@@ -392,11 +392,11 @@ pub(crate) unsafe fn terminal_owned_selection_contains_impl(
     y: u32,
     out: *mut bool,
 ) -> c_int {
-    unsafe {
-        if screen.is_null() || selection.is_null() || out.is_null() {
-            return GHOSTTY_INVALID_VALUE;
-        }
+    if screen.is_null() || selection.is_null() || out.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
 
+    unsafe {
         let sel_c = ptr::read(selection);
         let Some(sel) = selection_from_ghostty(&sel_c) else {
             return GHOSTTY_INVALID_VALUE;
@@ -420,21 +420,19 @@ pub(crate) unsafe fn terminal_owned_selection_contains_impl(
     }
 }
 
-pub(crate) unsafe fn terminal_owned_selection_contains_from_point_impl(
+pub(crate) fn terminal_owned_selection_contains_from_point_impl(
     screen: *const Screen,
     selection: *const GhosttySelection,
     pt: PointC,
     out: *mut bool,
 ) -> c_int {
-    unsafe {
-        let coord = crate::point::Point::from_c(pt).coord();
-        terminal_owned_selection_contains_impl(
-            screen,
-            selection,
-            pt.tag as u8,
-            coord.x,
-            coord.y,
-            out,
-        )
-    }
+    let coord = crate::point::Point::from_c(pt).coord();
+    terminal_owned_selection_contains_impl(
+        screen,
+        selection,
+        pt.tag as u8,
+        coord.x,
+        coord.y,
+        out,
+    )
 }

@@ -2,58 +2,61 @@ use core::ffi::{c_int, c_void};
 use core::mem;
 use core::ptr;
 
-use crate::allocator::{GhosttyAllocator, alloc_alloc_impl, alloc_free_impl};
+use crate::allocator::{alloc_alloc_impl, alloc_free_impl, GhosttyAllocator};
 use crate::apc::{ApcMaxBytes, ApcProtocol};
 use crate::color_palette::{default_palette, Palette};
+use crate::constants::{
+    STYLE_COLOR_NONE, STYLE_COLOR_PALETTE, STYLE_COLOR_RGB, TERMINAL_DATA_COLOR_BACKGROUND,
+    TERMINAL_DATA_COLOR_BACKGROUND_DEFAULT, TERMINAL_DATA_COLOR_CURSOR,
+    TERMINAL_DATA_COLOR_CURSOR_DEFAULT, TERMINAL_DATA_COLOR_FOREGROUND,
+    TERMINAL_DATA_COLOR_FOREGROUND_DEFAULT, TERMINAL_DATA_COLOR_PALETTE,
+    TERMINAL_DATA_COLOR_PALETTE_DEFAULT, TERMINAL_DATA_CURSOR_STYLE,
+    TERMINAL_DATA_KITTY_IMAGE_MEDIUM_FILE, TERMINAL_DATA_KITTY_IMAGE_MEDIUM_SHARED_MEM,
+    TERMINAL_DATA_KITTY_IMAGE_MEDIUM_TEMP_FILE, TERMINAL_DATA_KITTY_IMAGE_STORAGE_LIMIT,
+    TERMINAL_DATA_PWD, TERMINAL_DATA_SCROLLBAR, TERMINAL_DATA_SELECTION, TERMINAL_DATA_TITLE,
+    TERMINAL_OPTION_APC_MAX_BYTES, TERMINAL_OPTION_APC_MAX_BYTES_KITTY,
+    TERMINAL_OPTION_COLOR_PALETTE, TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_FILE,
+    TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_SHARED_MEM, TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_TEMP_FILE,
+    TERMINAL_OPTION_KITTY_IMAGE_STORAGE_LIMIT, TERMINAL_OPTION_SELECTION,
+};
 use crate::early::*;
 use crate::highlight::Pin;
-use crate::selection::GhosttySelection;
-use crate::selection_copy::{grid_ref_to_pin, selection_to_ghostty};
+use crate::key_from_terminal::key_from_terminal_state;
+use crate::kitty_rect::kitty_rect_impl;
+use crate::mode_def::{mode_find_index, ModeTag as ModeTagType};
+use crate::mouse_encoder_state::mouse_encoder_from_terminal_state;
+use crate::page_list_methods::PinMoveResult;
+use crate::page_list_types::PageListNode;
+use crate::point::{Point, PointC, PointTag};
 use crate::screen_selection::{
     terminal_owned_selection_all_impl, terminal_owned_selection_line_impl,
     terminal_owned_selection_output_impl, terminal_owned_selection_word_between_impl,
     terminal_owned_selection_word_impl,
 };
+use crate::screen_types::ScreenScroll;
+use crate::selection::GhosttyGridRef;
+use crate::selection::GhosttySelection;
+use crate::selection_copy::{grid_ref_to_pin, selection_to_ghostty};
 use crate::selection_methods::{
     terminal_owned_selection_adjust_impl, terminal_owned_selection_contains_from_point_impl,
     terminal_owned_selection_order_impl, terminal_owned_selection_ordered_impl,
 };
 use crate::selection_types::Selection;
-use crate::constants::{
-    TERMINAL_DATA_COLOR_BACKGROUND, TERMINAL_DATA_COLOR_BACKGROUND_DEFAULT,
-    TERMINAL_DATA_COLOR_CURSOR, TERMINAL_DATA_COLOR_CURSOR_DEFAULT,
-    TERMINAL_DATA_COLOR_FOREGROUND, TERMINAL_DATA_COLOR_FOREGROUND_DEFAULT,
-    TERMINAL_DATA_COLOR_PALETTE, TERMINAL_DATA_COLOR_PALETTE_DEFAULT,
-    TERMINAL_DATA_CURSOR_STYLE, TERMINAL_DATA_KITTY_IMAGE_MEDIUM_FILE,
-    TERMINAL_DATA_KITTY_IMAGE_MEDIUM_SHARED_MEM, TERMINAL_DATA_KITTY_IMAGE_MEDIUM_TEMP_FILE,
-    TERMINAL_DATA_KITTY_IMAGE_STORAGE_LIMIT, TERMINAL_DATA_PWD, TERMINAL_DATA_SCROLLBAR,
-    TERMINAL_DATA_SELECTION, TERMINAL_DATA_TITLE, TERMINAL_OPTION_APC_MAX_BYTES,
-    TERMINAL_OPTION_APC_MAX_BYTES_KITTY, TERMINAL_OPTION_COLOR_PALETTE,
-    TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_FILE, TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_SHARED_MEM,
-    TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_TEMP_FILE, TERMINAL_OPTION_KITTY_IMAGE_STORAGE_LIMIT,
-    TERMINAL_OPTION_SELECTION, STYLE_COLOR_NONE, STYLE_COLOR_PALETTE, STYLE_COLOR_RGB,
-};
-use crate::mode_def::{mode_find_index, ModeTag as ModeTagType};
-use crate::style::{
-    GhosttyColorRgb, GhosttyStyle, GhosttyStyleColor, GhosttyStyleColorValue,
-};
-use crate::style_types::{Color, Style, rgb_to_ghostty};
+use crate::style::{GhosttyColorRgb, GhosttyStyle, GhosttyStyleColor, GhosttyStyleColorValue};
+use crate::style_types::{rgb_to_ghostty, Color, Style};
+use crate::terminal_byte_list::{byte_list_from_void, ByteList};
 use crate::terminal_get_color::{terminal_get_color_impl, terminal_get_palette_impl};
 use crate::terminal_get_kitty_image::terminal_get_kitty_image_impl;
+use crate::terminal_get_scalar::{terminal_get_scalar_impl, terminal_get_scalar_multi_impl};
 use crate::terminal_get_selection::terminal_get_selection_impl;
-use crate::terminal_get_style::{terminal_get_scrollbar_impl, terminal_get_style_impl};
-use crate::terminal_set_color::{terminal_set_palette_impl, terminal_set_rgb_impl};
-use crate::terminal_set_scalar::{terminal_set_bool_optional_impl, terminal_set_u64_zero_impl, terminal_set_usize_optional_impl};
 use crate::terminal_get_string::terminal_get_string_impl;
+use crate::terminal_get_style::{terminal_get_scrollbar_impl, terminal_get_style_impl};
+use crate::terminal_point::{terminal_point_from_grid_ref_impl, GhosttyPointCoordinate};
+use crate::terminal_set_color::{terminal_set_palette_impl, terminal_set_rgb_impl};
+use crate::terminal_set_scalar::{
+    terminal_set_bool_optional_impl, terminal_set_u64_zero_impl, terminal_set_usize_optional_impl,
+};
 use crate::terminal_set_string::terminal_set_string_impl;
-use crate::point::{Point, PointC, PointTag};
-use crate::selection::GhosttyGridRef;
-use crate::terminal_get_scalar::{
-    terminal_get_scalar_impl, terminal_get_scalar_multi_impl,
-};
-use crate::terminal_point::{
-    terminal_point_from_grid_ref_impl, GhosttyPointCoordinate,
-};
 use crate::terminal_types::{DynamicRgb, Terminal};
 
 /// Rust-owned terminal state for the C ABI path.
@@ -265,13 +268,7 @@ impl RustTerminalOwned {
                 return GHOSTTY_INVALID_VALUE;
             }
             let sb = (*pages).scrollbar();
-            terminal_get_scrollbar_impl(
-                data,
-                sb.total as u64,
-                sb.offset as u64,
-                sb.len as u64,
-                out,
-            )
+            terminal_get_scrollbar_impl(data, sb.total as u64, sb.offset as u64, sb.len as u64, out)
         }
     }
 
@@ -292,22 +289,11 @@ impl RustTerminalOwned {
                 }
                 _ => return GHOSTTY_INVALID_VALUE,
             };
-            terminal_get_color_impl(
-                data,
-                has_value,
-                rgb.r,
-                rgb.g,
-                rgb.b,
-                out,
-            )
+            terminal_get_color_impl(data, has_value, rgb.r, rgb.g, rgb.b, out)
         }
     }
 
-    pub unsafe fn set_color(
-        &mut self,
-        data: c_int,
-        value: *const GhosttyColorRgb,
-    ) -> c_int {
+    pub unsafe fn set_color(&mut self, data: c_int, value: *const GhosttyColorRgb) -> c_int {
         unsafe {
             let mut has_value = false;
             let mut rgb = GhosttyColorRgb { r: 0, g: 0, b: 0 };
@@ -335,7 +321,8 @@ impl RustTerminalOwned {
         unsafe {
             let mut has_value = false;
             let mut palette_ptr: *const GhosttyColorRgb = ptr::null();
-            if terminal_set_palette_impl(value, &mut has_value, &mut palette_ptr) != GHOSTTY_SUCCESS {
+            if terminal_set_palette_impl(value, &mut has_value, &mut palette_ptr) != GHOSTTY_SUCCESS
+            {
                 return GHOSTTY_INVALID_VALUE;
             }
 
@@ -411,7 +398,8 @@ impl RustTerminalOwned {
         unsafe {
             let mut has_value = false;
             let mut max_bytes = 0usize;
-            if terminal_set_usize_optional_impl(value, &mut has_value, &mut max_bytes) != GHOSTTY_SUCCESS
+            if terminal_set_usize_optional_impl(value, &mut has_value, &mut max_bytes)
+                != GHOSTTY_SUCCESS
             {
                 return GHOSTTY_INVALID_VALUE;
             }
@@ -429,13 +417,16 @@ impl RustTerminalOwned {
         unsafe {
             let mut has_value = false;
             let mut max_bytes = 0usize;
-            if terminal_set_usize_optional_impl(value, &mut has_value, &mut max_bytes) != GHOSTTY_SUCCESS
+            if terminal_set_usize_optional_impl(value, &mut has_value, &mut max_bytes)
+                != GHOSTTY_SUCCESS
             {
                 return GHOSTTY_INVALID_VALUE;
             }
 
             if has_value {
-                self.terminal.apc_max_bytes.put(ApcProtocol::Kitty, max_bytes);
+                self.terminal
+                    .apc_max_bytes
+                    .put(ApcProtocol::Kitty, max_bytes);
             } else {
                 self.terminal.apc_max_bytes.remove(ApcProtocol::Kitty);
             }
@@ -458,7 +449,8 @@ impl RustTerminalOwned {
         unsafe {
             let mut has_value = false;
             let mut enabled = false;
-            if terminal_set_bool_optional_impl(value, &mut has_value, &mut enabled) != GHOSTTY_SUCCESS
+            if terminal_set_bool_optional_impl(value, &mut has_value, &mut enabled)
+                != GHOSTTY_SUCCESS
             {
                 return GHOSTTY_INVALID_VALUE;
             }
@@ -493,6 +485,24 @@ impl RustTerminalOwned {
                 self.terminal.kitty_image_medium_shared_mem,
                 out,
             )
+        }
+    }
+
+    pub unsafe fn get_kitty_graphics(&self, enabled: bool, out: *mut *mut c_void) -> c_int {
+        if !enabled {
+            return GHOSTTY_NO_VALUE;
+        }
+        unsafe {
+            let screen = self.terminal.active();
+            if screen.is_null() {
+                return GHOSTTY_INVALID_VALUE;
+            }
+            let storage = (*screen).kitty_images;
+            if storage.is_null() {
+                return GHOSTTY_NO_VALUE;
+            }
+            ptr::write(out, storage);
+            GHOSTTY_SUCCESS
         }
     }
 
@@ -576,7 +586,8 @@ impl RustTerminalOwned {
     }
 
     fn mouse_tracking(&self) -> bool {
-        const MOUSE_MODES: [(u16, bool); 4] = [(9, false), (1000, false), (1002, false), (1003, false)];
+        const MOUSE_MODES: [(u16, bool); 4] =
+            [(9, false), (1000, false), (1002, false), (1003, false)];
         MOUSE_MODES
             .iter()
             .any(|&(value, ansi)| self.terminal.mode_get(ModeTagType { value, ansi }))
@@ -683,6 +694,115 @@ impl RustTerminalOwned {
         }
     }
 
+    pub unsafe fn clear_pwd_and_title(&mut self) {
+        unsafe {
+            if !self.terminal.pwd.is_null() {
+                ByteList::clear_retaining_capacity(byte_list_from_void(self.terminal.pwd));
+            }
+            if !self.terminal.title.is_null() {
+                ByteList::clear_retaining_capacity(byte_list_from_void(self.terminal.title));
+            }
+        }
+    }
+
+    pub fn set_modify_other_keys_2(&mut self, value: bool) {
+        self.terminal.flags.modify_other_keys_2 = value;
+    }
+
+    pub unsafe fn scroll_viewport(&mut self, tag: u8, delta: isize) {
+        unsafe {
+            let screen = self.terminal.active();
+            if screen.is_null() {
+                return;
+            }
+            let behavior = match tag {
+                0 => ScreenScroll::Top,
+                1 => ScreenScroll::Active,
+                2 => ScreenScroll::DeltaRow(delta),
+                _ => return,
+            };
+            (*screen).scroll(behavior);
+        }
+    }
+
+    pub unsafe fn pwd_items(&self, out_ptr: *mut *const u8, out_len: *mut usize) {
+        unsafe {
+            if out_ptr.is_null() || out_len.is_null() {
+                return;
+            }
+            match self.terminal.get_pwd_slice() {
+                Some(s) => {
+                    ptr::write(out_ptr, s.as_ptr());
+                    ptr::write(out_len, s.len());
+                }
+                None => {
+                    ptr::write(out_ptr, crate::constants::EMPTY_UTF8.as_ptr());
+                    ptr::write(out_len, 0);
+                }
+            }
+        }
+    }
+
+    pub unsafe fn mouse_encoder_from_terminal(
+        &self,
+        out_event: *mut c_int,
+        out_format: *mut c_int,
+        last_cell_present: *mut bool,
+    ) {
+        let flags = &self.terminal.flags;
+        unsafe {
+            mouse_encoder_from_terminal_state(
+                flags.mouse_event as c_int,
+                flags.mouse_format as c_int,
+                out_event,
+                out_format,
+                last_cell_present,
+            );
+        }
+    }
+
+    pub unsafe fn key_encoder_from_terminal(
+        &self,
+        out_alt_esc_prefix: *mut bool,
+        out_cursor_key_application: *mut bool,
+        out_keypad_key_application: *mut bool,
+        out_backarrow_key_mode: *mut bool,
+        out_ignore_keypad_with_numlock: *mut bool,
+        out_modify_other_keys_state_2: *mut bool,
+        out_macos_option_as_alt: *mut c_int,
+        out_kitty_flags: *mut u8,
+    ) {
+        const MODE_CURSOR_KEYS: u16 = 1;
+        const MODE_KEYPAD_KEYS: u16 = 66;
+        const MODE_BACKARROW: u16 = 67;
+        const MODE_IGNORE_KEYPAD: u16 = 1035;
+        const MODE_ALT_ESC: u16 = 1036;
+
+        let tag = |value: u16| ModeTagType { value, ansi: false };
+        let t = &self.terminal;
+        let snapshot = unsafe { self.scalar_snapshot() };
+        unsafe {
+            key_from_terminal_state(
+                t.mode_get(tag(MODE_ALT_ESC)),
+                t.mode_get(tag(MODE_CURSOR_KEYS)),
+                t.mode_get(tag(MODE_KEYPAD_KEYS)),
+                t.mode_get(tag(MODE_BACKARROW)),
+                t.mode_get(tag(MODE_IGNORE_KEYPAD)),
+                t.flags.modify_other_keys_2,
+                out_alt_esc_prefix,
+                out_cursor_key_application,
+                out_keypad_key_application,
+                out_backarrow_key_mode,
+                out_ignore_keypad_with_numlock,
+                out_modify_other_keys_state_2,
+                out_macos_option_as_alt,
+            );
+            if !out_kitty_flags.is_null() {
+                ptr::write(out_kitty_flags, snapshot.kitty_keyboard_flags);
+            }
+        }
+    }
+
     pub unsafe fn destroy(alloc: *const GhosttyAllocator, handle: *mut Self) {
         unsafe {
             if handle.is_null() {
@@ -690,7 +810,11 @@ impl RustTerminalOwned {
             }
             let owned = &mut *handle;
             owned.terminal.deinit_full(alloc);
-            alloc_free_impl(alloc, handle as *mut u8, core::mem::size_of::<RustTerminalOwned>());
+            alloc_free_impl(
+                alloc,
+                handle as *mut u8,
+                core::mem::size_of::<RustTerminalOwned>(),
+            );
         }
     }
 }
@@ -1229,6 +1353,107 @@ pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_output(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_clear_pwd_and_title(handle: *mut c_void) {
+    unsafe {
+        if handle.is_null() {
+            return;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.clear_pwd_and_title();
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_modify_other_keys_2(
+    handle: *mut c_void,
+    value: bool,
+) {
+    unsafe {
+        if handle.is_null() {
+            return;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.set_modify_other_keys_2(value);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_scroll_viewport(
+    handle: *mut c_void,
+    tag: u8,
+    delta: isize,
+) {
+    unsafe {
+        if handle.is_null() {
+            return;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.scroll_viewport(tag, delta);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_pwd_items(
+    handle: *mut c_void,
+    out_ptr: *mut *const u8,
+    out_len: *mut usize,
+) {
+    unsafe {
+        if handle.is_null() {
+            return;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        owned.pwd_items(out_ptr, out_len);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_mouse_encoder_from_terminal(
+    handle: *mut c_void,
+    out_event: *mut c_int,
+    out_format: *mut c_int,
+    last_cell_present: *mut bool,
+) {
+    unsafe {
+        if handle.is_null() {
+            return;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        owned.mouse_encoder_from_terminal(out_event, out_format, last_cell_present);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_key_encoder_from_terminal(
+    handle: *mut c_void,
+    out_alt_esc_prefix: *mut bool,
+    out_cursor_key_application: *mut bool,
+    out_keypad_key_application: *mut bool,
+    out_backarrow_key_mode: *mut bool,
+    out_ignore_keypad_with_numlock: *mut bool,
+    out_modify_other_keys_state_2: *mut bool,
+    out_macos_option_as_alt: *mut c_int,
+    out_kitty_flags: *mut u8,
+) {
+    unsafe {
+        if handle.is_null() {
+            return;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        owned.key_encoder_from_terminal(
+            out_alt_esc_prefix,
+            out_cursor_key_application,
+            out_keypad_key_application,
+            out_backarrow_key_mode,
+            out_ignore_keypad_with_numlock,
+            out_modify_other_keys_state_2,
+            out_macos_option_as_alt,
+            out_kitty_flags,
+        );
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_apc_max_bytes(
     handle: *mut c_void,
     value: *const usize,
@@ -1298,6 +1523,124 @@ pub unsafe extern "C" fn ghostty_rust_terminal_owned_get_kitty_image(
         }
         let owned = &*(handle as *mut RustTerminalOwned);
         owned.get_kitty_image(data, enabled, out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_get_kitty_graphics(
+    handle: *mut c_void,
+    enabled: bool,
+    out: *mut *mut c_void,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        owned.get_kitty_graphics(enabled, out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_kitty_rect(
+    handle: *mut c_void,
+    pin_node: *mut c_void,
+    pin_x: u16,
+    pin_y: u16,
+    grid_cols_minus_one: u32,
+    grid_rows_minus_one: u32,
+    out: *mut GhosttySelection,
+) -> c_int {
+    unsafe {
+        if handle.is_null() || pin_node.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        if screen.is_null() || (*screen).pages.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+
+        let start = Pin {
+            node: pin_node as *mut PageListNode,
+            x: pin_x,
+            y: pin_y,
+            garbage: false,
+        };
+        let end = match start.down_overflow(grid_rows_minus_one as usize) {
+            PinMoveResult::Offset(p) => p,
+            PinMoveResult::Overflow(p, _) => p,
+        };
+        let terminal_cols_minus_one = owned.terminal.cols.saturating_sub(1);
+        kitty_rect_impl(
+            start.node as *mut c_void,
+            start.x,
+            start.y,
+            end.node as *mut c_void,
+            end.y,
+            grid_cols_minus_one,
+            terminal_cols_minus_one,
+            out,
+        )
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_kitty_viewport_pos(
+    handle: *mut c_void,
+    pin_node: *mut c_void,
+    pin_x: u16,
+    pin_y: u16,
+    grid_rows: u32,
+    out_col: *mut i32,
+    out_row: *mut i32,
+    out_visible: *mut bool,
+) -> c_int {
+    unsafe {
+        if handle.is_null()
+            || pin_node.is_null()
+            || out_col.is_null()
+            || out_row.is_null()
+            || out_visible.is_null()
+        {
+            return GHOSTTY_INVALID_VALUE;
+        }
+
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        if screen.is_null() || (*screen).pages.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let pages = &*(*screen).pages;
+        let pin = Pin {
+            node: pin_node as *mut PageListNode,
+            x: pin_x,
+            y: pin_y,
+            garbage: false,
+        };
+
+        let Some((pin_x_screen, pin_y_screen)) = pages.point_from_pin(PointTag::SCREEN, pin) else {
+            ptr::write(out_col, 0);
+            ptr::write(out_row, 0);
+            ptr::write(out_visible, false);
+            return GHOSTTY_SUCCESS;
+        };
+        let vp_tl = pages.get_top_left(PointTag::VIEWPORT);
+        let Some((_vp_x, vp_y_screen)) = pages.point_from_pin(PointTag::SCREEN, vp_tl) else {
+            ptr::write(out_col, 0);
+            ptr::write(out_row, 0);
+            ptr::write(out_visible, false);
+            return GHOSTTY_SUCCESS;
+        };
+
+        let row = (pin_y_screen as i32).wrapping_sub(vp_y_screen as i32);
+        let col = pin_x_screen as i32;
+        let visible = row.wrapping_add(grid_rows as i32) > 0 && row < owned.terminal.rows as i32;
+
+        ptr::write(out_col, col);
+        ptr::write(out_row, row);
+        ptr::write(out_visible, visible);
+        GHOSTTY_SUCCESS
     }
 }
 

@@ -1,45 +1,7 @@
-use core::ffi::{c_char, c_int, c_uint, c_ulong, c_void};
+use core::ffi::{c_int, c_void};
 use core::ptr;
 
 use crate::kitty_graphics_command::*;
-
-// ---------------------------------------------------------------------------
-// zlib decompression via system libz (extern "C" - no crate dependency)
-// ---------------------------------------------------------------------------
-
-#[repr(C)]
-struct ZStream {
-    next_in: *const u8,
-    avail_in: c_uint,
-    total_in: c_ulong,
-    next_out: *mut u8,
-    avail_out: c_uint,
-    total_out: c_ulong,
-    msg: *const c_char,
-    state: *mut c_void,
-    zalloc: *mut c_void,
-    zfree: *mut c_void,
-    opaque: *mut c_void,
-    data_type: c_int,
-    adler: c_ulong,
-    reserved: c_ulong,
-}
-
-const Z_OK: c_int = 0;
-const Z_STREAM_END: c_int = 1;
-const Z_FINISH: c_int = 4;
-const ZLIB_VERSION: &[u8] = b"1.2.13\0";
-
-extern "C" {
-    fn inflateInit2_(
-        strm: *mut ZStream,
-        windowBits: c_int,
-        version: *const u8,
-        stream_size: c_int,
-    ) -> c_int;
-    fn inflate(strm: *mut ZStream, flush: c_int) -> c_int;
-    fn inflateEnd(strm: *mut ZStream) -> c_int;
-}
 
 #[repr(C)]
 struct PngImage {
@@ -65,18 +27,8 @@ fn peek_png_dimensions(data: *const u8, len: usize) -> Option<(u32, u32)> {
         return None;
     }
     unsafe {
-        let w_bytes = [
-            *data.add(16),
-            *data.add(17),
-            *data.add(18),
-            *data.add(19),
-        ];
-        let h_bytes = [
-            *data.add(20),
-            *data.add(21),
-            *data.add(22),
-            *data.add(23),
-        ];
+        let w_bytes = [*data.add(16), *data.add(17), *data.add(18), *data.add(19)];
+        let h_bytes = [*data.add(20), *data.add(21), *data.add(22), *data.add(23)];
         let w = u32::from_be_bytes(w_bytes);
         let h = u32::from_be_bytes(h_bytes);
         Some((w, h))
@@ -90,7 +42,11 @@ mod zlib_mmap {
     const PROT_READ: c_int = 0x1;
     const PROT_WRITE: c_int = 0x2;
     const MAP_PRIVATE: c_int = 0x02;
-    const MAP_ANONYMOUS: c_int = if cfg!(target_os = "macos") { 0x1000 } else { 0x20 };
+    const MAP_ANONYMOUS: c_int = if cfg!(target_os = "macos") {
+        0x1000
+    } else {
+        0x20
+    };
     const MAP_FAILED: *mut c_void = !0 as *mut c_void;
 
     extern "C" {
@@ -107,7 +63,14 @@ mod zlib_mmap {
 
     pub unsafe fn temp_alloc(n: usize) -> *mut u8 {
         let p = unsafe {
-            mmap(ptr::null_mut(), n, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+            mmap(
+                ptr::null_mut(),
+                n,
+                PROT_READ | PROT_WRITE,
+                MAP_PRIVATE | MAP_ANONYMOUS,
+                -1,
+                0,
+            )
         };
         if p == MAP_FAILED || p.is_null() {
             return ptr::null_mut();
@@ -117,7 +80,9 @@ mod zlib_mmap {
 
     pub unsafe fn temp_free(p: *mut u8, n: usize) {
         if !p.is_null() {
-            unsafe { munmap(p as *mut c_void, n); }
+            unsafe {
+                munmap(p as *mut c_void, n);
+            }
         }
     }
 }
@@ -137,13 +102,20 @@ mod zlib_mmap {
     }
 
     pub unsafe fn temp_alloc(n: usize) -> *mut u8 {
-        let p = unsafe { VirtualAlloc(ptr::null_mut(), n, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) };
-        if p.is_null() { ptr::null_mut() } else { p as *mut u8 }
+        let p =
+            unsafe { VirtualAlloc(ptr::null_mut(), n, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) };
+        if p.is_null() {
+            ptr::null_mut()
+        } else {
+            p as *mut u8
+        }
     }
 
     pub unsafe fn temp_free(p: *mut u8, _n: usize) {
         if !p.is_null() {
-            unsafe { VirtualFree(p as *mut c_void, 0, MEM_RELEASE); }
+            unsafe {
+                VirtualFree(p as *mut c_void, 0, MEM_RELEASE);
+            }
         }
     }
 }
@@ -241,10 +213,7 @@ pub(crate) struct LoadingImage {
 }
 
 impl LoadingImage {
-    pub(crate) fn new(
-        data_buf: *mut u8,
-        data_cap: usize,
-    ) -> Self {
+    pub(crate) fn new(data_buf: *mut u8, data_cap: usize) -> Self {
         Self {
             image: Image::new(),
             data_buf,
@@ -288,19 +257,19 @@ impl LoadingImage {
                     return Err(ImageError::UnsupportedMedium);
                 }
                 result.read_file(&t, cmd.data_ptr, cmd.data_len, false)?;
-            },
+            }
             TransmissionMedium::TemporaryFile => {
                 if !limits.temporary_file {
                     return Err(ImageError::UnsupportedMedium);
                 }
                 result.read_file(&t, cmd.data_ptr, cmd.data_len, true)?;
-            },
+            }
             TransmissionMedium::SharedMemory => {
                 if !limits.shared_memory {
                     return Err(ImageError::UnsupportedMedium);
                 }
                 result.read_shared_memory(&t, cmd.data_ptr, cmd.data_len)?;
-            },
+            }
         }
 
         Ok(result)
@@ -320,11 +289,10 @@ impl LoadingImage {
         }
 
         unsafe {
-            ptr::copy_nonoverlapping(
-                src,
-                self.data_buf.add(self.data_len),
-                src_len,
-            );
+            let dst = self.data_buf.add(self.data_len);
+            if src != dst as *const u8 {
+                ptr::copy_nonoverlapping(src, dst, src_len);
+            }
         }
         self.data_len = new_len;
         Ok(())
@@ -370,56 +338,7 @@ impl LoadingImage {
     }
 
     fn decompress_zlib(&mut self) -> Result<(), ImageError> {
-        if self.data_len == 0 || self.data_cap == 0 {
-            return Err(ImageError::DecompressionFailed);
-        }
-
-        let temp_size = self.data_cap;
-        let temp: *mut u8 = unsafe { zlib_mmap::temp_alloc(temp_size) };
-        if temp.is_null() {
-            return Err(ImageError::OutOfMemory);
-        }
-
-        let mut strm: ZStream = unsafe { core::mem::zeroed() };
-        strm.next_in = self.data_buf as *const u8;
-        strm.avail_in = self.data_len as c_uint;
-        strm.next_out = temp;
-        strm.avail_out = temp_size as c_uint;
-
-        let result = unsafe {
-            let init_ret = inflateInit2_(
-                &mut strm,
-                15,
-                ZLIB_VERSION.as_ptr(),
-                core::mem::size_of::<ZStream>() as c_int,
-            );
-            if init_ret != Z_OK {
-                zlib_mmap::temp_free(temp, temp_size);
-                return Err(ImageError::DecompressionFailed);
-            }
-
-            let inflate_ret = inflate(&mut strm, Z_FINISH);
-            inflateEnd(&mut strm);
-
-            if inflate_ret != Z_STREAM_END {
-                zlib_mmap::temp_free(temp, temp_size);
-                return Err(ImageError::DecompressionFailed);
-            }
-
-            let out_len = strm.total_out as usize;
-            if out_len > temp_size {
-                zlib_mmap::temp_free(temp, temp_size);
-                return Err(ImageError::InvalidData);
-            }
-
-            ptr::copy_nonoverlapping(temp, self.data_buf, out_len);
-            self.data_len = out_len;
-            self.image.compression = TransmissionCompression::None;
-            Ok(())
-        };
-
-        unsafe { zlib_mmap::temp_free(temp, temp_size); }
-        result
+        Err(ImageError::DecompressionFailed)
     }
 
     fn decode_png(&mut self) -> Result<(), ImageError> {
@@ -434,9 +353,7 @@ impl LoadingImage {
         if w == 0 || h == 0 || w > MAX_DIMENSION || h > MAX_DIMENSION {
             return Err(ImageError::InvalidData);
         }
-        let rgba_size = (w as usize)
-            .wrapping_mul(h as usize)
-            .wrapping_mul(4);
+        let rgba_size = (w as usize).wrapping_mul(h as usize).wrapping_mul(4);
         if rgba_size == 0 || rgba_size > MAX_SIZE {
             return Err(ImageError::InvalidData);
         }
@@ -453,24 +370,24 @@ impl LoadingImage {
             data_len: 0,
         };
         let ok = unsafe {
-            ghostty_vt_system_decode_png(
-                self.data_buf,
-                self.data_len,
-                buf,
-                rgba_size,
-                &mut out,
-            )
+            ghostty_vt_system_decode_png(self.data_buf, self.data_len, buf, rgba_size, &mut out)
         };
         if !ok || out.data.is_null() || out.data_len == 0 {
-            unsafe { zlib_mmap::temp_free(buf, rgba_size); }
+            unsafe {
+                zlib_mmap::temp_free(buf, rgba_size);
+            }
             return Err(ImageError::InvalidData);
         }
         if out.width != w || out.height != h || out.data_len != rgba_size {
-            unsafe { zlib_mmap::temp_free(buf, rgba_size); }
+            unsafe {
+                zlib_mmap::temp_free(buf, rgba_size);
+            }
             return Err(ImageError::InvalidData);
         }
         if rgba_size > self.data_cap {
-            unsafe { zlib_mmap::temp_free(buf, rgba_size); }
+            unsafe {
+                zlib_mmap::temp_free(buf, rgba_size);
+            }
             return Err(ImageError::OutOfMemory);
         }
 
@@ -601,13 +518,13 @@ impl LoadingImage {
                 }
 
                 let st_mode: u32 = if cfg!(target_vendor = "apple") {
-                    ptr::read_unaligned(stat_buf.as_ptr().add(STAT_MODE_OFFSET) as *const u16) as u32
+                    ptr::read_unaligned(stat_buf.as_ptr().add(STAT_MODE_OFFSET) as *const u16)
+                        as u32
                 } else {
                     ptr::read_unaligned(stat_buf.as_ptr().add(STAT_MODE_OFFSET) as *const u32)
                 };
-                let st_size: i64 = ptr::read_unaligned(
-                    stat_buf.as_ptr().add(STAT_SIZE_OFFSET) as *const i64,
-                );
+                let st_size: i64 =
+                    ptr::read_unaligned(stat_buf.as_ptr().add(STAT_SIZE_OFFSET) as *const i64);
 
                 if st_mode & 0o170000 != 0o100000 {
                     close(fd);
@@ -632,7 +549,9 @@ impl LoadingImage {
                     let max_from_file = (st_size as usize).saturating_sub(t.offset as usize);
                     (t.size as usize).min(cap_remaining).min(max_from_file)
                 } else {
-                    (st_size as usize).saturating_sub(t.offset as usize).min(cap_remaining)
+                    (st_size as usize)
+                        .saturating_sub(t.offset as usize)
+                        .min(cap_remaining)
                 };
 
                 if to_read == 0 && st_size <= 0 {
@@ -757,9 +676,8 @@ impl LoadingImage {
                     return Err(ImageError::InvalidData);
                 }
 
-                let st_size: i64 = ptr::read_unaligned(
-                    stat_buf.as_ptr().add(STAT_SIZE_OFFSET) as *const i64,
-                );
+                let st_size: i64 =
+                    ptr::read_unaligned(stat_buf.as_ptr().add(STAT_SIZE_OFFSET) as *const i64);
 
                 if st_size <= 0 {
                     close(fd);
@@ -767,14 +685,7 @@ impl LoadingImage {
                 }
 
                 let map_len = st_size as usize;
-                let ptr = mmap(
-                    ptr::null_mut(),
-                    map_len,
-                    PROT_READ,
-                    MAP_SHARED,
-                    fd,
-                    0,
-                );
+                let ptr = mmap(ptr::null_mut(), map_len, PROT_READ, MAP_SHARED, fd, 0);
                 close(fd);
 
                 if ptr == MAP_FAILED || ptr.is_null() {

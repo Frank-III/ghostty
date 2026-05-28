@@ -12,7 +12,74 @@ const terminal_c = @import("terminal.zig");
 const Terminal = @import("../Terminal.zig");
 const Result = @import("result.zig").Result;
 
+const RustKittyImageSnapshot = extern struct {
+    id: u32 = 0,
+    number: u32 = 0,
+    width: u32 = 0,
+    height: u32 = 0,
+    format: c_int = 0,
+    compression: c_int = 0,
+    data_ptr: [*]const u8 = undefined,
+    data_len: usize = 0,
+};
+
+const RustKittyPlacementSnapshot = extern struct {
+    image_id: u32 = 0,
+    placement_id: u32 = 0,
+    is_virtual: bool = false,
+    pin_node: ?*anyopaque = null,
+    pin_x: u16 = 0,
+    pin_y: u16 = 0,
+    x_offset: u32 = 0,
+    y_offset: u32 = 0,
+    source_x: u32 = 0,
+    source_y: u32 = 0,
+    source_width: u32 = 0,
+    source_height: u32 = 0,
+    columns: u32 = 0,
+    rows: u32 = 0,
+    z: i32 = 0,
+};
+
 const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_kitty_image_get_handle(
+        storage: ?*const anyopaque,
+        image_id: u32,
+    ) callconv(.c) ?*const anyopaque;
+
+    extern fn ghostty_rust_kitty_image_snapshot(
+        image: ?*const anyopaque,
+        out: *RustKittyImageSnapshot,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_kitty_placement_iterator_next(
+        storage: ?*const anyopaque,
+        layer: c_int,
+        index: *usize,
+        out: *RustKittyPlacementSnapshot,
+    ) callconv(.c) bool;
+
+    extern fn ghostty_rust_terminal_owned_kitty_rect(
+        handle: ?*anyopaque,
+        pin_node: ?*anyopaque,
+        pin_x: u16,
+        pin_y: u16,
+        grid_cols_minus_one: u32,
+        grid_rows_minus_one: u32,
+        out: *selection_c.CSelection,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_kitty_viewport_pos(
+        handle: ?*anyopaque,
+        pin_node: ?*anyopaque,
+        pin_x: u16,
+        pin_y: u16,
+        grid_rows: u32,
+        out_col: *i32,
+        out_row: *i32,
+        out_visible: *bool,
+    ) callconv(.c) c_int;
+
     extern fn ghostty_rust_kitty_source_rect(
         image_width: u32,
         image_height: u32,
@@ -219,6 +286,10 @@ const PlacementIteratorWrapper = if (build_options.kitty_graphics)
         inner: PlacementMap.Iterator = undefined,
         entry: ?PlacementMap.Entry = null,
         layer_filter: PlacementLayer = .all,
+        rust_graphics: ?*const anyopaque = null,
+        rust_index: usize = 0,
+        rust_entry: RustKittyPlacementSnapshot = .{},
+        rust_entry_valid: bool = false,
     }
 else
     void;
@@ -298,6 +369,16 @@ fn getTyped(
         .invalid => return .invalid_value,
         .placement_iterator => {
             const it = out.* orelse return .invalid_value;
+            if (comptime build_options.terminal_rust_owned) {
+                it.* = .{
+                    .alloc = it.alloc,
+                    .layer_filter = it.layer_filter,
+                    .rust_graphics = @ptrCast(storage),
+                    .rust_index = 0,
+                    .rust_entry_valid = false,
+                };
+                return .success;
+            }
             it.* = .{
                 .alloc = it.alloc,
                 .inner = storage.placements.iterator(),
@@ -372,8 +453,65 @@ pub fn image_get_handle(
 ) callconv(lib.calling_conv) ImageHandle {
     if (comptime !build_options.kitty_graphics) return null;
 
+    if (comptime build_options.terminal_rust_owned) {
+        const handle = rust.ghostty_rust_kitty_image_get_handle(
+            @ptrCast(graphics_),
+            image_id,
+        ) orelse return null;
+        return @ptrCast(@alignCast(handle));
+    }
+
     const storage = graphics_;
     return storage.images.getPtr(image_id);
+}
+
+fn rustImageSnapshot(image_: ImageHandle, out: *RustKittyImageSnapshot) Result {
+    if (comptime !build_options.terminal_rust_owned) unreachable;
+    const image = image_ orelse return .invalid_value;
+    return @enumFromInt(rust.ghostty_rust_kitty_image_snapshot(
+        @ptrCast(image),
+        out,
+    ));
+}
+
+const TerminalMetrics = struct {
+    cols: u16 = 0,
+    rows: u16 = 0,
+    width_px: u32 = 0,
+    height_px: u32 = 0,
+    rust_handle: ?*anyopaque = null,
+    zig: ?*Terminal = null,
+};
+
+fn terminalMetrics(terminal_: terminal_c.Terminal, out: *TerminalMetrics) Result {
+    const wrapper = terminal_ orelse return .invalid_value;
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.rustOwnedHandle(wrapper)) |handle| {
+            out.* = .{ .rust_handle = handle };
+            if (terminal_c.get(terminal_, .cols, @ptrCast(&out.cols)) != .success) return .invalid_value;
+            if (terminal_c.get(terminal_, .rows, @ptrCast(&out.rows)) != .success) return .invalid_value;
+            if (terminal_c.get(terminal_, .width_px, @ptrCast(&out.width_px)) != .success) return .invalid_value;
+            if (terminal_c.get(terminal_, .height_px, @ptrCast(&out.height_px)) != .success) return .invalid_value;
+            return .success;
+        }
+    }
+
+    const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
+    out.* = .{
+        .cols = t.cols,
+        .rows = t.rows,
+        .width_px = t.width_px,
+        .height_px = t.height_px,
+        .zig = t,
+    };
+    return .success;
+}
+
+fn rustPlacement(iter_: PlacementIterator) ?*const RustKittyPlacementSnapshot {
+    if (comptime !build_options.terminal_rust_owned) unreachable;
+    const iter = iter_ orelse return null;
+    if (!iter.rust_entry_valid) return null;
+    return &iter.rust_entry;
 }
 
 pub fn image_get(
@@ -409,6 +547,30 @@ pub fn image_get_multi(
         if (count == 0) {
             if (out_written) |w| w.* = count;
             return .success;
+        }
+
+        if (comptime build_options.terminal_rust_owned) {
+            var image: RustKittyImageSnapshot = .{};
+            const snap_result = rustImageSnapshot(image_, &image);
+            if (snap_result != .success) {
+                if (out_written) |w| w.* = 0;
+                return snap_result;
+            }
+
+            return @enumFromInt(rust.ghostty_rust_kitty_image_get_multi(
+                count,
+                k,
+                v,
+                out_written,
+                image.id,
+                image.number,
+                image.width,
+                image.height,
+                image.format,
+                image.compression,
+                image.data_ptr,
+                image.data_len,
+            ));
         }
 
         const image = image_ orelse {
@@ -448,6 +610,24 @@ fn imageGetTyped(
     comptime data: ImageData,
     out: *data.OutType(),
 ) Result {
+    if (comptime build_options.terminal_rust_owned) {
+        var image: RustKittyImageSnapshot = .{};
+        const snap_result = rustImageSnapshot(image_, &image);
+        if (snap_result != .success) return snap_result;
+        return @enumFromInt(rust.ghostty_rust_kitty_image_get(
+            @intFromEnum(data),
+            image.id,
+            image.number,
+            image.width,
+            image.height,
+            image.format,
+            image.compression,
+            image.data_ptr,
+            image.data_len,
+            @ptrCast(out),
+        ));
+    }
+
     const image = image_ orelse return .invalid_value;
 
     if (comptime build_options.lib_vt_rust) {
@@ -558,6 +738,21 @@ pub fn placement_iterator_next(iter_: PlacementIterator) callconv(lib.calling_co
     if (comptime !build_options.kitty_graphics) return false;
 
     const iter = iter_ orelse return false;
+    if (comptime build_options.terminal_rust_owned) {
+        const storage = iter.rust_graphics orelse return false;
+        if (rust.ghostty_rust_kitty_placement_iterator_next(
+            storage,
+            @intFromEnum(iter.layer_filter),
+            &iter.rust_index,
+            &iter.rust_entry,
+        )) {
+            iter.rust_entry_valid = true;
+            return true;
+        }
+        iter.rust_entry_valid = false;
+        return false;
+    }
+
     while (iter.inner.next()) |entry| {
         const matches = if (comptime build_options.lib_vt_rust)
             rust.ghostty_rust_kitty_placement_layer_matches(
@@ -610,6 +805,36 @@ pub fn placement_get_multi(
             return .success;
         }
 
+        if (comptime build_options.terminal_rust_owned) {
+            const iter = iter_ orelse {
+                if (out_written) |w| w.* = 0;
+                return .invalid_value;
+            };
+            if (!iter.rust_entry_valid) {
+                if (out_written) |w| w.* = 0;
+                return .invalid_value;
+            }
+            const val = &iter.rust_entry;
+            return @enumFromInt(rust.ghostty_rust_kitty_placement_get_multi(
+                count,
+                k,
+                v,
+                out_written,
+                val.image_id,
+                val.placement_id,
+                val.is_virtual,
+                val.x_offset,
+                val.y_offset,
+                val.source_x,
+                val.source_y,
+                val.source_width,
+                val.source_height,
+                val.columns,
+                val.rows,
+                val.z,
+            ));
+        }
+
         const iter = iter_ orelse {
             if (out_written) |w| w.* = 0;
             return .invalid_value;
@@ -658,6 +883,27 @@ fn placementGetTyped(
     out: *data.OutType(),
 ) Result {
     const iter = iter_ orelse return .invalid_value;
+    if (comptime build_options.terminal_rust_owned) {
+        if (!iter.rust_entry_valid) return .invalid_value;
+        const val = &iter.rust_entry;
+        return @enumFromInt(rust.ghostty_rust_kitty_placement_get(
+            @intFromEnum(data),
+            val.image_id,
+            val.placement_id,
+            val.is_virtual,
+            val.x_offset,
+            val.y_offset,
+            val.source_x,
+            val.source_y,
+            val.source_width,
+            val.source_height,
+            val.columns,
+            val.rows,
+            val.z,
+            @ptrCast(out),
+        ));
+    }
+
     const entry = iter.entry orelse return .invalid_value;
 
     const key = entry.key_ptr;
@@ -708,6 +954,49 @@ pub fn placement_rect(
     out: *selection_c.CSelection,
 ) callconv(lib.calling_conv) Result {
     if (comptime !build_options.kitty_graphics) return .no_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        var metrics: TerminalMetrics = .{};
+        const metrics_result = terminalMetrics(terminal_, &metrics);
+        if (metrics_result != .success) return metrics_result;
+        const handle = metrics.rust_handle orelse return .invalid_value;
+
+        var image: RustKittyImageSnapshot = .{};
+        const image_result = rustImageSnapshot(image_, &image);
+        if (image_result != .success) return image_result;
+        const p = rustPlacement(iter_) orelse return .invalid_value;
+        if (p.is_virtual) return .no_value;
+
+        var grid_cols: u32 = undefined;
+        var grid_rows: u32 = undefined;
+        const grid_result: Result = @enumFromInt(rust.ghostty_rust_kitty_grid_size(
+            image.width,
+            image.height,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            p.x_offset,
+            p.y_offset,
+            metrics.width_px,
+            metrics.height_px,
+            metrics.cols,
+            metrics.rows,
+            &grid_cols,
+            &grid_rows,
+        ));
+        if (grid_result != .success) return grid_result;
+
+        return @enumFromInt(rust.ghostty_rust_terminal_owned_kitty_rect(
+            handle,
+            p.pin_node,
+            p.pin_x,
+            p.pin_y,
+            grid_cols -| 1,
+            grid_rows -| 1,
+            out,
+        ));
+    }
 
     const wrapper = terminal_ orelse return .invalid_value;
     const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
@@ -779,6 +1068,30 @@ pub fn placement_pixel_size(
 ) callconv(lib.calling_conv) Result {
     if (comptime !build_options.kitty_graphics) return .no_value;
 
+    if (comptime build_options.terminal_rust_owned) {
+        var metrics: TerminalMetrics = .{};
+        const metrics_result = terminalMetrics(terminal_, &metrics);
+        if (metrics_result != .success) return metrics_result;
+        var image: RustKittyImageSnapshot = .{};
+        const image_result = rustImageSnapshot(image_, &image);
+        if (image_result != .success) return image_result;
+        const p = rustPlacement(iter_) orelse return .invalid_value;
+        return @enumFromInt(rust.ghostty_rust_kitty_pixel_size(
+            image.width,
+            image.height,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            metrics.width_px,
+            metrics.height_px,
+            metrics.cols,
+            metrics.rows,
+            out_width,
+            out_height,
+        ));
+    }
+
     const wrapper = terminal_ orelse return .invalid_value;
     const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
     const image = image_ orelse return .invalid_value;
@@ -818,6 +1131,32 @@ pub fn placement_grid_size(
     out_rows: *u32,
 ) callconv(lib.calling_conv) Result {
     if (comptime !build_options.kitty_graphics) return .no_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        var metrics: TerminalMetrics = .{};
+        const metrics_result = terminalMetrics(terminal_, &metrics);
+        if (metrics_result != .success) return metrics_result;
+        var image: RustKittyImageSnapshot = .{};
+        const image_result = rustImageSnapshot(image_, &image);
+        if (image_result != .success) return image_result;
+        const p = rustPlacement(iter_) orelse return .invalid_value;
+        return @enumFromInt(rust.ghostty_rust_kitty_grid_size(
+            image.width,
+            image.height,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            p.x_offset,
+            p.y_offset,
+            metrics.width_px,
+            metrics.height_px,
+            metrics.cols,
+            metrics.rows,
+            out_cols,
+            out_rows,
+        ));
+    }
 
     const wrapper = terminal_ orelse return .invalid_value;
     const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
@@ -861,6 +1200,52 @@ pub fn placement_viewport_pos(
 ) callconv(lib.calling_conv) Result {
     if (comptime !build_options.kitty_graphics) return .no_value;
 
+    if (comptime build_options.terminal_rust_owned) {
+        var metrics: TerminalMetrics = .{};
+        const metrics_result = terminalMetrics(terminal_, &metrics);
+        if (metrics_result != .success) return metrics_result;
+        const handle = metrics.rust_handle orelse return .invalid_value;
+        var image: RustKittyImageSnapshot = .{};
+        const image_result = rustImageSnapshot(image_, &image);
+        if (image_result != .success) return image_result;
+        const p = rustPlacement(iter_) orelse return .invalid_value;
+        if (p.is_virtual) return .no_value;
+
+        var grid_cols: u32 = undefined;
+        var grid_rows: u32 = undefined;
+        const grid_result: Result = @enumFromInt(rust.ghostty_rust_kitty_grid_size(
+            image.width,
+            image.height,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            p.x_offset,
+            p.y_offset,
+            metrics.width_px,
+            metrics.height_px,
+            metrics.cols,
+            metrics.rows,
+            &grid_cols,
+            &grid_rows,
+        ));
+        if (grid_result != .success) return grid_result;
+
+        var visible: bool = false;
+        const pos_result: Result = @enumFromInt(rust.ghostty_rust_terminal_owned_kitty_viewport_pos(
+            handle,
+            p.pin_node,
+            p.pin_x,
+            p.pin_y,
+            grid_rows,
+            out_col,
+            out_row,
+            &visible,
+        ));
+        if (pos_result != .success) return pos_result;
+        return if (visible) .success else .no_value;
+    }
+
     const wrapper = terminal_ orelse return .invalid_value;
     const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
     const image = image_ orelse return .invalid_value;
@@ -885,6 +1270,25 @@ pub fn placement_source_rect(
     out_height: *u32,
 ) callconv(lib.calling_conv) Result {
     if (comptime !build_options.kitty_graphics) return .no_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        var image: RustKittyImageSnapshot = .{};
+        const image_result = rustImageSnapshot(image_, &image);
+        if (image_result != .success) return image_result;
+        const p = rustPlacement(iter_) orelse return .invalid_value;
+        return @enumFromInt(rust.ghostty_rust_kitty_source_rect(
+            image.width,
+            image.height,
+            p.source_x,
+            p.source_y,
+            p.source_width,
+            p.source_height,
+            out_x,
+            out_y,
+            out_width,
+            out_height,
+        ));
+    }
 
     const image = image_ orelse return .invalid_value;
     const iter = iter_ orelse return .invalid_value;
@@ -943,6 +1347,87 @@ pub fn placement_render_info(
     out_: ?*PlacementRenderInfo,
 ) callconv(lib.calling_conv) Result {
     if (comptime !build_options.kitty_graphics) return .no_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        var metrics: TerminalMetrics = .{};
+        const metrics_result = terminalMetrics(terminal_, &metrics);
+        if (metrics_result != .success) return metrics_result;
+        const handle = metrics.rust_handle orelse return .invalid_value;
+        var image: RustKittyImageSnapshot = .{};
+        const image_result = rustImageSnapshot(image_, &image);
+        if (image_result != .success) return image_result;
+        const p = rustPlacement(iter_) orelse return .invalid_value;
+        const out = out_ orelse return .invalid_value;
+        if (out.size < @sizeOf(PlacementRenderInfo)) return .invalid_value;
+
+        var grid_cols: u32 = undefined;
+        var grid_rows: u32 = undefined;
+        const grid_result: Result = @enumFromInt(rust.ghostty_rust_kitty_grid_size(
+            image.width,
+            image.height,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            p.x_offset,
+            p.y_offset,
+            metrics.width_px,
+            metrics.height_px,
+            metrics.cols,
+            metrics.rows,
+            &grid_cols,
+            &grid_rows,
+        ));
+        if (grid_result != .success) return grid_result;
+
+        var viewport_col: i32 = 0;
+        var viewport_row: i32 = 0;
+        var viewport_visible = false;
+        if (!p.is_virtual) {
+            const pos_result: Result = @enumFromInt(rust.ghostty_rust_terminal_owned_kitty_viewport_pos(
+                handle,
+                p.pin_node,
+                p.pin_x,
+                p.pin_y,
+                grid_rows,
+                &viewport_col,
+                &viewport_row,
+                &viewport_visible,
+            ));
+            if (pos_result != .success) return pos_result;
+        }
+
+        return @enumFromInt(rust.ghostty_rust_kitty_render_info(
+            image.width,
+            image.height,
+            p.source_x,
+            p.source_y,
+            p.source_width,
+            p.source_height,
+            p.columns,
+            p.rows,
+            p.x_offset,
+            p.y_offset,
+            metrics.width_px,
+            metrics.height_px,
+            metrics.cols,
+            metrics.rows,
+            viewport_col,
+            viewport_row,
+            viewport_visible,
+            &out.pixel_width,
+            &out.pixel_height,
+            &out.grid_cols,
+            &out.grid_rows,
+            &out.viewport_col,
+            &out.viewport_row,
+            &out.viewport_visible,
+            &out.source_x,
+            &out.source_y,
+            &out.source_width,
+            &out.source_height,
+        ));
+    }
 
     const wrapper = terminal_ orelse return .invalid_value;
     const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;

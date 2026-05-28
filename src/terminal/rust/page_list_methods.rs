@@ -12,7 +12,9 @@ use crate::CellCountInt;
 
 const PAGE_PREHEAT: usize = 4;
 
-fn std_size() -> usize { Page::layout(std_capacity()).total_size }
+fn std_size() -> usize {
+    Page::layout(std_capacity()).total_size
+}
 
 #[repr(C)]
 struct TrackedPinArray {
@@ -1130,13 +1132,7 @@ impl PageList {
         }
         let pool_raw = self.pool as *mut c_void;
         let pin_raw: *mut Pin = unsafe {
-            ghostty_vt_pin_create(
-                pool_raw,
-                p.node as *mut c_void,
-                p.y,
-                p.x,
-                p.garbage,
-            ) as *mut Pin
+            ghostty_vt_pin_create(pool_raw, p.node as *mut c_void, p.y, p.x, p.garbage) as *mut Pin
         };
         if pin_raw.is_null() {
             return ptr::null_mut();
@@ -1144,8 +1140,7 @@ impl PageList {
         unsafe {
             if self.tracked_pins.is_null() {
                 let tp_size = core::mem::size_of::<PageListTrackedPinSet>();
-                let tp_ptr = ghostty_vt_pool_alloc(pool_raw, tp_size)
-                    as *mut PageListTrackedPinSet;
+                let tp_ptr = ghostty_vt_pool_alloc(pool_raw, tp_size) as *mut PageListTrackedPinSet;
                 if tp_ptr.is_null() {
                     ghostty_vt_pin_destroy(pool_raw, pin_raw as *mut c_void);
                     return ptr::null_mut();
@@ -1160,19 +1155,14 @@ impl PageList {
                 let new_cap = if tp.capacity == 0 { 8 } else { tp.capacity * 2 };
                 let elem = core::mem::size_of::<*mut Pin>();
                 let new_size = new_cap * elem;
-                let new_keys = ghostty_vt_pool_alloc(pool_raw, new_size)
-                    as *mut *mut Pin;
+                let new_keys = ghostty_vt_pool_alloc(pool_raw, new_size) as *mut *mut Pin;
                 if new_keys.is_null() {
                     ghostty_vt_pin_destroy(pool_raw, pin_raw as *mut c_void);
                     return ptr::null_mut();
                 }
                 if !tp.keys.is_null() && tp.len > 0 {
                     core::ptr::copy_nonoverlapping(tp.keys, new_keys, tp.len);
-                    ghostty_vt_pool_free(
-                        pool_raw,
-                        tp.keys as *mut u8,
-                        tp.capacity * elem,
-                    );
+                    ghostty_vt_pool_free(pool_raw, tp.keys as *mut u8, tp.capacity * elem);
                 }
                 tp.keys = new_keys;
                 tp.capacity = new_cap;
@@ -1188,6 +1178,111 @@ impl PageList {
     /// Removes the entry from `self.tracked_pins` via swap-remove, then
     /// calls `ghostty_vt_pin_destroy` to return the `Pin` memory to the
     /// Zig `PageListMemoryPool`.
+    /// After `rotate_rows_right_once` on rows `[start_y, start_y + count)` within `node`,
+    /// update tracked pins on that page so they follow row contents.
+    /// After shifting rows up by one within `node` (row 0 moves to the previous
+    /// page's last row), update tracked pins on `node`.
+    pub unsafe fn update_tracked_pins_after_cross_page_row_shift_up(
+        &self,
+        node: *mut PageListNode,
+    ) {
+        unsafe {
+            if self.tracked_pins.is_null() || node.is_null() {
+                return;
+            }
+            let prev = (*node).prev;
+            if prev.is_null() {
+                return;
+            }
+            let tp = &*(self.tracked_pins as *const TrackedPinArray);
+            if tp.keys.is_null() {
+                return;
+            }
+            let prev_last_y = (*prev).data.size.rows - 1;
+            let mut i = 0usize;
+            while i < tp.len {
+                let p = *tp.keys.add(i);
+                if !p.is_null() && (*p).node == node {
+                    if (*p).y == 0 {
+                        (*p).node = prev;
+                        (*p).y = prev_last_y;
+                    } else {
+                        (*p).y -= 1;
+                    }
+                }
+                i += 1;
+            }
+        }
+    }
+
+    /// Shift tracked pins on `node` after deleting `count` rows starting at `start_y`.
+    pub unsafe fn update_tracked_pins_after_delete_lines(
+        &self,
+        node: *mut PageListNode,
+        start_y: CellCountInt,
+        count: usize,
+    ) {
+        unsafe {
+            if self.tracked_pins.is_null() || count == 0 || node.is_null() {
+                return;
+            }
+            let tp = &*(self.tracked_pins as *const TrackedPinArray);
+            if tp.keys.is_null() {
+                return;
+            }
+            let start = start_y as usize;
+            let end = start.saturating_add(count);
+            let mut i = 0usize;
+            while i < tp.len {
+                let p = *tp.keys.add(i);
+                if !p.is_null() && (*p).node == node {
+                    let y = (*p).y as usize;
+                    if y >= end {
+                        (*p).y = (y - count) as CellCountInt;
+                    } else if y >= start {
+                        (*p).garbage = true;
+                    }
+                }
+                i += 1;
+            }
+        }
+    }
+
+    pub unsafe fn update_tracked_pins_after_rotate_rows_right(
+        &self,
+        node: *mut PageListNode,
+        start_y: CellCountInt,
+        count: usize,
+    ) {
+        unsafe {
+            if self.tracked_pins.is_null() || count <= 1 || node.is_null() {
+                return;
+            }
+            let tp = &*(self.tracked_pins as *const TrackedPinArray);
+            if tp.keys.is_null() {
+                return;
+            }
+            let start = start_y as usize;
+            let end = start.saturating_add(count);
+            let mut i = 0usize;
+            while i < tp.len {
+                let p = *tp.keys.add(i);
+                if !p.is_null() && (*p).node == node {
+                    let y = (*p).y as usize;
+                    if y >= start && y < end {
+                        if y + 1 == end {
+                            (*p).y = start_y;
+                            (*p).x = 0;
+                        } else {
+                            (*p).y += 1;
+                        }
+                    }
+                }
+                i += 1;
+            }
+        }
+    }
+
     pub fn untrack_pin(&mut self, p: *mut Pin) {
         if p.is_null() {
             return;
@@ -1416,7 +1511,7 @@ impl PageList {
             }
 
             let cap = std_capacity();
-            let new_page_size = Page::layout(cap).total_size;
+            let new_page_size = std_size();
 
             if !self.pages.first.is_null()
                 && self.pages.first != self.pages.last
@@ -1453,6 +1548,9 @@ impl PageList {
                                         (*p).node = new_first;
                                         (*p).y = 0;
                                         (*p).x = 0;
+                                        // Match Zig: pins on pruned pages cannot be
+                                        // relocated meaningfully once the page is
+                                        // reinitialized for reuse.
                                         (*p).garbage = true;
                                     }
                                     i += 1;
@@ -1994,11 +2092,7 @@ impl PageList {
                 let row_y = row_pin.y;
                 let last_row_in_page = (*row_node).data.size.rows - 1;
 
-                let _ = reflow_cursor.reflow_row(
-                    self as *mut PageList,
-                    row_pin,
-                    None,
-                );
+                let _ = reflow_cursor.reflow_row(self as *mut PageList, row_pin, None);
 
                 if row_y == last_row_in_page {
                     self.destroy_page_node_full(row_node);
@@ -2249,7 +2343,21 @@ impl PageList {
         }
     }
 
+    pub fn clear_tracked_pins(&mut self) {
+        if self.tracked_pins.is_null() {
+            return;
+        }
+        unsafe {
+            let tp = &mut *self.tracked_pins;
+            while tp.len > 0 {
+                let p = *tp.keys;
+                self.untrack_pin(p);
+            }
+        }
+    }
+
     pub fn deinit_pages(&mut self) {
+        self.clear_tracked_pins();
         let mut it = self.pages.first;
         while !it.is_null() {
             unsafe {

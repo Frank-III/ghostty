@@ -12,9 +12,19 @@ const mouse_event = @import("mouse_event.zig");
 const Result = @import("result.zig").Result;
 const Event = mouse_event.Event;
 const Terminal = @import("terminal.zig").Terminal;
+const terminal_c = @import("terminal.zig");
 const ZigTerminal = @import("../Terminal.zig");
 
 const log = std.log.scoped(.mouse_encode);
+
+const rust_owned = if (build_options.terminal_rust_owned) struct {
+    extern fn ghostty_rust_terminal_owned_mouse_encoder_from_terminal(
+        handle: ?*anyopaque,
+        out_event: *TrackingMode,
+        out_format: *Format,
+        last_cell_present: *bool,
+    ) callconv(.c) void;
+} else struct {};
 
 const rust = if (build_options.lib_vt_rust) struct {
     extern fn ghostty_rust_mouse_encoder_setopt_event(
@@ -354,7 +364,23 @@ pub fn setopt_from_terminal(
     terminal_: Terminal,
 ) callconv(lib.calling_conv) void {
     const wrapper = encoder_ orelse return;
-    const t: *ZigTerminal = @import("terminal.zig").terminalZig(terminal_) orelse return;
+    const term_wrapper = terminal_ orelse return;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.rustOwnedHandle(term_wrapper)) |handle| {
+            var last_cell_present = wrapper.last_cell != null;
+            rust_owned.ghostty_rust_terminal_owned_mouse_encoder_from_terminal(
+                handle,
+                &wrapper.opts.event,
+                &wrapper.opts.format,
+                &last_cell_present,
+            );
+            if (!last_cell_present) wrapper.last_cell = null;
+            return;
+        }
+    }
+
+    const t: *ZigTerminal = terminal_c.terminalZig(terminal_) orelse return;
     if (comptime build_options.lib_vt_rust) {
         var last_cell_present = wrapper.last_cell != null;
         rust.ghostty_rust_mouse_encoder_from_terminal(
@@ -572,8 +598,6 @@ test "setopt clears last cell state" {
 }
 
 test "setopt_from_terminal" {
-    const terminal_c = @import("terminal.zig");
-
     var e: Encoder = undefined;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -604,7 +628,6 @@ test "setopt_from_terminal" {
 test "setopt_from_terminal null" {
     setopt_from_terminal(null, null);
 
-    const terminal_c = @import("terminal.zig");
     var t: Terminal = undefined;
     try testing.expectEqual(Result.success, terminal_c.new(
         &lib.alloc.test_allocator,

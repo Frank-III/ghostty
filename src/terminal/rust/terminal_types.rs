@@ -1,9 +1,9 @@
 use core::ffi::c_void;
 
-use crate::ansi::StatusDisplay;
 #[cfg(ghostty_vt_terminal_owned)]
 use crate::allocator::GhosttyAllocator;
-use crate::apc::ApcMaxBytes;
+use crate::ansi::StatusDisplay;
+use crate::apc::{ApcMaxBytes, ApcStateTag};
 use crate::color_palette::{default_palette, DynamicPalette};
 use crate::mode_def::ModeState;
 use crate::mouse_shape::MouseShape;
@@ -61,20 +61,14 @@ impl DynamicRgb {
 
     pub fn set_default(&mut self, color: Option<GhosttyColorRgb>) {
         self.default_val = match color {
-            Some(rgb) => OptionalRgb {
-                rgb,
-                set: true,
-            },
+            Some(rgb) => OptionalRgb { rgb, set: true },
             None => OptionalRgb::UNSET,
         };
     }
 
     pub fn set_override(&mut self, color: Option<GhosttyColorRgb>) {
         self.override_val = match color {
-            Some(rgb) => OptionalRgb {
-                rgb,
-                set: true,
-            },
+            Some(rgb) => OptionalRgb { rgb, set: true },
             None => OptionalRgb::UNSET,
         };
     }
@@ -327,6 +321,10 @@ pub struct Terminal {
     #[cfg(ghostty_vt_terminal_owned)]
     pub apc_max_bytes: ApcMaxBytes,
     #[cfg(ghostty_vt_terminal_owned)]
+    pub apc_state: ApcStateTag,
+    #[cfg(ghostty_vt_terminal_owned)]
+    pub apc_len: usize,
+    #[cfg(ghostty_vt_terminal_owned)]
     pub kitty_image_storage_limit: usize,
     #[cfg(ghostty_vt_terminal_owned)]
     pub kitty_image_medium_file: bool,
@@ -372,6 +370,10 @@ impl Default for Terminal {
             effects_wrapper: core::ptr::null_mut(),
             #[cfg(ghostty_vt_terminal_owned)]
             apc_max_bytes: ApcMaxBytes::init_full(),
+            #[cfg(ghostty_vt_terminal_owned)]
+            apc_state: ApcStateTag::Inactive,
+            #[cfg(ghostty_vt_terminal_owned)]
+            apc_len: 0,
             #[cfg(ghostty_vt_terminal_owned)]
             kitty_image_storage_limit: 320 * 1000 * 1000,
             #[cfg(ghostty_vt_terminal_owned)]

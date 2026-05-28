@@ -205,7 +205,7 @@ fn find_line_start_pin(
         };
         for i in 0..=pin.x as usize {
             let x_rev = pin.x as usize - i;
-            if cells[x_rev].semantic_content() != v {
+            if unsafe { cells.get_unchecked(x_rev).semantic_content() } != v {
                 let mut copy = it_prev;
                 copy.x = (x_rev + 1) as u16;
                 return copy;
@@ -232,7 +232,7 @@ fn find_line_start_pin(
             };
             for x in 0..cells.len() {
                 let x_rev = cells.len() - 1 - x;
-                if cells[x_rev].semantic_content() != v {
+                if unsafe { cells.get_unchecked(x_rev).semantic_content() } != v {
                     return it_prev;
                 }
                 it_prev = p;
@@ -272,7 +272,7 @@ fn find_line_end_pin(
                 0
             };
 
-            if start_offset == 0 && cells[0].semantic_content() != v {
+            if start_offset == 0 && unsafe { cells.get_unchecked(0).semantic_content() } != v {
                 let mut prev = p.up(1)?;
                 prev.x = unsafe { (*prev.node).data.size.cols } - 1;
                 return Some(prev);

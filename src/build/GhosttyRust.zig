@@ -79,6 +79,7 @@ const lib_vt_modules_base = [_][]const u8{
     "src/terminal/rust/csi.rs",
     "src/terminal/rust/cursor_style.rs",
     "src/terminal/rust/early.rs",
+    "src/terminal/rust/bytes_util.rs",
     "src/terminal/rust/event_key.rs",
     "src/terminal/rust/event_key_action.rs",
     "src/terminal/rust/event_key_codepoint.rs",
@@ -321,6 +322,9 @@ const lib_vt_modules_owned = lib_vt_modules_base ++ [_][]const u8{
     "src/terminal/rust/selection_methods.rs",
     "src/terminal/rust/terminal_byte_list.rs",
     "src/terminal/rust/terminal_owned.rs",
+    "src/terminal/rust/terminal_owned_grid_ref.rs",
+    "src/terminal/rust/terminal_owned_formatter.rs",
+    "src/terminal/rust/terminal_owned_render.rs",
 };
 
 fn addBuildInfoEnv(

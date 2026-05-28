@@ -1,8 +1,43 @@
-use core::ffi::c_void;
+use core::ffi::{c_int, c_void};
 use core::ptr;
 
+use crate::constants::*;
+use crate::early::*;
+use crate::highlight::Pin;
 use crate::kitty_graphics_command::*;
 use crate::kitty_graphics_image::*;
+use crate::kitty_placement_layer::kitty_placement_layer_matches_impl;
+
+#[repr(C)]
+pub struct KittyImageSnapshot {
+    pub id: u32,
+    pub number: u32,
+    pub width: u32,
+    pub height: u32,
+    pub format: c_int,
+    pub compression: c_int,
+    pub data_ptr: *const u8,
+    pub data_len: usize,
+}
+
+#[repr(C)]
+pub struct KittyPlacementSnapshot {
+    pub image_id: u32,
+    pub placement_id: u32,
+    pub is_virtual: bool,
+    pub pin_node: *mut c_void,
+    pub pin_x: u16,
+    pub pin_y: u16,
+    pub x_offset: u32,
+    pub y_offset: u32,
+    pub source_x: u32,
+    pub source_y: u32,
+    pub source_width: u32,
+    pub source_height: u32,
+    pub columns: u32,
+    pub rows: u32,
+    pub z: i32,
+}
 
 pub(crate) const DEFAULT_TOTAL_LIMIT: usize = 320 * 1000 * 1000;
 pub(crate) const DEFAULT_NEXT_IMAGE_ID: u32 = 2147483647;
@@ -19,15 +54,16 @@ pub(crate) struct PlacementKey {
 
 impl PlacementKey {
     pub(crate) fn eq(&self, other: &PlacementKey) -> bool {
-        self.image_id == other.image_id &&
-        self.is_internal == other.is_internal &&
-        self.placement_id == other.placement_id
+        self.image_id == other.image_id
+            && self.is_internal == other.is_internal
+            && self.placement_id == other.placement_id
     }
 }
 
 #[derive(Clone, Copy)]
 pub(crate) struct Placement {
     pub location_is_virtual: bool,
+    pub pin: *mut c_void,
     pub pin_node: *mut c_void,
     pub pin_x: u16,
     pub pin_y: u16,
@@ -46,6 +82,7 @@ impl Placement {
     pub(crate) fn new() -> Self {
         Self {
             location_is_virtual: false,
+            pin: ptr::null_mut(),
             pin_node: ptr::null_mut(),
             pin_x: 0,
             pin_y: 0,
@@ -69,8 +106,16 @@ impl Placement {
         terminal_cols: u16,
         terminal_rows: u16,
     ) -> (u32, u32) {
-        let width = if self.source_width > 0 { self.source_width } else { image.width };
-        let height = if self.source_height > 0 { self.source_height } else { image.height };
+        let width = if self.source_width > 0 {
+            self.source_width
+        } else {
+            image.width
+        };
+        let height = if self.source_height > 0 {
+            self.source_height
+        } else {
+            image.height
+        };
 
         if self.columns == 0 && self.rows == 0 {
             return (width, height);
@@ -129,15 +174,23 @@ impl Placement {
 }
 
 fn nonzero_div(num: u32, den: u32) -> u32 {
-    if den == 0 { return 0; }
+    if den == 0 {
+        return 0;
+    }
     num / den
 }
 
 fn div_ceil(num: u32, den: u32) -> u32 {
-    if den == 0 { return 0; }
+    if den == 0 {
+        return 0;
+    }
     let q = num / den;
     let r = num % den;
-    if r == 0 { q } else { q + 1 }
+    if r == 0 {
+        q
+    } else {
+        q + 1
+    }
 }
 
 fn round_f64(v: f64) -> u32 {
@@ -186,17 +239,25 @@ pub(crate) struct ImageStorage {
 }
 
 impl ImageStorage {
-    pub(crate) fn new(
-        scratch_buf: *mut u8,
-        scratch_cap: usize,
-    ) -> Self {
+    pub(crate) fn new(scratch_buf: *mut u8, scratch_cap: usize) -> Self {
         Self {
             dirty: false,
             next_image_id: DEFAULT_NEXT_IMAGE_ID,
             next_internal_placement_id: 0,
-            images: [ImageEntry { used: false, image: Image::new() }; MAX_IMAGES],
+            images: [ImageEntry {
+                used: false,
+                image: Image::new(),
+            }; MAX_IMAGES],
             image_count: 0,
-            placements: [PlacementEntry { used: false, key: PlacementKey { image_id: 0, is_internal: false, placement_id: 0 }, placement: Placement::new() }; MAX_PLACEMENTS],
+            placements: [PlacementEntry {
+                used: false,
+                key: PlacementKey {
+                    image_id: 0,
+                    is_internal: false,
+                    placement_id: 0,
+                },
+                placement: Placement::new(),
+            }; MAX_PLACEMENTS],
             placement_count: 0,
             loading_image: None,
             image_limits: LoadingLimits::direct_only(),
@@ -247,6 +308,18 @@ impl ImageStorage {
         None
     }
 
+    pub(crate) fn image_ref_by_id(&self, image_id: u32) -> *const Image {
+        let mut i = 0;
+        while i < MAX_IMAGES {
+            let entry = unsafe { self.images.get_unchecked(i) };
+            if entry.used && entry.image.id == image_id {
+                return &entry.image as *const Image;
+            }
+            i += 1;
+        }
+        ptr::null()
+    }
+
     pub(crate) fn image_by_number(&self, image_number: u32) -> Option<Image> {
         let mut newest: Option<Image> = None;
         let mut i = 0;
@@ -259,7 +332,7 @@ impl ImageStorage {
                         if entry.image.transmit_time_ns > n.transmit_time_ns {
                             newest = Some(entry.image);
                         }
-                    },
+                    }
                 }
             }
             i += 1;
@@ -402,28 +475,28 @@ impl ImageStorage {
                 }
 
                 self.dirty = true;
-            },
+            }
 
             Delete::Id(v) => {
                 self.delete_by_id(v.image_id, v.placement_id, v.delete);
-            },
+            }
 
             Delete::Newest(v) => {
                 if let Some(img) = self.image_by_number(v.image_number) {
                     self.delete_by_id(img.id, v.placement_id, v.delete);
                 }
-            },
+            }
 
             Delete::IntersectCursor(_delete_images) => {
                 self.dirty = true;
-            },
+            }
 
             Delete::IntersectCell(v) => {
                 if v.x == 0 || v.y == 0 {
                     return;
                 }
                 self.dirty = true;
-            },
+            }
 
             Delete::IntersectCellZ(v) => {
                 if v.x == 0 || v.y == 0 {
@@ -444,27 +517,30 @@ impl ImageStorage {
                     i += 1;
                 }
                 self.dirty = true;
-            },
+            }
 
             Delete::Column(v) => {
                 if v.x == 0 {
                     return;
                 }
                 self.dirty = true;
-            },
+            }
 
             Delete::Row(v) => {
                 if v.y == 0 {
                     return;
                 }
                 self.dirty = true;
-            },
+            }
 
             Delete::Z(v) => {
                 let mut i = 0;
                 while i < MAX_PLACEMENTS {
                     let entry = unsafe { self.placements.get_unchecked(i) };
-                    if entry.used && !entry.placement.location_is_virtual && entry.placement.z == v.z {
+                    if entry.used
+                        && !entry.placement.location_is_virtual
+                        && entry.placement.z == v.z
+                    {
                         let image_id = entry.key.image_id;
                         let entry_mut = unsafe { self.placements.get_unchecked_mut(i) };
                         entry_mut.used = false;
@@ -476,7 +552,7 @@ impl ImageStorage {
                     i += 1;
                 }
                 self.dirty = true;
-            },
+            }
 
             Delete::Range(v) => {
                 if v.first == 0 || v.last == 0 || v.first > v.last {
@@ -497,18 +573,13 @@ impl ImageStorage {
                     i += 1;
                 }
                 self.dirty = true;
-            },
+            }
 
-            Delete::AnimationFrames(_) => {},
+            Delete::AnimationFrames(_) => {}
         }
     }
 
-    fn delete_by_id(
-        &mut self,
-        image_id: u32,
-        placement_id: u32,
-        delete_unused: bool,
-    ) {
+    fn delete_by_id(&mut self, image_id: u32, placement_id: u32, delete_unused: bool) {
         if placement_id == 0 {
             let mut i = 0;
             while i < MAX_PLACEMENTS {
@@ -704,4 +775,107 @@ impl ImageStorage {
     pub(crate) fn placement_count(&self) -> usize {
         self.placement_count
     }
+}
+
+fn image_snapshot(img: &Image) -> KittyImageSnapshot {
+    KittyImageSnapshot {
+        id: img.id,
+        number: img.number,
+        width: img.width,
+        height: img.height,
+        format: img.format as c_int,
+        compression: img.compression as c_int,
+        data_ptr: img.data_ptr,
+        data_len: img.data_len,
+    }
+}
+
+fn placement_snapshot(key: PlacementKey, placement: Placement) -> KittyPlacementSnapshot {
+    let (pin_node, pin_x, pin_y) = if placement.pin.is_null() {
+        (placement.pin_node, placement.pin_x, placement.pin_y)
+    } else {
+        let pin = unsafe { &*(placement.pin as *const Pin) };
+        (pin.node as *mut c_void, pin.x, pin.y)
+    };
+
+    KittyPlacementSnapshot {
+        image_id: key.image_id,
+        placement_id: key.placement_id,
+        is_virtual: placement.location_is_virtual,
+        pin_node,
+        pin_x,
+        pin_y,
+        x_offset: placement.x_offset,
+        y_offset: placement.y_offset,
+        source_x: placement.source_x,
+        source_y: placement.source_y,
+        source_width: placement.source_width,
+        source_height: placement.source_height,
+        columns: placement.columns,
+        rows: placement.rows,
+        z: placement.z,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_kitty_image_get_handle(
+    storage: *const c_void,
+    image_id: u32,
+) -> *const c_void {
+    if storage.is_null() {
+        return ptr::null();
+    }
+    let storage = unsafe { &*(storage as *const ImageStorage) };
+    storage.image_ref_by_id(image_id) as *const c_void
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_kitty_image_snapshot(
+    image: *const c_void,
+    out: *mut KittyImageSnapshot,
+) -> c_int {
+    if image.is_null() || out.is_null() {
+        return GHOSTTY_INVALID_VALUE;
+    }
+    let img = unsafe { &*(image as *const Image) };
+    unsafe {
+        ptr::write(out, image_snapshot(img));
+    }
+    GHOSTTY_SUCCESS
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_kitty_placement_iterator_next(
+    storage: *const c_void,
+    layer: c_int,
+    index: *mut usize,
+    out: *mut KittyPlacementSnapshot,
+) -> bool {
+    if storage.is_null() || index.is_null() || out.is_null() {
+        return false;
+    }
+
+    let storage = unsafe { &*(storage as *const ImageStorage) };
+    let mut i = unsafe { ptr::read(index) };
+    while i < MAX_PLACEMENTS {
+        let entry = unsafe { storage.placements.get_unchecked(i) };
+        i = i.wrapping_add(1);
+        unsafe {
+            ptr::write(index, i);
+        }
+
+        if !entry.used {
+            continue;
+        }
+        if !kitty_placement_layer_matches_impl(layer, entry.placement.z) {
+            continue;
+        }
+
+        unsafe {
+            ptr::write(out, placement_snapshot(entry.key, entry.placement));
+        }
+        return true;
+    }
+
+    false
 }

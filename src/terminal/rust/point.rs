@@ -2,7 +2,8 @@ use crate::early::*;
 use crate::constants::*;
 use crate::size_types::*;
 
-#[repr(u8)]
+/// Matches `GhosttyPointTag` / Zig `point.Point.C` tag (`c_int` for C ABI).
+#[repr(i32)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[allow(non_camel_case_types, dead_code)]
 pub enum PointTag {
@@ -19,7 +20,7 @@ impl Default for PointTag {
 }
 
 impl PointTag {
-    pub fn from_u8(v: u8) -> Self {
+    pub fn from_i32(v: i32) -> Self {
         match v {
             0 => Self::ACTIVE,
             1 => Self::VIEWPORT,
@@ -27,6 +28,10 @@ impl PointTag {
             3 => Self::HISTORY,
             _ => Self::default(),
         }
+    }
+
+    pub fn from_u8(v: u8) -> Self {
+        Self::from_i32(v as i32)
     }
 }
 
@@ -54,12 +59,19 @@ pub union PointCValue {
     pub _padding: [u64; 2],
 }
 
+/// C ABI layout for `GhosttyPoint` / Zig `point.Point.C`.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PointC {
     pub(crate) tag: PointTag,
     pub(crate) value: PointCValue,
 }
+
+const _: () = {
+    assert!(core::mem::size_of::<Coordinate>() == 8);
+    assert!(core::mem::size_of::<PointCValue>() == 16);
+    assert!(core::mem::size_of::<PointC>() == 24);
+};
 
 pub enum Point {
     Active(Coordinate),

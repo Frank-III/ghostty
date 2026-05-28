@@ -53,13 +53,14 @@ fn write_usize<W: FormatterWriter>(w: &mut W, v: usize) -> bool {
     let mut tmp = [0u8; 20];
     let mut i = 20usize;
     let mut val = v;
-    while val > 0 {
+    while val > 0 && i > 0 {
         i -= 1;
-        tmp[i] = b'0' + (val % 10) as u8;
+        unsafe {
+            *tmp.get_unchecked_mut(i) = b'0' + (val % 10) as u8;
+        }
         val /= 10;
     }
-    let len = 20 - i;
-    w.write_bytes(&tmp[i..i + len])
+    w.write_bytes(crate::bytes_util::subslice(&tmp, i, 20))
 }
 
 fn write_u16<W: FormatterWriter>(w: &mut W, v: u16) -> bool {
@@ -159,25 +160,11 @@ impl PageFormatter {
 
         let mut last_wrap = self.trailing_state.map_or(false, |s| s.wrap);
         let rows_ptr: *mut Row = unsafe { page.rows.ptr_mut(page.memory) };
+        let mut blank_rows: usize = 0;
 
         for y in y_start..y_end {
             let row_ptr = unsafe { rows_ptr.add(y) };
             let row = unsafe { &*row_ptr };
-
-            if y > y_start && !last_wrap {
-                match self.opts.format {
-                    Format::Vt => {
-                        if !writer.write_bytes(b"\r\n") {
-                            return None;
-                        }
-                    }
-                    _ => {
-                        if !writer.write_bytes(b"\n") {
-                            return None;
-                        }
-                    }
-                }
-            }
 
             let x_lo = if y == y_start
                 || (self.rectangle && x_start < cols as usize)
@@ -201,29 +188,81 @@ impl PageFormatter {
                 cols as usize
             };
 
-            let mut last_nonblank: isize = -1;
-            if self.opts.trim {
-                for x in (x_lo..hi).rev() {
-                    let c = unsafe { *cells_ptr.add(x) };
-                    if c.has_text() && c.codepoint() != 0x20 {
-                        last_nonblank = x as isize;
-                        break;
-                    }
+            if x_lo < hi {
+                let cells_subset =
+                    unsafe { core::slice::from_raw_parts(cells_ptr.add(x_lo), hi - x_lo) };
+                if !Cell::has_text_any(cells_subset) {
+                    blank_rows += 1;
+                    last_wrap = row.wrap();
+                    continue;
                 }
             } else {
-                last_nonblank = (hi as isize) - 1;
+                blank_rows += 1;
+                last_wrap = row.wrap();
+                continue;
             }
 
-            for x in x_lo..hi {
-                if self.opts.trim && y == y_end - 1 && last_nonblank >= 0 && (x as isize) > last_nonblank {
-                    break;
+            if blank_rows > 0 {
+                let sequence: &[u8] = match self.opts.format {
+                    Format::Vt => b"\r\n",
+                    _ => b"\n",
+                };
+                for _ in 0..blank_rows {
+                    if !writer.write_bytes(sequence) {
+                        return None;
+                    }
                 }
+                blank_rows = 0;
+            }
+
+            if y > y_start && !last_wrap {
+                match self.opts.format {
+                    Format::Vt => {
+                        if !writer.write_bytes(b"\r\n") {
+                            return None;
+                        }
+                    }
+                    _ => {
+                        if !writer.write_bytes(b"\n") {
+                            return None;
+                        }
+                    }
+                }
+            }
+
+            let format_styled = matches!(self.opts.format, Format::Vt | Format::Html);
+            let mut blank_cells: usize = 0;
+
+            for x in x_lo..hi {
                 let cell = unsafe { *cells_ptr.add(x) };
+                let mut is_blank = false;
+                if format_styled && (!cell.is_empty() || cell.has_styling()) {
+                    is_blank = false;
+                } else if !cell.has_text() {
+                    is_blank = true;
+                } else if cell.codepoint() == 0x20 && self.opts.trim {
+                    is_blank = true;
+                }
+
+                if is_blank {
+                    blank_cells += 1;
+                    continue;
+                }
+
+                if blank_cells > 0 {
+                    for _ in 0..blank_cells {
+                        if !writer.write_bytes(b" ") {
+                            return None;
+                        }
+                    }
+                    blank_cells = 0;
+                }
+
                 let cp = cell.codepoint();
                 let ch = if cp == 0 { 0x20 } else { cp };
                 let mut buf = [0u8; 4];
                 let n = encode_utf8(ch, &mut buf);
-                if n > 0 && !writer.write_bytes(&buf[..n]) {
+                if n > 0 && !writer.write_bytes(crate::bytes_util::subslice(&buf, 0, n)) {
                     return None;
                 }
             }
@@ -300,7 +339,7 @@ impl ScreenFormatter {
             let style_data = unsafe { (*self.screen).cursor.style };
             let mut buf = [0u8; 128];
             let len = style_data.fmt_vt(&mut buf);
-            if !writer.write_bytes(&buf[..len]) {
+            if !writer.write_bytes(crate::bytes_util::subslice(&buf, 0, len)) {
                 return false;
             }
         }

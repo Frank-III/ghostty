@@ -1,7 +1,11 @@
 use core::ffi::c_void;
+use core::mem;
 use core::ptr;
+use crate::allocator::{alloc_alloc_impl, GhosttyAllocator};
 use crate::early::*;
 use crate::constants::*;
+use crate::screen_types::Screen;
+use crate::size_types::CellCountInt;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,6 +69,11 @@ impl ScreenSet {
         self.generations[key.as_index()]
     }
 
+    pub fn bump_generation(&mut self, key: ScreenKey) {
+        let idx = key.as_index();
+        self.generations[idx] = self.generations[idx].wrapping_add(1);
+    }
+
     pub fn switch_to(&mut self, key: ScreenKey) {
         self.active_key = key;
         self.active = self.screens[key.as_index()];
@@ -86,5 +95,41 @@ impl ScreenSet {
         self.active_key = key;
         self.active = screen;
         self.screens[key.as_index()] = screen;
+    }
+
+    /// Get the screen for `key`, initializing it if needed.
+    ///
+    /// Safety: `alloc` must be the terminal bootstrap allocator.
+    pub unsafe fn get_or_init_screen(
+        &mut self,
+        alloc: *const GhosttyAllocator,
+        key: ScreenKey,
+        cols: CellCountInt,
+        rows: CellCountInt,
+        primary_scrollback: usize,
+    ) -> Option<*mut Screen> {
+        unsafe {
+            let existing = self.get(key);
+            if !existing.is_null() {
+                return Some(existing as *mut Screen);
+            }
+            if alloc.is_null() {
+                return None;
+            }
+            let scrollback = if key.is_primary() {
+                primary_scrollback
+            } else {
+                0
+            };
+            let screen = Screen::bootstrap_init(alloc, cols, rows, scrollback)?;
+            let size = mem::size_of::<Screen>();
+            let ptr = alloc_alloc_impl(alloc, size);
+            if ptr.is_null() {
+                return None;
+            }
+            (ptr as *mut Screen).write(screen);
+            self.set_screen(key, ptr as *mut c_void);
+            Some(ptr as *mut Screen)
+        }
     }
 }

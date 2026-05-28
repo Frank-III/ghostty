@@ -500,6 +500,7 @@ impl Default for PageSize {
     }
 }
 
+#[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct CapacityAdjustment {
     pub cols: Option<CellCountInt>,
@@ -511,6 +512,7 @@ impl Default for CapacityAdjustment {
     }
 }
 
+#[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct PageCapacity {
     pub cols: CellCountInt,
@@ -572,7 +574,11 @@ mod page_alloc_impl {
     const PROT_READ: c_int = 0x1;
     const PROT_WRITE: c_int = 0x2;
     const MAP_PRIVATE: c_int = 0x02;
-    const MAP_ANONYMOUS: c_int = if cfg!(target_os = "macos") { 0x1000 } else { 0x20 };
+    const MAP_ANONYMOUS: c_int = if cfg!(target_os = "macos") {
+        0x1000
+    } else {
+        0x20
+    };
     const MAP_FAILED: *mut c_void = !0 as *mut c_void;
 
     extern "C" {

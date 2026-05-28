@@ -101,7 +101,7 @@ impl TerminalFormatter {
                 let palette = term.colors.palette.current();
                 let mut i = 0usize;
                 while i < 256 {
-                    let rgb = palette[i];
+                    let rgb = unsafe { palette.get_unchecked(i) };
                     writer.write(b"\x1b]4;");
                     write_usize(writer, i);
                     writer.write(b";rgb:");
@@ -119,7 +119,7 @@ impl TerminalFormatter {
                 let palette = term.colors.palette.current();
                 let mut i = 0usize;
                 while i < 256 {
-                    let rgb = palette[i];
+                    let rgb = unsafe { palette.get_unchecked(i) };
                     writer.write(b"--vt-palette-");
                     write_usize(writer, i);
                     writer.write(b": #");
@@ -148,7 +148,7 @@ impl TerminalFormatter {
 
     fn emit_modes(&self, term: &Terminal, writer: &mut dyn Writer) {
         for i in 0..MODE_COUNT {
-            let entry = &MODE_ENTRIES[i];
+            let entry = unsafe { MODE_ENTRIES.get_unchecked(i) };
             if entry.disabled {
                 continue;
             }
@@ -289,7 +289,7 @@ fn write_hex2(writer: &mut dyn Writer, value: u8) {
 fn write_usize(writer: &mut dyn Writer, value: usize) {
     let mut tmp = [0u8; 20];
     let len = usize_to_buf(value, &mut tmp);
-    writer.write(&tmp[..len]);
+    writer.write(crate::bytes_util::subslice(&tmp, 0, len));
 }
 
 fn write_u16(writer: &mut dyn Writer, value: u16) {
@@ -298,21 +298,27 @@ fn write_u16(writer: &mut dyn Writer, value: u16) {
 
 fn usize_to_buf(value: usize, buf: &mut [u8; 20]) -> usize {
     if value == 0 {
-        buf[0] = b'0';
+        unsafe {
+            *buf.get_unchecked_mut(0) = b'0';
+        }
         return 1;
     }
     let mut tmp = [0u8; 20];
     let mut i = 20usize;
     let mut v = value;
-    while v > 0 {
+    while v > 0 && i > 0 {
         i -= 1;
-        tmp[i] = b'0' + (v % 10) as u8;
+        unsafe {
+            *tmp.get_unchecked_mut(i) = b'0' + (v % 10) as u8;
+        }
         v /= 10;
     }
     let len = 20 - i;
     let mut k = 0usize;
-    while k < len {
-        buf[k] = tmp[i + k];
+    while k < len && k < buf.len() {
+        unsafe {
+            *buf.get_unchecked_mut(k) = *tmp.get_unchecked(i + k);
+        }
         k += 1;
     }
     len

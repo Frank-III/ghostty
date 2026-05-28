@@ -102,6 +102,31 @@ const rust_owned = if (build_options.terminal_rust_owned) struct {
         ref: grid_ref.CGridRef,
         out: ?*CSelection,
     ) callconv(.c) c_int;
+
+    const OwnedFormatOptions = extern struct {
+        size: usize,
+        emit: u8,
+        unwrap: bool,
+        trim: bool,
+        selection: ?*const CSelection,
+    };
+
+    extern fn ghostty_rust_terminal_owned_selection_format_buf(
+        handle: ?*anyopaque,
+        alloc: ?*const CAllocator,
+        opts: *const OwnedFormatOptions,
+        out: ?[*]u8,
+        out_len: usize,
+        out_written: *usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_selection_format_alloc(
+        handle: ?*anyopaque,
+        alloc: ?*const CAllocator,
+        opts: *const OwnedFormatOptions,
+        out_ptr: *?[*]u8,
+        out_len: *usize,
+    ) callconv(.c) c_int;
 } else struct {};
 
 pub const Adjustment = Selection.Adjustment;
@@ -349,6 +374,16 @@ fn writeSelection(
     return .success;
 }
 
+fn ownedFormatOptions(opts: FormatOptions) rust_owned.OwnedFormatOptions {
+    return .{
+        .size = @sizeOf(rust_owned.OwnedFormatOptions),
+        .emit = @intCast(@intFromEnum(opts.emit)),
+        .unwrap = opts.unwrap,
+        .trim = opts.trim,
+        .selection = opts.selection,
+    };
+}
+
 pub fn format_buf(
     terminal: terminal_c.Terminal,
     opts: FormatOptions,
@@ -356,6 +391,22 @@ pub fn format_buf(
     out_len: usize,
     out_written: *usize,
 ) callconv(lib.calling_conv) Result {
+    const wrapper = terminal orelse return .invalid_value;
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.zigTerminal(terminal) == null) {
+            const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+            var ropts = ownedFormatOptions(opts);
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_format_buf(
+                handle,
+                terminal_c.rustOwnedAlloc(wrapper),
+                &ropts,
+                out_,
+                out_len,
+                out_written,
+            ));
+        }
+    }
+
     const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
 
     if (out_ == null) {
@@ -394,6 +445,21 @@ pub fn format_alloc(
 ) callconv(lib.calling_conv) Result {
     out_ptr.* = null;
     out_len.* = 0;
+
+    const wrapper = terminal orelse return .invalid_value;
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.zigTerminal(terminal) == null) {
+            const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+            var ropts = ownedFormatOptions(opts);
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_format_alloc(
+                handle,
+                alloc_,
+                &ropts,
+                out_ptr,
+                out_len,
+            ));
+        }
+    }
 
     const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
     const alloc = lib.alloc.default(alloc_);

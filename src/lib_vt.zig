@@ -200,6 +200,10 @@ comptime {
         @export(&c.pool_destroy_node, .{ .name = "ghostty_vt_pool_destroy_node" });
         @export(&c.pool_create_std_page, .{ .name = "ghostty_vt_pool_create_std_page" });
         @export(&c.pool_destroy_std_page, .{ .name = "ghostty_vt_pool_destroy_std_page" });
+        @export(&c.render_owned_begin, .{ .name = "ghostty_vt_render_owned_begin" });
+        @export(&c.render_owned_row, .{ .name = "ghostty_vt_render_owned_row" });
+        @export(&c.render_owned_cell_style, .{ .name = "ghostty_vt_render_owned_cell_style" });
+        @export(&c.render_owned_end, .{ .name = "ghostty_vt_render_owned_end" });
         @export(&c.system_png_available, .{ .name = "ghostty_vt_system_png_available" });
         @export(&c.system_decode_png, .{ .name = "ghostty_vt_system_decode_png" });
         @export(&c.cell_get, .{ .name = "ghostty_cell_get" });

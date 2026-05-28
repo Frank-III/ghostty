@@ -1,18 +1,22 @@
 use core::ffi::c_void;
+use core::mem;
 use core::ptr;
 
-use crate::allocator::GhosttyAllocator;
-#[cfg(ghostty_vt_terminal_owned)]
-use crate::terminal_byte_list::{byte_list_from_void, ByteList};
+use crate::allocator::{alloc_free_impl, GhosttyAllocator};
 use crate::ansi::{ProtectedMode, StatusDisplay};
 use crate::csi::{EraseDisplay, EraseLine};
 use crate::mode_def::ModeTag;
 use crate::page_list_types::PageListNode;
+use crate::point::PointTag;
+use crate::screen_methods::pin_row_and_cell;
 use crate::screen_set::ScreenKey;
 use crate::screen_types::Screen;
 use crate::size_types::CellCountInt;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::terminal_byte_list::{byte_list_from_void, ByteList};
 use crate::terminal_types::{
-    Terminal, TerminalFlags, TerminalOptions, TerminalScrollingRegion, TABSTOP_INTERVAL,
+    SwitchScreenMode, Terminal, TerminalFlags, TerminalOptions, TerminalScrollingRegion,
+    TABSTOP_INTERVAL,
 };
 use crate::Cell;
 use crate::Wide;
@@ -93,11 +97,7 @@ impl Terminal {
     }
 
     #[cfg(ghostty_vt_terminal_owned)]
-    pub unsafe fn set_title_slice(
-        &mut self,
-        alloc: *const GhosttyAllocator,
-        title: &[u8],
-    ) -> bool {
+    pub unsafe fn set_title_slice(&mut self, alloc: *const GhosttyAllocator, title: &[u8]) -> bool {
         if self.title.is_null() {
             return false;
         }
@@ -105,11 +105,7 @@ impl Terminal {
     }
 
     #[cfg(ghostty_vt_terminal_owned)]
-    pub unsafe fn set_pwd_slice(
-        &mut self,
-        alloc: *const GhosttyAllocator,
-        pwd: &[u8],
-    ) -> bool {
+    pub unsafe fn set_pwd_slice(&mut self, alloc: *const GhosttyAllocator, pwd: &[u8]) -> bool {
         if self.pwd.is_null() {
             return false;
         }
@@ -139,17 +135,22 @@ impl Terminal {
         }
         unsafe {
             let s = &mut *screen;
-            if s.cursor.page_pin.is_null() {
+            if s.cursor.page_pin.is_null() || s.pages.is_null() {
                 return;
             }
-            let node = (*s.cursor.page_pin).node;
-            if node.is_null() {
+            let pages = &*s.pages;
+            let Some(target) = pages.pin(PointTag::ACTIVE, s.cursor.x, s.cursor.y as u32) else {
                 return;
+            };
+            let cur = *s.cursor.page_pin;
+            if cur.node != target.node || cur.y != target.y {
+                s.cursor_change_pin(target);
+            } else {
+                (*s.cursor.page_pin).x = s.cursor.x;
             }
-            let page = &(*node).data;
-            let rows = page.rows_ptr();
-            s.cursor.page_row = rows.add(s.cursor.y as usize);
-            s.cursor.page_cell = page.row_cells_ptr(s.cursor.page_row).add(s.cursor.x as usize);
+            let (row, cell) = pin_row_and_cell(s.cursor.page_pin);
+            s.cursor.page_row = row;
+            s.cursor.page_cell = cell;
         }
     }
 
@@ -201,20 +202,16 @@ impl Terminal {
 
         unsafe {
             let s = &mut *screen;
-            s.cursor.x = left;
-            s.cursor.y = top;
+            s.cursor_absolute(left, top);
         }
-        self.cursor_resync();
 
         self.insert_lines(count);
 
         unsafe {
             let s = &mut *screen;
-            s.cursor.x = old_x;
-            s.cursor.y = old_y;
             s.cursor.pending_wrap = old_wrap;
+            s.cursor_absolute(old_x, old_y);
         }
-        self.cursor_resync();
     }
 
     pub fn scroll_up(&mut self, count: usize) {
@@ -252,11 +249,9 @@ impl Terminal {
 
             unsafe {
                 let s = &mut *screen;
-                s.cursor.x = old_x;
-                s.cursor.y = old_y;
                 s.cursor.pending_wrap = old_wrap;
+                s.cursor_absolute(old_x, old_y);
             }
-            self.cursor_resync();
             return;
         }
 
@@ -265,20 +260,16 @@ impl Terminal {
 
         unsafe {
             let s = &mut *screen;
-            s.cursor.x = left;
-            s.cursor.y = top;
+            s.cursor_absolute(left, top);
         }
-        self.cursor_resync();
 
         self.delete_lines(count);
 
         unsafe {
             let s = &mut *screen;
-            s.cursor.x = old_x;
-            s.cursor.y = old_y;
             s.cursor.pending_wrap = old_wrap;
+            s.cursor_absolute(old_x, old_y);
         }
-        self.cursor_resync();
     }
 
     pub fn insert_lines(&mut self, count: usize) {
@@ -479,22 +470,24 @@ impl Terminal {
         }
 
         if start < end {
-            let blank = Cell::default();
             unsafe {
                 let page_cell = (*screen).cursor.page_cell;
                 let cells_start = page_cell.sub(cx_usize);
+                let row = (*screen).cursor.page_row;
+                let node = (*screen).cursor.page_pin;
+                if node.is_null() || row.is_null() {
+                    return;
+                }
+                let node = (*node).node;
+                if node.is_null() {
+                    return;
+                }
+                let page = &mut (*node).data;
+                let cells = cells_start.add(start);
                 if protected {
-                    for i in start..end {
-                        let cell_ptr = cells_start.add(i);
-                        let cell = ptr::read(cell_ptr);
-                        if !cell.protected() {
-                            ptr::write(cell_ptr, blank);
-                        }
-                    }
+                    (*screen).clear_unprotected_cells(page, row, cells, end - start);
                 } else {
-                    for i in start..end {
-                        ptr::write(cells_start.add(i), blank);
-                    }
+                    (*screen).clear_cells(page, row, cells, end - start);
                 }
             }
         }
@@ -649,7 +642,9 @@ impl Terminal {
             unsafe {
                 self.tabstops.deinit(alloc);
             }
-            if let Some(ts) = unsafe { crate::tabstops::Tabstops::init(alloc, cols as usize, TABSTOP_INTERVAL as usize) } {
+            if let Some(ts) = unsafe {
+                crate::tabstops::Tabstops::init(alloc, cols as usize, TABSTOP_INTERVAL as usize)
+            } {
                 self.tabstops = ts;
             }
         }
@@ -694,9 +689,144 @@ impl Terminal {
         };
     }
 
+    pub fn switch_screen(&mut self, key: ScreenKey) -> Option<*mut Screen> {
+        if self.screens.active_key == key {
+            return None;
+        }
+        let alloc = self.bootstrap_alloc;
+        if alloc.is_null() {
+            return None;
+        }
+
+        let old = self.active();
+        if !old.is_null() {
+            unsafe {
+                (*old).end_hyperlink();
+            }
+        }
+
+        let primary = self.screens.get(ScreenKey::Primary);
+        let primary_scrollback = if primary.is_null() {
+            0
+        } else {
+            unsafe {
+                let pages = (*primary.cast::<Screen>()).pages;
+                if pages.is_null() {
+                    0
+                } else {
+                    (*pages).explicit_max_size
+                }
+            }
+        };
+
+        let new = unsafe {
+            self.screens
+                .get_or_init_screen(alloc, key, self.cols, self.rows, primary_scrollback)?
+        };
+
+        unsafe {
+            (*new).clear_selection();
+            if !old.is_null() {
+                let old_charset = ptr::read(&(*old).charset);
+                (*new).charset = old_charset.clone_charset_state();
+            }
+        }
+
+        self.flags.dirty.clear = true;
+        self.screens.switch_to(key);
+        Some(old)
+    }
+
+    pub fn switch_screen_mode(&mut self, mode: SwitchScreenMode, enabled: bool) {
+        match mode {
+            SwitchScreenMode::Mode47 => {}
+            SwitchScreenMode::Mode1047 => {
+                if !enabled && self.screens.active_key == ScreenKey::Alternate {
+                    self.erase_display(EraseDisplay::Complete, false);
+                }
+            }
+            SwitchScreenMode::Mode1049 => {
+                if enabled {
+                    self.save_cursor();
+                }
+            }
+        }
+
+        let to = if enabled {
+            ScreenKey::Alternate
+        } else {
+            ScreenKey::Primary
+        };
+        let old = self.switch_screen(to);
+
+        match mode {
+            SwitchScreenMode::Mode47 | SwitchScreenMode::Mode1047 => {
+                if let Some(old_screen) = old {
+                    if !old_screen.is_null() {
+                        let active = self.active();
+                        if !active.is_null() {
+                            unsafe {
+                                let other_cursor = ptr::read(&(*old_screen).cursor);
+                                let _ = (*active).cursor_copy(other_cursor, false);
+                            }
+                        }
+                    }
+                }
+            }
+            SwitchScreenMode::Mode1049 => {
+                if enabled {
+                    debug_assert!(self.screens.active_key == ScreenKey::Alternate);
+                    self.erase_display(EraseDisplay::Complete, false);
+                    if let Some(old_screen) = old {
+                        if !old_screen.is_null() {
+                            let active = self.active();
+                            if !active.is_null() {
+                                unsafe {
+                                    let other_cursor = ptr::read(&(*old_screen).cursor);
+                                    let _ = (*active).cursor_copy(other_cursor, false);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    debug_assert!(self.screens.active_key == ScreenKey::Primary);
+                    self.restore_cursor();
+                }
+            }
+        }
+    }
+
+    pub fn save_cursor(&mut self) {
+        let screen = self.active();
+        if screen.is_null() {
+            return;
+        }
+        unsafe {
+            (*screen).cursor_save();
+        }
+    }
+
+    pub fn restore_cursor(&mut self) {
+        let screen = self.active();
+        if screen.is_null() {
+            return;
+        }
+        unsafe {
+            (*screen).cursor_restore();
+        }
+    }
+
     pub fn full_reset(&mut self) {
         self.screens.switch_to(ScreenKey::Primary);
-        let _ = self.screens.remove_screen(ScreenKey::Alternate);
+        let alloc = self.bootstrap_alloc;
+        let alt = self.screens.get(ScreenKey::Alternate);
+        if !alt.is_null() && !alloc.is_null() {
+            unsafe {
+                (*alt.cast::<Screen>()).bootstrap_deinit(alloc);
+                alloc_free_impl(alloc, alt as *mut u8, mem::size_of::<Screen>());
+            }
+            self.screens.remove_screen(ScreenKey::Alternate);
+        }
         self.modes.reset();
         self.flags = TerminalFlags::default();
         self.tabstops.reset(TABSTOP_INTERVAL as usize);
@@ -746,11 +876,10 @@ impl Terminal {
         }
         let primary = self.screens.get(ScreenKey::Primary);
         if !primary.is_null() {
-            unsafe { (*primary.cast::<Screen>()).reset(); }
-        }
-        let alternate = self.screens.get(ScreenKey::Alternate);
-        if !alternate.is_null() {
-            unsafe { (*alternate.cast::<Screen>()).reset(); }
+            unsafe {
+                (*primary.cast::<Screen>()).reset();
+            }
+            self.screens.bump_generation(ScreenKey::Primary);
         }
         self.flags.dirty.clear = true;
     }
@@ -809,8 +938,7 @@ impl Terminal {
 
         match width {
             1 => unsafe {
-                let page_cell = (*screen).cursor.page_cell;
-                ptr::write(page_cell, Cell::init(c));
+                (*screen).write_cell(c);
             },
 
             2 => {
@@ -965,7 +1093,16 @@ impl Terminal {
         }
 
         if cy == bottom && cx >= left_margin && cx <= right_margin {
-            self.scroll_up(1);
+            if self.scrolling_region.top == 0
+                && self.scrolling_region.left == 0
+                && self.scrolling_region.right == self.cols - 1
+            {
+                unsafe {
+                    let _ = (*screen).cursor_scroll_above();
+                }
+            } else {
+                self.scroll_up(1);
+            }
         } else if cy < bottom {
             self.cursor_down(1);
         }

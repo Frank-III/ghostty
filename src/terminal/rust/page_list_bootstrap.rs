@@ -3,23 +3,18 @@ use core::ptr;
 
 use crate::allocator::GhosttyAllocator;
 use crate::early::*;
-use crate::page_core::{Page, std_capacity};
+use crate::page_core::{std_capacity, Page};
 use crate::page_list_types::{
     PageList, PageListHead, PageListMemoryPool, PageListNode, PageListTrackedPinSet,
     PageListViewport,
 };
-use crate::size_types::OffsetBuf;
 use crate::size_types::CellCountInt;
+use crate::size_types::OffsetBuf;
 
 extern "C" {
-    fn ghostty_vt_memory_pool_create(
-        alloc: *const GhosttyAllocator,
-        preheat: usize,
-    ) -> *mut c_void;
-    fn ghostty_vt_memory_pool_destroy(
-        alloc: *const GhosttyAllocator,
-        pool: *mut c_void,
-    );
+    fn ghostty_vt_memory_pool_create(alloc: *const GhosttyAllocator, preheat: usize)
+        -> *mut c_void;
+    fn ghostty_vt_memory_pool_destroy(alloc: *const GhosttyAllocator, pool: *mut c_void);
     fn ghostty_vt_pool_create_node(pool: *mut c_void) -> *mut c_void;
     fn ghostty_vt_pool_destroy_node(pool: *mut c_void, node: *mut c_void);
     fn ghostty_vt_pool_create_std_page(pool: *mut c_void) -> *mut u8;
@@ -31,6 +26,7 @@ extern "C" {
         x: u16,
         garbage: bool,
     ) -> *mut c_void;
+    fn ghostty_vt_pin_destroy(pool: *mut c_void, pin: *mut c_void);
     fn ghostty_vt_pool_alloc(pool: *mut c_void, size: usize) -> *mut u8;
     fn ghostty_vt_pool_free(pool: *mut c_void, ptr: *mut u8, size: usize);
 }

@@ -218,11 +218,6 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
         "rustc",
         "Rust compiler command for -Dlib-vt-rust builds.",
     ) orelse "rustc";
-    config.terminal_rust_owned = b.option(
-        bool,
-        "terminal-rust-owned",
-        "Use Rust-owned terminal state for libghostty-vt C ABI builds.",
-    ) orelse false;
 
     config.wayland = b.option(
         bool,
@@ -374,6 +369,12 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
         "emit-lib-vt",
         "Set defaults for a libghostty-vt-only build (disables xcframework, macOS app, and docs).",
     ) orelse false;
+
+    config.terminal_rust_owned = b.option(
+        bool,
+        "terminal-rust-owned",
+        "Use Rust-owned terminal state for libghostty-vt C ABI builds.",
+    ) orelse config.emit_lib_vt;
 
     config.emit_exe = b.option(
         bool,

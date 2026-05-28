@@ -3,42 +3,53 @@
 use core::ffi::c_void;
 use core::ptr;
 
-use crate::stream_handler::StreamHandler;
-use crate::stream_types::*;
-use crate::vt_parser::*;
-use crate::mode_def::*;
-use crate::charsets::*;
-use crate::device_attributes::*;
-use crate::device_status::*;
-use crate::kitty_key::*;
-use crate::mouse_shape::*;
 use crate::ansi::{CursorStyle, ModifyKeyFormat, ProtectedMode, StatusDisplay};
-use crate::csi::SizeReportStyle;
-use crate::screen_types::Screen;
-use crate::sgr_attribute::{Attribute, Name};
-use crate::style_types::{Underline, RGB};
-use crate::terminal_types::{MouseShiftCapture, Terminal, TerminalFlags, TerminalScrollingRegion, TABSTOP_INTERVAL};
-use crate::screen_set::ScreenKey;
-use crate::cursor_style::CursorVisualStyle;
-use crate::size_types::CellCountInt;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::bytes_util::subslice_len;
+use crate::charsets::*;
 #[cfg(ghostty_vt_terminal_owned)]
 use crate::constants::{
     GhosttySizeReportSize, SIZE_REPORT_CSI_14_T, SIZE_REPORT_CSI_16_T, SIZE_REPORT_CSI_18_T,
 };
+use crate::csi::SizeReportStyle;
+use crate::cursor_style::CursorVisualStyle;
+use crate::device_attributes::*;
 #[cfg(ghostty_vt_terminal_owned)]
 use crate::device_status::DeviceStatusRequest;
+use crate::device_status::*;
 #[cfg(ghostty_vt_terminal_owned)]
 use crate::early::GHOSTTY_SUCCESS;
 #[cfg(ghostty_vt_terminal_owned)]
+use crate::kitty_graphics_command::parse_command_string;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::kitty_graphics_exec::{execute as execute_kitty_graphics, ExecContext};
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::kitty_graphics_storage::ImageStorage;
+use crate::kitty_key::*;
+#[cfg(ghostty_vt_terminal_owned)]
 use crate::mode_def::ModeReportState;
+use crate::mode_def::*;
 #[cfg(ghostty_vt_terminal_owned)]
 use crate::mode_report_encode::mode_report_encode;
-#[cfg(ghostty_vt_terminal_owned)]
-use crate::size_report::size_report_encode_impl;
+use crate::mouse_shape::*;
+use crate::screen_set::ScreenKey;
+use crate::screen_types::Screen;
+use crate::sgr_attribute::{Attribute, Name};
 #[cfg(ghostty_vt_terminal_owned)]
 use crate::simple_write::{write_bytes, write_decimal};
 #[cfg(ghostty_vt_terminal_owned)]
+use crate::size_report::size_report_encode_impl;
+use crate::size_types::CellCountInt;
+use crate::stream_handler::StreamHandler;
+use crate::stream_types::*;
+use crate::style_types::{Underline, RGB};
+#[cfg(ghostty_vt_terminal_owned)]
 use crate::terminal_effects;
+use crate::terminal_types::{
+    MouseShiftCapture, SwitchScreenMode, Terminal, TerminalFlags, TerminalScrollingRegion,
+    TABSTOP_INTERVAL,
+};
+use crate::vt_parser::*;
 
 pub struct StreamTerminal {
     pub terminal: *mut c_void,
@@ -87,7 +98,7 @@ impl StreamTerminal {
             )
         };
         if rc == GHOSTTY_SUCCESS && written > 0 {
-            self.write_pty(&buf[..written]);
+            self.write_pty(subslice_len(&buf, written));
         }
     }
 
@@ -98,7 +109,10 @@ impl StreamTerminal {
         if screen.is_null() {
             return;
         }
-        let origin = term.mode_get(ModeTag { value: 6, ansi: false });
+        let origin = term.mode_get(ModeTag {
+            value: 6,
+            ansi: false,
+        });
         let (x, y) = unsafe {
             let s = &*screen;
             if origin {
@@ -119,7 +133,7 @@ impl StreamTerminal {
             write_decimal(buf.as_mut_ptr(), &mut off, (x as u64) + 1);
             write_bytes(buf.as_mut_ptr(), &mut off, b"R");
         }
-        self.write_pty(&buf[..off]);
+        self.write_pty(subslice_len(&buf, off));
     }
 
     #[cfg(ghostty_vt_terminal_owned)]
@@ -136,7 +150,7 @@ impl StreamTerminal {
             write_decimal(buf.as_mut_ptr(), &mut off, flags as u64);
             write_bytes(buf.as_mut_ptr(), &mut off, b"u");
         }
-        self.write_pty(&buf[..off]);
+        self.write_pty(subslice_len(&buf, off));
     }
 
     #[cfg(ghostty_vt_terminal_owned)]
@@ -151,7 +165,7 @@ impl StreamTerminal {
             off += title_len;
             write_bytes(buf.as_mut_ptr(), &mut off, b"\x1b\\");
         }
-        self.write_pty(&buf[..off]);
+        self.write_pty(subslice_len(&buf, off));
     }
 
     fn active(&self) -> *mut Screen {
@@ -160,6 +174,26 @@ impl StreamTerminal {
 
     fn set_mode_by_tag(&mut self, tag: ModeTag, enabled: bool) {
         let term = self.term_mut();
+        if !tag.ansi {
+            match tag.value {
+                47 => {
+                    term.switch_screen_mode(SwitchScreenMode::Mode47, enabled);
+                    term.mode_set(tag, enabled);
+                    return;
+                }
+                1047 => {
+                    term.switch_screen_mode(SwitchScreenMode::Mode1047, enabled);
+                    term.mode_set(tag, enabled);
+                    return;
+                }
+                1049 => {
+                    term.switch_screen_mode(SwitchScreenMode::Mode1049, enabled);
+                    term.mode_set(tag, enabled);
+                    return;
+                }
+                _ => {}
+            }
+        }
         term.mode_set(tag, enabled);
         if tag.value == 6 && !tag.ansi && enabled {
             term.cursor_set_cell(1, 1);
@@ -357,7 +391,8 @@ impl StreamHandler for StreamTerminal {
     }
 
     fn on_cursor_pos(&mut self, v: CursorPos) {
-        self.term_mut().cursor_set_cell(v.row as usize, v.col as usize);
+        self.term_mut()
+            .cursor_set_cell(v.row as usize, v.col as usize);
     }
 
     fn on_cursor_style(&mut self, v: CursorStyle) {
@@ -368,9 +403,17 @@ impl StreamHandler for StreamTerminal {
         }
         let blink = matches!(
             v,
-            CursorStyle::BLINKING_BLOCK | CursorStyle::BLINKING_UNDERLINE | CursorStyle::BLINKING_BAR
+            CursorStyle::BLINKING_BLOCK
+                | CursorStyle::BLINKING_UNDERLINE
+                | CursorStyle::BLINKING_BAR
         );
-        term.mode_set(ModeTag { value: 12, ansi: false }, blink);
+        term.mode_set(
+            ModeTag {
+                value: 12,
+                ansi: false,
+            },
+            blink,
+        );
 
         let style = match v {
             CursorStyle::DEFAULT | CursorStyle::BLINKING_BLOCK | CursorStyle::STEADY_BLOCK => {
@@ -388,23 +431,28 @@ impl StreamHandler for StreamTerminal {
     }
 
     fn on_erase_display_below(&mut self, v: bool) {
-        self.term_mut().erase_display(crate::csi::EraseDisplay::Below, v);
+        self.term_mut()
+            .erase_display(crate::csi::EraseDisplay::Below, v);
     }
 
     fn on_erase_display_above(&mut self, v: bool) {
-        self.term_mut().erase_display(crate::csi::EraseDisplay::Above, v);
+        self.term_mut()
+            .erase_display(crate::csi::EraseDisplay::Above, v);
     }
 
     fn on_erase_display_complete(&mut self, v: bool) {
-        self.term_mut().erase_display(crate::csi::EraseDisplay::Complete, v);
+        self.term_mut()
+            .erase_display(crate::csi::EraseDisplay::Complete, v);
     }
 
     fn on_erase_display_scrollback(&mut self, v: bool) {
-        self.term_mut().erase_display(crate::csi::EraseDisplay::Scrollback, v);
+        self.term_mut()
+            .erase_display(crate::csi::EraseDisplay::Scrollback, v);
     }
 
     fn on_erase_display_scroll_complete(&mut self, v: bool) {
-        self.term_mut().erase_display(crate::csi::EraseDisplay::ScrollComplete, v);
+        self.term_mut()
+            .erase_display(crate::csi::EraseDisplay::ScrollComplete, v);
     }
 
     fn on_erase_line_right(&mut self, v: bool) {
@@ -416,11 +464,13 @@ impl StreamHandler for StreamTerminal {
     }
 
     fn on_erase_line_complete(&mut self, v: bool) {
-        self.term_mut().erase_line(crate::csi::EraseLine::Complete, v);
+        self.term_mut()
+            .erase_line(crate::csi::EraseLine::Complete, v);
     }
 
     fn on_erase_line_right_unless_pending_wrap(&mut self, v: bool) {
-        self.term_mut().erase_line(crate::csi::EraseLine::RightUnlessPendingWrap, v);
+        self.term_mut()
+            .erase_line(crate::csi::EraseLine::RightUnlessPendingWrap, v);
     }
 
     fn on_delete_chars(&mut self, _v: usize) {}
@@ -513,23 +563,7 @@ impl StreamHandler for StreamTerminal {
     }
 
     fn on_full_reset(&mut self) {
-        let term = self.term_mut();
-        term.screens.active_key = ScreenKey::Primary;
-        term.modes.reset();
-        term.flags = TerminalFlags::default();
-        term.previous_char = 0;
-        term.has_previous_char = false;
-        term.mouse_shape = MouseShape::default();
-        term.status_display = StatusDisplay::MAIN;
-        if term.rows > 0 && term.cols > 0 {
-            term.scrolling_region.top = 0;
-            term.scrolling_region.bottom = term.rows.saturating_sub(1);
-            term.scrolling_region.left = 0;
-            term.scrolling_region.right = term.cols.saturating_sub(1);
-        } else {
-            term.scrolling_region = TerminalScrollingRegion::default();
-        }
-        term.flags.dirty.clear = true;
+        self.term_mut().full_reset();
     }
 
     fn on_set_mode(&mut self, v: Mode) {
@@ -607,7 +641,10 @@ impl StreamHandler for StreamTerminal {
     fn on_left_and_right_margin_ambiguous(&mut self) {
         let enabled = {
             let term = self.term_mut();
-            term.mode_get(ModeTag { value: 69, ansi: false })
+            term.mode_get(ModeTag {
+                value: 69,
+                ansi: false,
+            })
         };
         if enabled {
             self.on_left_and_right_margin(Margin {
@@ -617,15 +654,30 @@ impl StreamHandler for StreamTerminal {
         }
     }
 
-    fn on_save_cursor(&mut self) {}
+    fn on_save_cursor(&mut self) {
+        let screen = self.active();
+        if screen.is_null() {
+            return;
+        }
+        unsafe {
+            (*screen).cursor_save();
+        }
+    }
 
-    fn on_restore_cursor(&mut self) {}
+    fn on_restore_cursor(&mut self) {
+        let screen = self.active();
+        if screen.is_null() {
+            return;
+        }
+        unsafe {
+            (*screen).cursor_restore();
+        }
+    }
 
     fn on_modify_key_format(&mut self, v: ModifyKeyFormat) {
         let val = matches!(
             v,
-            ModifyKeyFormat::OTHER_KEYS_NUMERIC
-                | ModifyKeyFormat::OTHER_KEYS_NUMERIC_EXCEPT
+            ModifyKeyFormat::OTHER_KEYS_NUMERIC | ModifyKeyFormat::OTHER_KEYS_NUMERIC_EXCEPT
         );
         self.term_mut().flags.modify_other_keys_2 = val;
     }
@@ -696,7 +748,7 @@ impl StreamHandler for StreamTerminal {
             size_report_encode_impl(style, size, buf.as_mut_ptr(), buf.len(), &mut written)
         };
         if rc == GHOSTTY_SUCCESS && written > 0 {
-            self.write_pty(&buf[..written]);
+            self.write_pty(subslice_len(&buf, written));
         }
     }
 
@@ -772,7 +824,9 @@ impl StreamHandler for StreamTerminal {
         let screen = self.term_mut().active();
         if !screen.is_null() {
             unsafe {
-                (*screen).kitty_keyboard.set(KittySetMode::Set, KittyKeyFlags::new(v.flags));
+                (*screen)
+                    .kitty_keyboard
+                    .set(KittySetMode::Set, KittyKeyFlags::new(v.flags));
             }
         }
     }
@@ -781,7 +835,9 @@ impl StreamHandler for StreamTerminal {
         let screen = self.term_mut().active();
         if !screen.is_null() {
             unsafe {
-                (*screen).kitty_keyboard.set(KittySetMode::Or, KittyKeyFlags::new(v.flags));
+                (*screen)
+                    .kitty_keyboard
+                    .set(KittySetMode::Or, KittyKeyFlags::new(v.flags));
             }
         }
     }
@@ -790,7 +846,9 @@ impl StreamHandler for StreamTerminal {
         let screen = self.term_mut().active();
         if !screen.is_null() {
             unsafe {
-                (*screen).kitty_keyboard.set(KittySetMode::Not, KittyKeyFlags::new(v.flags));
+                (*screen)
+                    .kitty_keyboard
+                    .set(KittySetMode::Not, KittyKeyFlags::new(v.flags));
             }
         }
     }
@@ -799,17 +857,106 @@ impl StreamHandler for StreamTerminal {
     fn on_dcs_put(&mut self, _code: u8) {}
     fn on_dcs_unhook(&mut self) {}
 
-    fn on_apc_start(&mut self) {}
-    fn on_apc_end(&mut self) {}
-    fn on_apc_put(&mut self, _code: u8) {}
+    fn on_apc_start(&mut self) {
+        let term = self.term_mut();
+        term.apc_state = crate::apc::ApcStateTag::Identify;
+        term.apc_len = 0;
+    }
+
+    fn on_apc_end(&mut self) {
+        let term = self.term_mut();
+        if term.apc_state != crate::apc::ApcStateTag::Kitty {
+            term.apc_state = crate::apc::ApcStateTag::Inactive;
+            term.apc_len = 0;
+            return;
+        }
+
+        let input_len = term.apc_len;
+        term.apc_state = crate::apc::ApcStateTag::Inactive;
+        term.apc_len = 0;
+
+        let screen = term.active();
+        if screen.is_null() {
+            return;
+        }
+        unsafe {
+            let storage = (*screen).kitty_images as *mut ImageStorage;
+            if storage.is_null() {
+                return;
+            }
+            let scratch = (*storage).scratch_buf_mut();
+            let scratch_cap = (*storage).scratch_cap();
+            let Some(cmd) = parse_command_string(scratch, input_len, scratch, scratch_cap) else {
+                return;
+            };
+            let mut ctx = ExecContext {
+                storage,
+                terminal: self.terminal,
+            };
+            let _ = execute_kitty_graphics(&mut ctx, &cmd);
+        }
+    }
+
+    fn on_apc_put(&mut self, code: u8) {
+        let term = self.term_mut();
+        match term.apc_state {
+            crate::apc::ApcStateTag::Inactive => {}
+            crate::apc::ApcStateTag::Ignore => {}
+            crate::apc::ApcStateTag::Identify => {
+                if code == b'G' {
+                    if term
+                        .apc_max_bytes
+                        .get(crate::apc::ApcProtocol::Kitty)
+                        .is_some()
+                    {
+                        term.apc_state = crate::apc::ApcStateTag::Kitty;
+                        term.apc_len = 0;
+                    } else {
+                        term.apc_state = crate::apc::ApcStateTag::Ignore;
+                    }
+                } else {
+                    term.apc_state = crate::apc::ApcStateTag::Ignore;
+                }
+            }
+            crate::apc::ApcStateTag::Kitty => {
+                let max = term
+                    .apc_max_bytes
+                    .get(crate::apc::ApcProtocol::Kitty)
+                    .unwrap_or_else(|| {
+                        crate::apc::apc_protocol_default_max_bytes(crate::apc::ApcProtocol::Kitty)
+                    });
+                if term.apc_len >= max {
+                    term.apc_state = crate::apc::ApcStateTag::Ignore;
+                    return;
+                }
+                let screen = term.active();
+                if screen.is_null() {
+                    term.apc_state = crate::apc::ApcStateTag::Ignore;
+                    return;
+                }
+                unsafe {
+                    let storage = (*screen).kitty_images as *mut ImageStorage;
+                    if storage.is_null() {
+                        term.apc_state = crate::apc::ApcStateTag::Ignore;
+                        return;
+                    }
+                    let cap = (*storage).scratch_cap();
+                    if term.apc_len >= cap {
+                        term.apc_state = crate::apc::ApcStateTag::Ignore;
+                        return;
+                    }
+                    ptr::write((*storage).scratch_buf_mut().add(term.apc_len), code);
+                    term.apc_len += 1;
+                }
+            }
+        }
+    }
 
     fn on_end_hyperlink(&mut self) {
         let screen = self.term_mut().active();
         if !screen.is_null() {
             unsafe {
-                (*screen).cursor.hyperlink = ptr::null_mut();
-                (*screen).cursor.hyperlink_id = 0;
-                (*screen).cursor.hyperlink_implicit_id = 0;
+                (*screen).end_hyperlink();
             }
         }
     }
@@ -831,9 +978,7 @@ impl StreamHandler for StreamTerminal {
             return;
         }
         unsafe {
-            let _ = self
-                .term_mut()
-                .set_title_slice(alloc, title_bytes);
+            let _ = self.term_mut().set_title_slice(alloc, title_bytes);
         }
         unsafe {
             terminal_effects::title_changed(self.effects_wrapper());
@@ -860,7 +1005,16 @@ impl StreamHandler for StreamTerminal {
     fn on_progress_report(&mut self, _v: ProgressReport) {}
     fn on_clipboard_contents(&mut self, _v: ClipboardContents<'_>) {}
 
-    fn on_start_hyperlink(&mut self, _v: StartHyperlink<'_>) {}
+    fn on_start_hyperlink(&mut self, v: StartHyperlink<'_>) {
+        let screen = self.term_mut().active();
+        if screen.is_null() {
+            return;
+        }
+        unsafe {
+            let id = v.id.map(|s| s.as_bytes());
+            let _ = (*screen).start_hyperlink(v.uri.as_bytes(), id);
+        }
+    }
 
     fn on_mouse_shape(&mut self, v: MouseShape) {
         self.term_mut().mouse_shape = v;

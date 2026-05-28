@@ -4,10 +4,12 @@ use core::ptr;
 use crate::kitty_graphics_command::*;
 use crate::kitty_graphics_image::*;
 use crate::kitty_graphics_storage::*;
+use crate::terminal_types::Terminal;
 
 static MSG_OK: &[u8] = b"OK";
 static MSG_EINVAL_IMAGE_ID_REQUIRED: &[u8] = b"EINVAL: image ID required";
-static MSG_EINVAL_ID_AND_NUMBER_EXCLUSIVE: &[u8] = b"EINVAL: image ID and number are mutually exclusive";
+static MSG_EINVAL_ID_AND_NUMBER_EXCLUSIVE: &[u8] =
+    b"EINVAL: image ID and number are mutually exclusive";
 static MSG_EINVAL_ID_OR_NUMBER_REQUIRED: &[u8] = b"EINVAL: image ID or number required";
 static MSG_ENOENT_IMAGE_NOT_FOUND: &[u8] = b"ENOENT: image not found";
 static MSG_EINVAL_VIRTUAL_PARENT: &[u8] = b"EINVAL: virtual placement cannot refer to a parent";
@@ -49,10 +51,7 @@ pub(crate) struct ExecContext {
     pub terminal: *mut c_void,
 }
 
-pub(crate) fn execute(
-    ctx: *mut ExecContext,
-    cmd: *const Command,
-) -> Option<Response> {
+pub(crate) fn execute(ctx: *mut ExecContext, cmd: *const Command) -> Option<Response> {
     if ctx.is_null() || cmd.is_null() {
         return None;
     }
@@ -76,40 +75,47 @@ pub(crate) fn execute(
             if let Some(loading) = storage.loading_mut() {
                 match cmd_ref.quiet {
                     CommandQuiet::No => quiet = loading.quiet,
-                    CommandQuiet::Ok => { loading.quiet = CommandQuiet::Ok; },
-                    CommandQuiet::Failures => { loading.quiet = CommandQuiet::Failures; },
+                    CommandQuiet::Ok => {
+                        loading.quiet = CommandQuiet::Ok;
+                    }
+                    CommandQuiet::Failures => {
+                        loading.quiet = CommandQuiet::Failures;
+                    }
                 }
             }
             Some(execute_transmit(ctx, cmd_ref))
-        },
+        }
 
-        CommandControl::TransmitAnimationFrame(_) |
-        CommandControl::ControlAnimation(_) |
-        CommandControl::ComposeAnimation(_) => {
+        CommandControl::TransmitAnimationFrame(_)
+        | CommandControl::ControlAnimation(_)
+        | CommandControl::ComposeAnimation(_) => {
             Some(Response::with_message(MSG_EINVAL_UNIMPLEMENTED))
-        },
+        }
     };
 
     match resp {
-        Some(r) => {
-            match quiet {
-                CommandQuiet::No => {
-                    if r.empty() { None } else { Some(r) }
-                },
-                CommandQuiet::Ok => {
-                    if r.ok() { None } else { Some(r) }
-                },
-                CommandQuiet::Failures => None,
+        Some(r) => match quiet {
+            CommandQuiet::No => {
+                if r.empty() {
+                    None
+                } else {
+                    Some(r)
+                }
             }
+            CommandQuiet::Ok => {
+                if r.ok() {
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            CommandQuiet::Failures => None,
         },
         None => None,
     }
 }
 
-fn execute_query(
-    ctx: *mut ExecContext,
-    cmd: &Command,
-) -> Response {
+fn execute_query(ctx: *mut ExecContext, cmd: &Command) -> Response {
     let t = match cmd.transmission() {
         Some(t) => t,
         None => return Response::with_message(MSG_EINVAL_INVALID_DATA),
@@ -127,30 +133,23 @@ fn execute_query(
     let ctx_ref = unsafe { &*ctx };
     let storage = unsafe { &*ctx_ref.storage };
 
-    let mut loading = match LoadingImage::init_from_command(
-        cmd,
-        storage.image_limits,
-        ptr::null_mut(),
-        0,
-    ) {
-        Ok(l) => l,
-        Err(err) => {
-            let mut r = encode_error(err);
-            r.id = result.id;
-            r.image_number = result.image_number;
-            r.placement_id = result.placement_id;
-            return r;
-        },
-    };
+    let mut loading =
+        match LoadingImage::init_from_command(cmd, storage.image_limits, ptr::null_mut(), 0) {
+            Ok(l) => l,
+            Err(err) => {
+                let mut r = encode_error(err);
+                r.id = result.id;
+                r.image_number = result.image_number;
+                r.placement_id = result.placement_id;
+                return r;
+            }
+        };
     let _ = &mut loading;
 
     result
 }
 
-fn execute_transmit(
-    ctx: *mut ExecContext,
-    cmd: &Command,
-) -> Response {
+fn execute_transmit(ctx: *mut ExecContext, cmd: &Command) -> Response {
     let t = match cmd.transmission() {
         Some(t) => t,
         None => return Response::with_message(MSG_EINVAL_INVALID_DATA),
@@ -179,15 +178,21 @@ fn execute_transmit(
             }
 
             result.id = load_result.image_id;
+            if matches!(cmd.control, CommandControl::TransmitAndDisplay { .. }) {
+                let display_result = execute_display(ctx, cmd);
+                if !display_result.ok() {
+                    return display_result;
+                }
+            }
             result
-        },
+        }
         Err(err) => {
             let mut r = encode_error(err);
             r.id = result.id;
             r.image_number = result.image_number;
             r.placement_id = result.placement_id;
             r
-        },
+        }
     }
 }
 
@@ -197,10 +202,7 @@ struct LoadResult {
     implicit_id: bool,
 }
 
-fn load_and_add_image(
-    storage: &mut ImageStorage,
-    cmd: &Command,
-) -> Result<LoadResult, ImageError> {
+fn load_and_add_image(storage: &mut ImageStorage, cmd: &Command) -> Result<LoadResult, ImageError> {
     let t = match cmd.transmission() {
         Some(t) => t,
         None => return Err(ImageError::InvalidData),
@@ -279,10 +281,7 @@ fn load_and_add_image(
     })
 }
 
-fn execute_display(
-    ctx: *mut ExecContext,
-    cmd: &Command,
-) -> Response {
+fn execute_display(ctx: *mut ExecContext, cmd: &Command) -> Response {
     let d = match cmd.display() {
         Some(d) => d,
         None => return Response::with_message(MSG_EINVAL_INVALID_DATA),
@@ -310,7 +309,7 @@ fn execute_display(
         Some(i) => i,
         None => {
             return Response::with_message(MSG_ENOENT_IMAGE_NOT_FOUND);
-        },
+        }
     };
 
     result.id = img.id;
@@ -321,11 +320,46 @@ fn execute_display(
         }
     }
 
+    let (pin, pin_node, pin_x, pin_y) = if d.virtual_placement {
+        (ptr::null_mut(), ptr::null_mut(), 0, 0)
+    } else {
+        let term = unsafe { &mut *(ctx_ref.terminal as *mut Terminal) };
+        let screen = term.active();
+        if screen.is_null() {
+            return Response::with_message(MSG_EINVAL_TERMINAL_STATE);
+        }
+        let pages = unsafe { &mut *(*screen).pages };
+        let cursor_pin = unsafe { (*screen).cursor.page_pin };
+        if cursor_pin.is_null() {
+            return Response::with_message(MSG_EINVAL_TERMINAL_STATE);
+        }
+        let cursor_pin_value = unsafe {
+            let mut p = ptr::read(cursor_pin);
+            p.x = (*screen).cursor.x;
+            p.y = (*screen).cursor.y;
+            p.garbage = false;
+            p
+        };
+        let new_pin = pages.track_pin(cursor_pin_value);
+        if new_pin.is_null() {
+            return Response::with_message(MSG_EINVAL_TERMINAL_STATE);
+        }
+        unsafe {
+            (
+                new_pin as *mut c_void,
+                (*new_pin).node as *mut c_void,
+                (*new_pin).x,
+                (*new_pin).y,
+            )
+        }
+    };
+
     let placement = Placement {
         location_is_virtual: d.virtual_placement,
-        pin_node: ptr::null_mut(),
-        pin_x: 0,
-        pin_y: 0,
+        pin,
+        pin_node,
+        pin_x,
+        pin_y,
         x_offset: d.x_offset,
         y_offset: d.y_offset,
         source_x: d.x,
@@ -338,20 +372,16 @@ fn execute_display(
     };
 
     match storage.add_placement(img.id, result.placement_id, placement) {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(_) => {
             return encode_error(ImageError::OutOfMemory);
-        },
+        }
     }
 
     result
 }
 
-fn execute_delete(
-    ctx: *mut ExecContext,
-    _cmd: &Command,
-    delete: Delete,
-) -> Response {
+fn execute_delete(ctx: *mut ExecContext, _cmd: &Command, delete: Delete) -> Response {
     let ctx_ref = unsafe { &*ctx };
     let storage = unsafe { &mut *ctx_ref.storage };
 

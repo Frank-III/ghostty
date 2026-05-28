@@ -14,6 +14,45 @@ const terminal_c = @import("terminal.zig");
 const Result = @import("result.zig").Result;
 
 const rust = if (build_options.lib_vt_rust) struct {
+    extern fn ghostty_rust_grid_ref_cell_from_ref(
+        node: ?*anyopaque,
+        x: size.CellCountInt,
+        y: size.CellCountInt,
+        out: ?*cell_c.CCell,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_grid_ref_row_from_ref(
+        node: ?*anyopaque,
+        x: size.CellCountInt,
+        y: size.CellCountInt,
+        out: ?*row_c.CRow,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_grid_ref_graphemes_from_ref(
+        node: ?*anyopaque,
+        x: size.CellCountInt,
+        y: size.CellCountInt,
+        out_buf: ?[*]u32,
+        buf_len: usize,
+        out_len: *usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_grid_ref_hyperlink_uri_from_ref(
+        node: ?*anyopaque,
+        x: size.CellCountInt,
+        y: size.CellCountInt,
+        out_buf: ?[*]u8,
+        buf_len: usize,
+        out_len: *usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_grid_ref_style_from_ref(
+        node: ?*anyopaque,
+        x: size.CellCountInt,
+        y: size.CellCountInt,
+        out: ?*style_c.Style,
+    ) callconv(.c) c_int;
+
     extern fn ghostty_rust_grid_ref_graphemes(
         has_text: bool,
         codepoint: u32,
@@ -64,6 +103,15 @@ pub fn grid_ref_cell(
     ref: *const CGridRef,
     out: ?*cell_c.CCell,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.terminal_rust_owned) {
+        return @enumFromInt(rust.ghostty_rust_grid_ref_cell_from_ref(
+            ref.node,
+            ref.x,
+            ref.y,
+            out,
+        ));
+    }
+
     const p = ref.toPin() orelse return .invalid_value;
     if (out) |o| o.* = @bitCast(p.rowAndCell().cell.*);
     return .success;
@@ -73,6 +121,15 @@ pub fn grid_ref_row(
     ref: *const CGridRef,
     out: ?*row_c.CRow,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.terminal_rust_owned) {
+        return @enumFromInt(rust.ghostty_rust_grid_ref_row_from_ref(
+            ref.node,
+            ref.x,
+            ref.y,
+            out,
+        ));
+    }
+
     const p = ref.toPin() orelse return .invalid_value;
     if (out) |o| o.* = @bitCast(p.rowAndCell().row.*);
     return .success;
@@ -84,6 +141,17 @@ pub fn grid_ref_graphemes(
     buf_len: usize,
     out_len: *usize,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.terminal_rust_owned) {
+        return @enumFromInt(rust.ghostty_rust_grid_ref_graphemes_from_ref(
+            ref.node,
+            ref.x,
+            ref.y,
+            out_buf,
+            buf_len,
+            out_len,
+        ));
+    }
+
     const p = ref.toPin() orelse return .invalid_value;
     const cell = p.rowAndCell().cell;
 
@@ -129,6 +197,17 @@ pub fn grid_ref_hyperlink_uri(
     buf_len: usize,
     out_len: *usize,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.terminal_rust_owned) {
+        return @enumFromInt(rust.ghostty_rust_grid_ref_hyperlink_uri_from_ref(
+            ref.node,
+            ref.x,
+            ref.y,
+            out_buf,
+            buf_len,
+            out_len,
+        ));
+    }
+
     const p = ref.toPin() orelse return .invalid_value;
     const rac = p.node.data.getRowAndCell(p.x, p.y);
     const cell = rac.cell;
@@ -192,6 +271,15 @@ pub fn grid_ref_style(
     ref: *const CGridRef,
     out: ?*style_c.Style,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.terminal_rust_owned) {
+        return @enumFromInt(rust.ghostty_rust_grid_ref_style_from_ref(
+            ref.node,
+            ref.x,
+            ref.y,
+            out,
+        ));
+    }
+
     const p = ref.toPin() orelse return .invalid_value;
     if (out) |o| {
         const cell = p.rowAndCell().cell;
