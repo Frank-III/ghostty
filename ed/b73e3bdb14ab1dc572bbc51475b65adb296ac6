@@ -1,0 +1,23 @@
+crates/ghostty-ffi/src/lib.rs
+  s_6cee157524a3f1::t_519d0db97bb7e4 91-96
+docs/PORTING_STATUS.tsv
+  s_6cee157524a3f1::t_f01c05217cbe39 43
+docs/CI_RUST.md
+  s_6cee157524a3f1::t_6cb26244d5724d 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "edb73e3bdb14ab1dc572bbc51475b65adb296ac6",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
