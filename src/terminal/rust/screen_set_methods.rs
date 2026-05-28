@@ -118,12 +118,15 @@ impl Terminal {
             let screens = ScreenSet::bootstrap_init(alloc, cols, rows, max_scrollback)?;
             let tabstops = Tabstops::init(alloc, cols as usize, TABSTOP_INTERVAL as usize)?;
 
-            let mut term = Terminal::init(&TerminalOptions::new(cols, rows));
+            let opts = TerminalOptions::new(cols, rows);
+            let mut term = Terminal::init(&opts);
             term.screens = screens;
             term.tabstops = tabstops;
             term.cols = cols;
             term.rows = rows;
             term.bootstrap_alloc = alloc;
+            term.apc_max_bytes = crate::apc::ApcMaxBytes::init_full();
+            term.kitty_image_storage_limit = opts.kitty_image_storage_limit;
             term.title = ByteList::create(alloc)
                 .map(|p| p as *mut core::ffi::c_void)
                 .unwrap_or(core::ptr::null_mut());

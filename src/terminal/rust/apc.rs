@@ -13,7 +13,7 @@ pub enum ApcProtocol {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ApcMaxBytes {
-    pub kitty: usize,
+    pub kitty: Option<usize>,
 }
 
 impl Default for ApcMaxBytes {
@@ -25,14 +25,34 @@ impl Default for ApcMaxBytes {
 impl ApcMaxBytes {
     pub const fn init_full() -> Self {
         Self {
-            kitty: APC_KITTY_DEFAULT_MAX_BYTES,
+            kitty: Some(APC_KITTY_DEFAULT_MAX_BYTES),
         }
     }
 
-    pub fn get(&self, protocol: ApcProtocol) -> usize {
+    pub const fn init_full_with(value: usize) -> Self {
+        Self { kitty: Some(value) }
+    }
+
+    pub fn get(&self, protocol: ApcProtocol) -> Option<usize> {
         match protocol {
             ApcProtocol::Kitty => self.kitty,
         }
+    }
+
+    pub fn put(&mut self, protocol: ApcProtocol, value: usize) {
+        match protocol {
+            ApcProtocol::Kitty => self.kitty = Some(value),
+        }
+    }
+
+    pub fn remove(&mut self, protocol: ApcProtocol) {
+        match protocol {
+            ApcProtocol::Kitty => self.kitty = None,
+        }
+    }
+
+    pub fn set_all(&mut self, value: Option<usize>) {
+        self.kitty = value;
     }
 }
 
@@ -149,7 +169,10 @@ impl ApcHandler {
                 match byte {
                     b'G' => {
                         if kitty_enabled {
-                            let max = self.max_bytes.get(ApcProtocol::Kitty);
+                            let max = self
+                                .max_bytes
+                                .get(ApcProtocol::Kitty)
+                                .unwrap_or_else(|| apc_protocol_default_max_bytes(ApcProtocol::Kitty));
                             self.state = ApcState::kitty(max, core::ptr::null_mut());
                         } else {
                             self.state = ApcState::ignore();

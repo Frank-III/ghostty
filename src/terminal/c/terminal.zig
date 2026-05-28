@@ -340,6 +340,67 @@ const rust_owned = if (build_options.terminal_rust_owned) struct {
         handle: ?*anyopaque,
         wrapper: ?*TerminalWrapper,
     ) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_owned_set_palette(
+        handle: ?*anyopaque,
+        value: ?*const color.PaletteC,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_get_palette(
+        handle: ?*anyopaque,
+        data: c_int,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_set_selection(
+        handle: ?*anyopaque,
+        value: ?*const selection_c.CSelection,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_get_selection(
+        handle: ?*anyopaque,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_set_apc_max_bytes(
+        handle: ?*anyopaque,
+        value: ?*const usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_set_apc_max_bytes_kitty(
+        handle: ?*anyopaque,
+        value: ?*const usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_set_kitty_image_storage_limit(
+        handle: ?*anyopaque,
+        value: ?*const u64,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_set_kitty_image_medium(
+        handle: ?*anyopaque,
+        option: c_int,
+        value: ?*const bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_get_kitty_image(
+        handle: ?*anyopaque,
+        data: c_int,
+        enabled: bool,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_set_color_override(
+        handle: ?*anyopaque,
+        data: c_int,
+        value: ?*const color.RGB.C,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_set_palette_index(
+        handle: ?*anyopaque,
+        index: u8,
+        value: ?*const color.RGB.C,
+    ) callconv(.c) c_int;
 } else struct {};
 
 fn rustOwnedHandle(wrapper: *TerminalWrapper) ?*anyopaque {
@@ -1033,6 +1094,14 @@ fn setTyped(
             t.flags.dirty.palette = true;
         },
         .color_palette => {
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_palette(
+                        handle,
+                        value,
+                    ));
+                }
+            }
             var palette: color.Palette = undefined;
             const result = decodeSetPalette(value, &palette);
             if (result != .success) return result;
@@ -1042,6 +1111,14 @@ fn setTyped(
         },
         .kitty_image_storage_limit => {
             if (comptime !build_options.kitty_graphics) return .success;
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_kitty_image_storage_limit(
+                        handle,
+                        value,
+                    ));
+                }
+            }
             var limit_u64: u64 = undefined;
             const result = decodeSetU64Zero(value, &limit_u64);
             if (result != .success) return result;
@@ -1058,6 +1135,15 @@ fn setTyped(
         .kitty_image_medium_shared_mem,
         => {
             if (comptime !build_options.kitty_graphics) return .success;
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_kitty_image_medium(
+                        handle,
+                        @intFromEnum(option),
+                        value,
+                    ));
+                }
+            }
             var val: bool = undefined;
             var has_value: bool = undefined;
             const result = decodeSetBoolOptional(value, &has_value, &val);
@@ -1080,6 +1166,14 @@ fn setTyped(
             var max_bytes: usize = undefined;
             const result = decodeSetUsizeOptional(value, &has_value, &max_bytes);
             if (result != .success) return result;
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_apc_max_bytes(
+                        handle,
+                        value,
+                    ));
+                }
+            }
             const stream = wrapper.zigStream() orelse return .invalid_value;
             stream.handler.apc_handler.max_bytes = if (has_value)
                 .initFull(max_bytes)
@@ -1091,6 +1185,14 @@ fn setTyped(
             var max_bytes: usize = undefined;
             const result = decodeSetUsizeOptional(value, &has_value, &max_bytes);
             if (result != .success) return result;
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_apc_max_bytes_kitty(
+                        handle,
+                        value,
+                    ));
+                }
+            }
             const stream = wrapper.zigStream() orelse return .invalid_value;
             if (has_value) {
                 stream.handler.apc_handler.max_bytes.put(.kitty, max_bytes);
@@ -1099,6 +1201,14 @@ fn setTyped(
             }
         },
         .selection => {
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_selection(
+                        handle,
+                        value,
+                    ));
+                }
+            }
             if (value) |ptr| {
                 const sel = ptr.toZig() orelse return .invalid_value;
                 const t = wrapper.zigTerminal() orelse return .invalid_value;
@@ -1705,6 +1815,27 @@ fn getTyped(
                 => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_color(
                     handle,
                     @intFromEnum(data),
+                    @ptrCast(out),
+                )),
+                .color_palette,
+                .color_palette_default,
+                => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_palette(
+                    handle,
+                    @intFromEnum(data),
+                    @ptrCast(out),
+                )),
+                .kitty_image_storage_limit,
+                .kitty_image_medium_file,
+                .kitty_image_medium_temp_file,
+                .kitty_image_medium_shared_mem,
+                => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_kitty_image(
+                    handle,
+                    @intFromEnum(data),
+                    comptime build_options.kitty_graphics,
+                    @ptrCast(out),
+                )),
+                .selection => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_selection(
+                    handle,
                     @ptrCast(out),
                 )),
                 else => return .invalid_value,
@@ -2753,7 +2884,6 @@ test "get scrollbar" {
 }
 
 test "get kitty image settings" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2780,8 +2910,10 @@ test "get kitty image settings" {
     }
 
     try testing.expectEqual(Result.success, get(t, .kitty_image_storage_limit, @ptrCast(&limit)));
-    const zt = zigTerminalForTest(t) orelse return;
-    try testing.expectEqual(@as(u64, @intCast(zt.screens.active.kitty_images.total_limit)), limit);
+    if (comptime !build_options.terminal_rust_owned) {
+        const zt = zigTerminalForTest(t) orelse return;
+        try testing.expectEqual(@as(u64, @intCast(zt.screens.active.kitty_images.total_limit)), limit);
+    }
     try testing.expectEqual(Result.success, get(t, .kitty_image_medium_file, @ptrCast(&medium_file)));
     try testing.expect(!medium_file);
     try testing.expectEqual(Result.success, get(t, .kitty_image_medium_temp_file, @ptrCast(&medium_temp_file)));
@@ -2807,8 +2939,6 @@ test "get kitty image settings" {
 }
 
 test "set APC max bytes" {
-    if (comptime build_options.terminal_rust_owned) return;
-
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2820,6 +2950,21 @@ test "set APC max bytes" {
         },
     ));
     defer free(t);
+
+    if (comptime build_options.terminal_rust_owned) {
+        const all: usize = 123;
+        try testing.expectEqual(Result.success, set(t, .apc_max_bytes, @ptrCast(&all)));
+
+        const kitty_max_bytes: usize = 456;
+        try testing.expectEqual(Result.success, set(t, .apc_max_bytes_kitty, @ptrCast(&kitty_max_bytes)));
+
+        try testing.expectEqual(Result.success, set(t, .apc_max_bytes_kitty, null));
+
+        try testing.expectEqual(Result.success, set(t, .apc_max_bytes, @ptrCast(&all)));
+
+        try testing.expectEqual(Result.success, set(t, .apc_max_bytes, null));
+        return;
+    }
 
     try testing.expectEqual(
         apc.Protocol.defaultMaxBytes(.kitty),
@@ -2903,7 +3048,6 @@ test "get invalid" {
 }
 
 test "set and get selection" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2939,8 +3083,10 @@ test "set and get selection" {
         .rectangle = true,
     };
     try testing.expectEqual(Result.success, set(t, .selection, @ptrCast(&sel)));
-    const zt = zigTerminalForTest(t) orelse return;
-    try testing.expect(zt.screens.active.selection.?.tracked());
+    if (comptime !build_options.terminal_rust_owned) {
+        const zt = zigTerminalForTest(t) orelse return;
+        try testing.expect(zt.screens.active.selection.?.tracked());
+    }
 
     try testing.expectEqual(Result.success, get(t, .selection, @ptrCast(&out)));
     try testing.expect(out.start.toPin().?.eql(start_ref.toPin().?));
@@ -2948,7 +3094,10 @@ test "set and get selection" {
     try testing.expect(out.rectangle);
 
     try testing.expectEqual(Result.success, set(t, .selection, null));
-    try testing.expect(zt.screens.active.selection == null);
+    if (comptime !build_options.terminal_rust_owned) {
+        const zt = zigTerminalForTest(t) orelse return;
+        try testing.expect(zt.screens.active.selection == null);
+    }
     try testing.expectEqual(Result.no_value, get(t, .selection, @ptrCast(&out)));
 }
 
@@ -4556,7 +4705,6 @@ test "set and get color_cursor" {
 }
 
 test "set and get color_palette" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4588,7 +4736,6 @@ test "set and get color_palette" {
 }
 
 test "get color default vs effective with override" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4601,7 +4748,6 @@ test "get color default vs effective with override" {
     ));
     defer free(t);
 
-    const zt = zigTerminalForTest(t) orelse return;
     var rgb: color.RGB.C = undefined;
 
     // Set defaults
@@ -4613,18 +4759,39 @@ test "get color default vs effective with override" {
     try testing.expectEqual(Result.success, set(t, .color_cursor, @ptrCast(&cur)));
 
     // Simulate OSC overrides
-    const override: color.RGB = .{ .r = 0x00, .g = 0x00, .b = 0x00 };
-    zt.colors.foreground.override = override;
-    zt.colors.background.override = override;
-    zt.colors.cursor.override = override;
+    const override: color.RGB.C = .{ .r = 0x00, .g = 0x00, .b = 0x00 };
+    if (comptime build_options.terminal_rust_owned) {
+        const handle = rustOwnedHandle(t.?) orelse return;
+        try testing.expectEqual(Result.success, @as(Result, @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_color_override(
+            handle,
+            @intFromEnum(TerminalData.color_foreground),
+            @ptrCast(&override),
+        ))));
+        try testing.expectEqual(Result.success, @as(Result, @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_color_override(
+            handle,
+            @intFromEnum(TerminalData.color_background),
+            @ptrCast(&override),
+        ))));
+        try testing.expectEqual(Result.success, @as(Result, @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_color_override(
+            handle,
+            @intFromEnum(TerminalData.color_cursor),
+            @ptrCast(&override),
+        ))));
+    } else {
+        const zt = zigTerminalForTest(t) orelse return;
+        const override_zig: color.RGB = .{ .r = 0x00, .g = 0x00, .b = 0x00 };
+        zt.colors.foreground.override = override_zig;
+        zt.colors.background.override = override_zig;
+        zt.colors.cursor.override = override_zig;
+    }
 
     // Effective returns override
     try testing.expectEqual(Result.success, get(t, .color_foreground, @ptrCast(&rgb)));
-    try testing.expectEqual(override.cval(), rgb);
+    try testing.expectEqual(override, rgb);
     try testing.expectEqual(Result.success, get(t, .color_background, @ptrCast(&rgb)));
-    try testing.expectEqual(override.cval(), rgb);
+    try testing.expectEqual(override, rgb);
     try testing.expectEqual(Result.success, get(t, .color_cursor, @ptrCast(&rgb)));
-    try testing.expectEqual(override.cval(), rgb);
+    try testing.expectEqual(override, rgb);
 
     // Default returns original
     try testing.expectEqual(Result.success, get(t, .color_foreground_default, @ptrCast(&rgb)));
@@ -4655,7 +4822,6 @@ test "get color default returns no_value when unset" {
 }
 
 test "get color_palette_default vs current" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4668,15 +4834,24 @@ test "get color_palette_default vs current" {
     ));
     defer free(t);
 
-    const zt = zigTerminalForTest(t) orelse return;
-
     // Set a custom default palette
     var custom: color.PaletteC = color.paletteCval(&color.default);
     custom[0] = .{ .r = 0x12, .g = 0x34, .b = 0x56 };
     try testing.expectEqual(Result.success, set(t, .color_palette, @ptrCast(&custom)));
 
     // Simulate OSC override on index 0
-    zt.colors.palette.set(0, .{ .r = 0xFF, .g = 0xFF, .b = 0xFF });
+    const override_entry: color.RGB.C = .{ .r = 0xFF, .g = 0xFF, .b = 0xFF };
+    if (comptime build_options.terminal_rust_owned) {
+        const handle = rustOwnedHandle(t.?) orelse return;
+        try testing.expectEqual(Result.success, @as(Result, @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_palette_index(
+            handle,
+            0,
+            @ptrCast(&override_entry),
+        ))));
+    } else {
+        const zt = zigTerminalForTest(t) orelse return;
+        zt.colors.palette.set(0, .{ .r = 0xFF, .g = 0xFF, .b = 0xFF });
+    }
 
     // Current palette returns the override
     var palette: color.PaletteC = undefined;

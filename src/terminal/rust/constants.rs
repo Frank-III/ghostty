@@ -94,6 +94,15 @@ pub(crate) const TERMINAL_DATA_KITTY_IMAGE_MEDIUM_TEMP_FILE: c_int = 28;
 pub(crate) const TERMINAL_DATA_KITTY_IMAGE_MEDIUM_SHARED_MEM: c_int = 29;
 pub(crate) const TERMINAL_DATA_KITTY_GRAPHICS: c_int = 30;
 pub(crate) const TERMINAL_DATA_SELECTION: c_int = 31;
+
+pub(crate) const TERMINAL_OPTION_COLOR_PALETTE: c_int = 14;
+pub(crate) const TERMINAL_OPTION_KITTY_IMAGE_STORAGE_LIMIT: c_int = 15;
+pub(crate) const TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_FILE: c_int = 16;
+pub(crate) const TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_TEMP_FILE: c_int = 17;
+pub(crate) const TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_SHARED_MEM: c_int = 18;
+pub(crate) const TERMINAL_OPTION_APC_MAX_BYTES: c_int = 19;
+pub(crate) const TERMINAL_OPTION_APC_MAX_BYTES_KITTY: c_int = 20;
+pub(crate) const TERMINAL_OPTION_SELECTION: c_int = 21;
 pub(crate) const RENDER_RESULT_SUCCESS: c_int = GHOSTTY_SUCCESS;
 pub(crate) const RENDER_RESULT_INVALID_VALUE: c_int = GHOSTTY_INVALID_VALUE;
 pub(crate) const RENDER_DATA_COLS: c_int = 1;

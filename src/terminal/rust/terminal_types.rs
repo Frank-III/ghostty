@@ -3,6 +3,7 @@ use core::ffi::c_void;
 use crate::ansi::StatusDisplay;
 #[cfg(ghostty_vt_terminal_owned)]
 use crate::allocator::GhosttyAllocator;
+use crate::apc::ApcMaxBytes;
 use crate::color_palette::{default_palette, DynamicPalette};
 use crate::mode_def::ModeState;
 use crate::mouse_shape::MouseShape;
@@ -60,6 +61,16 @@ impl DynamicRgb {
 
     pub fn set_default(&mut self, color: Option<GhosttyColorRgb>) {
         self.default_val = match color {
+            Some(rgb) => OptionalRgb {
+                rgb,
+                set: true,
+            },
+            None => OptionalRgb::UNSET,
+        };
+    }
+
+    pub fn set_override(&mut self, color: Option<GhosttyColorRgb>) {
+        self.override_val = match color {
             Some(rgb) => OptionalRgb {
                 rgb,
                 set: true,
@@ -313,6 +324,16 @@ pub struct Terminal {
     #[cfg(ghostty_vt_terminal_owned)]
     /// C `TerminalWrapper` for effect callbacks (write_pty, bell, etc.).
     pub effects_wrapper: *mut c_void,
+    #[cfg(ghostty_vt_terminal_owned)]
+    pub apc_max_bytes: ApcMaxBytes,
+    #[cfg(ghostty_vt_terminal_owned)]
+    pub kitty_image_storage_limit: usize,
+    #[cfg(ghostty_vt_terminal_owned)]
+    pub kitty_image_medium_file: bool,
+    #[cfg(ghostty_vt_terminal_owned)]
+    pub kitty_image_medium_temp_file: bool,
+    #[cfg(ghostty_vt_terminal_owned)]
+    pub kitty_image_medium_shared_mem: bool,
     pub colors: TerminalColors,
     pub previous_char: u32,
     pub has_previous_char: bool,
@@ -349,6 +370,16 @@ impl Default for Terminal {
             bootstrap_alloc: core::ptr::null_mut(),
             #[cfg(ghostty_vt_terminal_owned)]
             effects_wrapper: core::ptr::null_mut(),
+            #[cfg(ghostty_vt_terminal_owned)]
+            apc_max_bytes: ApcMaxBytes::init_full(),
+            #[cfg(ghostty_vt_terminal_owned)]
+            kitty_image_storage_limit: 320 * 1000 * 1000,
+            #[cfg(ghostty_vt_terminal_owned)]
+            kitty_image_medium_file: false,
+            #[cfg(ghostty_vt_terminal_owned)]
+            kitty_image_medium_temp_file: false,
+            #[cfg(ghostty_vt_terminal_owned)]
+            kitty_image_medium_shared_mem: false,
             colors: TerminalColors::default_val(),
             previous_char: 0,
             has_previous_char: false,

@@ -3,24 +3,37 @@ use core::mem;
 use core::ptr;
 
 use crate::allocator::{GhosttyAllocator, alloc_alloc_impl, alloc_free_impl};
+use crate::apc::{ApcMaxBytes, ApcProtocol};
+use crate::color_palette::{default_palette, Palette};
 use crate::early::*;
 use crate::highlight::Pin;
+use crate::selection::GhosttySelection;
+use crate::selection_types::Selection;
 use crate::constants::{
     TERMINAL_DATA_COLOR_BACKGROUND, TERMINAL_DATA_COLOR_BACKGROUND_DEFAULT,
     TERMINAL_DATA_COLOR_CURSOR, TERMINAL_DATA_COLOR_CURSOR_DEFAULT,
     TERMINAL_DATA_COLOR_FOREGROUND, TERMINAL_DATA_COLOR_FOREGROUND_DEFAULT,
-    TERMINAL_DATA_CURSOR_STYLE, TERMINAL_DATA_PWD, TERMINAL_DATA_SCROLLBAR,
-    TERMINAL_DATA_TITLE,
-    STYLE_COLOR_NONE, STYLE_COLOR_PALETTE, STYLE_COLOR_RGB,
+    TERMINAL_DATA_COLOR_PALETTE, TERMINAL_DATA_COLOR_PALETTE_DEFAULT,
+    TERMINAL_DATA_CURSOR_STYLE, TERMINAL_DATA_KITTY_IMAGE_MEDIUM_FILE,
+    TERMINAL_DATA_KITTY_IMAGE_MEDIUM_SHARED_MEM, TERMINAL_DATA_KITTY_IMAGE_MEDIUM_TEMP_FILE,
+    TERMINAL_DATA_KITTY_IMAGE_STORAGE_LIMIT, TERMINAL_DATA_PWD, TERMINAL_DATA_SCROLLBAR,
+    TERMINAL_DATA_SELECTION, TERMINAL_DATA_TITLE, TERMINAL_OPTION_APC_MAX_BYTES,
+    TERMINAL_OPTION_APC_MAX_BYTES_KITTY, TERMINAL_OPTION_COLOR_PALETTE,
+    TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_FILE, TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_SHARED_MEM,
+    TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_TEMP_FILE, TERMINAL_OPTION_KITTY_IMAGE_STORAGE_LIMIT,
+    TERMINAL_OPTION_SELECTION, STYLE_COLOR_NONE, STYLE_COLOR_PALETTE, STYLE_COLOR_RGB,
 };
 use crate::mode_def::{mode_find_index, ModeTag as ModeTagType};
 use crate::style::{
     GhosttyColorRgb, GhosttyStyle, GhosttyStyleColor, GhosttyStyleColorValue,
 };
 use crate::style_types::{Color, Style, rgb_to_ghostty};
-use crate::terminal_get_color::terminal_get_color_impl;
+use crate::terminal_get_color::{terminal_get_color_impl, terminal_get_palette_impl};
+use crate::terminal_get_kitty_image::terminal_get_kitty_image_impl;
+use crate::terminal_get_selection::terminal_get_selection_impl;
 use crate::terminal_get_style::{terminal_get_scrollbar_impl, terminal_get_style_impl};
-use crate::terminal_set_color::terminal_set_rgb_impl;
+use crate::terminal_set_color::{terminal_set_palette_impl, terminal_set_rgb_impl};
+use crate::terminal_set_scalar::{terminal_set_bool_optional_impl, terminal_set_u64_zero_impl, terminal_set_usize_optional_impl};
 use crate::terminal_get_string::terminal_get_string_impl;
 use crate::terminal_set_string::terminal_set_string_impl;
 use crate::point::{Point, PointC, PointTag};
@@ -303,6 +316,211 @@ impl RustTerminalOwned {
             };
 
             target.set_default(if has_value { Some(rgb) } else { None });
+            self.terminal.flags.dirty.palette = true;
+            GHOSTTY_SUCCESS
+        }
+    }
+
+    pub unsafe fn set_palette(&mut self, value: *const GhosttyColorRgb) -> c_int {
+        unsafe {
+            let mut has_value = false;
+            let mut palette_ptr: *const GhosttyColorRgb = ptr::null();
+            if terminal_set_palette_impl(value, &mut has_value, &mut palette_ptr) != GHOSTTY_SUCCESS {
+                return GHOSTTY_INVALID_VALUE;
+            }
+
+            let palette = if has_value {
+                palette_from_c(palette_ptr)
+            } else {
+                default_palette()
+            };
+            self.terminal.colors.palette.change_default(palette);
+            self.terminal.flags.dirty.palette = true;
+            GHOSTTY_SUCCESS
+        }
+    }
+
+    pub unsafe fn get_palette(&self, data: c_int, out: *mut c_void) -> c_int {
+        unsafe {
+            let palette = match data {
+                TERMINAL_DATA_COLOR_PALETTE => self.terminal.colors.palette.current(),
+                TERMINAL_DATA_COLOR_PALETTE_DEFAULT => self.terminal.colors.palette.original(),
+                _ => return GHOSTTY_INVALID_VALUE,
+            };
+            terminal_get_palette_impl(data, palette.as_ptr(), out)
+        }
+    }
+
+    pub unsafe fn set_selection(&mut self, value: *const GhosttySelection) -> c_int {
+        unsafe {
+            let screen = self.terminal.active();
+            if screen.is_null() {
+                return GHOSTTY_INVALID_VALUE;
+            }
+
+            if value.is_null() {
+                (*screen).clear_selection();
+                return GHOSTTY_SUCCESS;
+            }
+
+            let sel_c = ptr::read(value);
+            let Some(start) = grid_ref_to_pin(sel_c.start) else {
+                return GHOSTTY_INVALID_VALUE;
+            };
+            let Some(end) = grid_ref_to_pin(sel_c.end) else {
+                return GHOSTTY_INVALID_VALUE;
+            };
+            let sel = Selection::init(start, end, sel_c.rectangle);
+            (*screen).select(Some(sel));
+            GHOSTTY_SUCCESS
+        }
+    }
+
+    pub unsafe fn get_selection(&self, out: *mut c_void) -> c_int {
+        unsafe {
+            let screen = self.terminal.active();
+            if screen.is_null() {
+                return GHOSTTY_INVALID_VALUE;
+            }
+
+            let Some(sel) = (*screen).selection.as_ref() else {
+                return terminal_get_selection_impl(
+                    TERMINAL_DATA_SELECTION,
+                    false,
+                    ptr::null(),
+                    out,
+                );
+            };
+
+            let ghostty = selection_to_ghostty(sel);
+            terminal_get_selection_impl(TERMINAL_DATA_SELECTION, true, &ghostty, out)
+        }
+    }
+
+    pub unsafe fn set_apc_max_bytes(&mut self, value: *const usize) -> c_int {
+        unsafe {
+            let mut has_value = false;
+            let mut max_bytes = 0usize;
+            if terminal_set_usize_optional_impl(value, &mut has_value, &mut max_bytes) != GHOSTTY_SUCCESS
+            {
+                return GHOSTTY_INVALID_VALUE;
+            }
+
+            if has_value {
+                self.terminal.apc_max_bytes = ApcMaxBytes::init_full_with(max_bytes);
+            } else {
+                self.terminal.apc_max_bytes.set_all(None);
+            }
+            GHOSTTY_SUCCESS
+        }
+    }
+
+    pub unsafe fn set_apc_max_bytes_kitty(&mut self, value: *const usize) -> c_int {
+        unsafe {
+            let mut has_value = false;
+            let mut max_bytes = 0usize;
+            if terminal_set_usize_optional_impl(value, &mut has_value, &mut max_bytes) != GHOSTTY_SUCCESS
+            {
+                return GHOSTTY_INVALID_VALUE;
+            }
+
+            if has_value {
+                self.terminal.apc_max_bytes.put(ApcProtocol::Kitty, max_bytes);
+            } else {
+                self.terminal.apc_max_bytes.remove(ApcProtocol::Kitty);
+            }
+            GHOSTTY_SUCCESS
+        }
+    }
+
+    pub unsafe fn set_kitty_image_storage_limit(&mut self, value: *const u64) -> c_int {
+        unsafe {
+            let mut limit = 0u64;
+            if terminal_set_u64_zero_impl(value, &mut limit) != GHOSTTY_SUCCESS {
+                return GHOSTTY_INVALID_VALUE;
+            }
+            self.terminal.kitty_image_storage_limit = limit as usize;
+            GHOSTTY_SUCCESS
+        }
+    }
+
+    pub unsafe fn set_kitty_image_medium(&mut self, option: c_int, value: *const bool) -> c_int {
+        unsafe {
+            let mut has_value = false;
+            let mut enabled = false;
+            if terminal_set_bool_optional_impl(value, &mut has_value, &mut enabled) != GHOSTTY_SUCCESS
+            {
+                return GHOSTTY_INVALID_VALUE;
+            }
+            if !has_value {
+                return GHOSTTY_SUCCESS;
+            }
+
+            match option {
+                TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_FILE => {
+                    self.terminal.kitty_image_medium_file = enabled;
+                }
+                TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_TEMP_FILE => {
+                    self.terminal.kitty_image_medium_temp_file = enabled;
+                }
+                TERMINAL_OPTION_KITTY_IMAGE_MEDIUM_SHARED_MEM => {
+                    self.terminal.kitty_image_medium_shared_mem = enabled;
+                }
+                _ => return GHOSTTY_INVALID_VALUE,
+            }
+            GHOSTTY_SUCCESS
+        }
+    }
+
+    pub unsafe fn get_kitty_image(&self, data: c_int, enabled: bool, out: *mut c_void) -> c_int {
+        unsafe {
+            terminal_get_kitty_image_impl(
+                data,
+                enabled,
+                self.terminal.kitty_image_storage_limit as u64,
+                self.terminal.kitty_image_medium_file,
+                self.terminal.kitty_image_medium_temp_file,
+                self.terminal.kitty_image_medium_shared_mem,
+                out,
+            )
+        }
+    }
+
+    pub unsafe fn set_color_override(
+        &mut self,
+        data: c_int,
+        value: *const GhosttyColorRgb,
+    ) -> c_int {
+        unsafe {
+            let mut has_value = false;
+            let mut rgb = GhosttyColorRgb { r: 0, g: 0, b: 0 };
+            if terminal_set_rgb_impl(value, &mut has_value, &mut rgb) != GHOSTTY_SUCCESS {
+                return GHOSTTY_INVALID_VALUE;
+            }
+
+            let slot = match data {
+                TERMINAL_DATA_COLOR_FOREGROUND => Some(&mut self.terminal.colors.foreground),
+                TERMINAL_DATA_COLOR_BACKGROUND => Some(&mut self.terminal.colors.background),
+                TERMINAL_DATA_COLOR_CURSOR => Some(&mut self.terminal.colors.cursor),
+                _ => None,
+            };
+            let Some(target) = slot else {
+                return GHOSTTY_INVALID_VALUE;
+            };
+
+            target.set_override(if has_value { Some(rgb) } else { None });
+            self.terminal.flags.dirty.palette = true;
+            GHOSTTY_SUCCESS
+        }
+    }
+
+    pub unsafe fn set_palette_index(&mut self, index: u8, value: *const GhosttyColorRgb) -> c_int {
+        unsafe {
+            if value.is_null() {
+                return GHOSTTY_INVALID_VALUE;
+            }
+            let rgb = ptr::read(value);
+            self.terminal.colors.palette.set(index, rgb);
             self.terminal.flags.dirty.palette = true;
             GHOSTTY_SUCCESS
         }
@@ -764,6 +982,208 @@ pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_color(
         }
         let owned = &mut *(handle as *mut RustTerminalOwned);
         owned.set_color(data, value)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_palette(
+    handle: *mut c_void,
+    value: *const GhosttyColorRgb,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.set_palette(value)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_get_palette(
+    handle: *mut c_void,
+    data: c_int,
+    out: *mut c_void,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        owned.get_palette(data, out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_selection(
+    handle: *mut c_void,
+    value: *const GhosttySelection,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.set_selection(value)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_get_selection(
+    handle: *mut c_void,
+    out: *mut c_void,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        owned.get_selection(out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_apc_max_bytes(
+    handle: *mut c_void,
+    value: *const usize,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.set_apc_max_bytes(value)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_apc_max_bytes_kitty(
+    handle: *mut c_void,
+    value: *const usize,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.set_apc_max_bytes_kitty(value)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_kitty_image_storage_limit(
+    handle: *mut c_void,
+    value: *const u64,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.set_kitty_image_storage_limit(value)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_kitty_image_medium(
+    handle: *mut c_void,
+    option: c_int,
+    value: *const bool,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.set_kitty_image_medium(option, value)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_get_kitty_image(
+    handle: *mut c_void,
+    data: c_int,
+    enabled: bool,
+    out: *mut c_void,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        owned.get_kitty_image(data, enabled, out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_color_override(
+    handle: *mut c_void,
+    data: c_int,
+    value: *const GhosttyColorRgb,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.set_color_override(data, value)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_palette_index(
+    handle: *mut c_void,
+    index: u8,
+    value: *const GhosttyColorRgb,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.set_palette_index(index, value)
+    }
+}
+
+fn palette_from_c(ptr: *const GhosttyColorRgb) -> Palette {
+    let mut palette = default_palette();
+    let mut i = 0usize;
+    while i < 256 {
+        unsafe {
+            palette[i] = ptr::read(ptr.add(i));
+        }
+        i += 1;
+    }
+    palette
+}
+
+fn grid_ref_to_pin(grid: GhosttyGridRef) -> Option<Pin> {
+    if grid.node.is_null() {
+        return None;
+    }
+    Some(Pin {
+        node: grid.node as *mut crate::page_list_types::PageListNode,
+        x: grid.x,
+        y: grid.y,
+        garbage: false,
+    })
+}
+
+fn grid_ref_from_pin(pin: Pin) -> GhosttyGridRef {
+    GhosttyGridRef {
+        size: mem::size_of::<GhosttyGridRef>(),
+        node: pin.node as *mut c_void,
+        x: pin.x,
+        y: pin.y,
+    }
+}
+
+fn selection_to_ghostty(sel: &Selection) -> GhosttySelection {
+    GhosttySelection {
+        size: mem::size_of::<GhosttySelection>(),
+        start: grid_ref_from_pin(sel.start()),
+        end: grid_ref_from_pin(sel.end_pin()),
+        rectangle: sel.rectangle,
     }
 }
 
