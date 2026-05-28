@@ -1,0 +1,23 @@
+src/build/Config.zig
+  s_6cee157524a3f1::t_27eb5fb580ac11 610-615
+src/terminal/main.zig
+  s_6cee157524a3f1::t_be1bc9e88ec733 99
+docs/CI_RUST.md
+  s_6cee157524a3f1::t_037a6921606203 29,32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4b4dd38c63ad088d5484e84eb06202af9ccd006a",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
