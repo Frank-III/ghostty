@@ -229,6 +229,37 @@ impl Terminal {
             let s = &*screen;
             (s.cursor.x, s.cursor.y, s.cursor.pending_wrap)
         };
+
+        if self.scrolling_region.top == 0
+            && self.scrolling_region.left == 0
+            && self.scrolling_region.right == self.cols - 1
+        {
+            let region_height = (self.scrolling_region.bottom + 1) as usize;
+            let adjusted = count.min(region_height);
+
+            unsafe {
+                let s = &mut *screen;
+                s.cursor.x = 0;
+                s.cursor.y = self.scrolling_region.bottom;
+            }
+            self.cursor_resync();
+
+            for _ in 0..adjusted {
+                unsafe {
+                    let _ = (*screen).cursor_scroll_above();
+                }
+            }
+
+            unsafe {
+                let s = &mut *screen;
+                s.cursor.x = old_x;
+                s.cursor.y = old_y;
+                s.cursor.pending_wrap = old_wrap;
+            }
+            self.cursor_resync();
+            return;
+        }
+
         let top = self.scrolling_region.top;
         let left = self.scrolling_region.left;
 
