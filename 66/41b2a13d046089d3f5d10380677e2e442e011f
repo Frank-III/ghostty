@@ -1,0 +1,36 @@
+crates/ghostty-termio/src/lib.rs
+  s_6cee157524a3f1::t_4c463b33e87e24 22
+  s_6cee157524a3f1::t_f46e24d4efa0d1 13
+crates/ghostty-foundation/src/os/mod.rs
+  s_6cee157524a3f1::t_807a290122a1f2 4,9
+crates/ghostty-config/src/config.rs
+  s_6cee157524a3f1::t_27997ff9246572 195-203
+  s_6cee157524a3f1::t_87dc79d5ec041b 27-28
+  s_6cee157524a3f1::t_b95e721b9e3238 62-63
+  s_6cee157524a3f1::t_f8cdfb8e8634a2 263-273
+crates/ghostty-foundation/src/lib.rs
+  s_6cee157524a3f1::t_34452d9c183150 41-42
+crates/ghostty-foundation/src/os/path.rs
+  s_6cee157524a3f1::t_6b3dad48b69486 37
+  s_6cee157524a3f1::t_b734aa80ac2d8f 69
+  s_6cee157524a3f1::t_1dba1ce5a6faaa 1-36,38-51,53-68,70-83
+  s_6cee157524a3f1::t_fa11375959621f 52
+crates/ghostty-termio/src/termio.rs
+  s_6cee157524a3f1::t_2bbd6cad9748e5 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6641b2a13d046089d3f5d10380677e2e442e011f",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
