@@ -37,6 +37,10 @@ pub const Handler = struct {
     /// effects.
     effects: Effects = .readonly,
 
+    /// Opaque back-pointer to `terminal.c.terminal.TerminalWrapper` when
+    /// the handler is owned by the libghostty-vt C API.
+    c_wrapper: ?*anyopaque = null,
+
     /// The APC command handler maintains the APC state. APC is like
     /// CSI or OSC, but it is a private escape sequence that is used
     /// to send commands to the terminal emulator. This is used by

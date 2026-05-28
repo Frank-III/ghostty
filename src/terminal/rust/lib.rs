@@ -62,6 +62,16 @@ mod hyperlink;
 mod highlight;
 mod string_map;
 mod terminal;
+#[cfg(ghostty_vt_terminal_owned)]
+mod panic_stubs;
+#[cfg(ghostty_vt_terminal_owned)]
+mod page_list_bootstrap;
+#[cfg(ghostty_vt_terminal_owned)]
+mod terminal_byte_list;
+#[cfg(ghostty_vt_terminal_owned)]
+mod screen_set_methods;
+#[cfg(ghostty_vt_terminal_owned)]
+mod terminal_owned;
 mod terminal_lifecycle;
 mod terminal_grid_ref;
 mod terminal_mode;
@@ -446,6 +456,7 @@ pub(crate) use formatter_page::*;
 pub(crate) use allocator::*;
 pub(crate) use build_info::*;
 
+#[cfg(not(test))]
 #[panic_handler]
 fn panic(_: &PanicInfo<'_>) -> ! {
     loop {}

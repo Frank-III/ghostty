@@ -133,9 +133,8 @@ pub const input = struct {
 };
 
 comptime {
-    // If we're building the C library (vs. the Zig module) then
-    // we want to reference the C API so that it gets exported.
-    if (@import("root") == lib) {
+    // Export the C ABI when building the vt_c module (or the lib root).
+    if (terminal.options.c_abi or @import("root") == lib) {
         const c = terminal.c_api;
         @export(&c.key_event_new, .{ .name = "ghostty_key_event_new" });
         @export(&c.key_event_free, .{ .name = "ghostty_key_event_free" });
@@ -195,6 +194,12 @@ comptime {
         @export(&c.pin_destroy, .{ .name = "ghostty_vt_pin_destroy" });
         @export(&c.pool_alloc, .{ .name = "ghostty_vt_pool_alloc" });
         @export(&c.pool_free, .{ .name = "ghostty_vt_pool_free" });
+        @export(&c.memory_pool_create, .{ .name = "ghostty_vt_memory_pool_create" });
+        @export(&c.memory_pool_destroy, .{ .name = "ghostty_vt_memory_pool_destroy" });
+        @export(&c.pool_create_node, .{ .name = "ghostty_vt_pool_create_node" });
+        @export(&c.pool_destroy_node, .{ .name = "ghostty_vt_pool_destroy_node" });
+        @export(&c.pool_create_std_page, .{ .name = "ghostty_vt_pool_create_std_page" });
+        @export(&c.pool_destroy_std_page, .{ .name = "ghostty_vt_pool_destroy_std_page" });
         @export(&c.system_png_available, .{ .name = "ghostty_vt_system_png_available" });
         @export(&c.system_decode_png, .{ .name = "ghostty_vt_system_decode_png" });
         @export(&c.cell_get, .{ .name = "ghostty_cell_get" });
