@@ -1,0 +1,21 @@
+docs/PORTING_STATUS.tsv
+  s_e1573e094e4ba1::t_749ea4c8dd03ff 45
+  s_e1573e094e4ba1::t_dd4ec244cef77c 52
+  s_e1573e094e4ba1::t_f2d9ba084011b3 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bac8eecde74afa52eade82e9ab7ccdfb53d31269",
+  "prompts": {},
+  "sessions": {
+    "s_e1573e094e4ba1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b4b6bb68-355d-4268-9b3b-9d953484df54",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
