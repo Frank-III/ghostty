@@ -1,0 +1,98 @@
+src/terminal/rust/osc_parser_misc.rs
+  s_6cee157524a3f1::t_932211d4d247d3 3
+  s_6cee157524a3f1::t_88cbceb215dce3 9
+  s_6cee157524a3f1::t_5cd006f6ab27d6 27
+src/terminal/rust/style_types.rs
+  s_a4d7b421887081::t_dfa352e50fb06e 385-386,388-390,392,394,396-397
+  s_a4d7b421887081::t_618f9d3e1030c9 237-239,241-244
+  s_a4d7b421887081::t_45604c6e9b91eb 291
+  s_a4d7b421887081::t_fdb0d74635cc3a 440,445-446,449-452
+  s_a4d7b421887081::t_82013294fd7bba 297-303
+  s_a4d7b421887081::t_3ae2d30ff36d3d 240
+  s_a4d7b421887081::t_eb5b6e9c2dc291 364-370
+  s_d40c4d538bff61::t_6302045b84cb74 62,185,211
+  s_a4d7b421887081::t_2c51d7a8259b40 403-404,406-408,410-433,435
+src/terminal/rust/lib.rs
+  s_a4d7b421887081::t_1b3985d98472d9 81-86
+  s_6cee157524a3f1::t_c7cb98e8defc4b 12
+src/terminal/rust/vt_parser.rs
+  s_6cee157524a3f1::t_db2cd0702cd4f6 285-287
+  s_6cee157524a3f1::t_650548f7625d2f 311-313,316-318,323-325
+  s_6cee157524a3f1::t_b0a662eecd499d 397-401
+  s_6cee157524a3f1::t_531053ff28e6df 178-182
+  s_6cee157524a3f1::t_f2f6d9344898f1 454-457
+  s_6cee157524a3f1::t_bca9cb0042c370 245-247,250-252,260-262
+  s_6cee157524a3f1::t_70d31a63692573 204-205,208-210,216-217,220-221
+src/terminal/rust/x11_color.rs
+  s_6cee157524a3f1::t_820144cb2a5e41 36
+src/terminal/rust/osc_parser_conemu.rs
+  s_6cee157524a3f1::t_8fe711c5fa1ff4 3
+src/terminal/rust/mode_def.rs
+  s_6cee157524a3f1::t_50a15d172ce2ed 122-126
+src/terminal/rust/bytes_util.rs
+  s_6cee157524a3f1::t_e635a85ad45f2d 1-3,28-147
+  s_6cee157524a3f1::t_d97d9ad2af6deb 4-27
+src/terminal/rust/utf8_decoder.rs
+  s_6cee157524a3f1::t_1697a5000e3837 61,70-72
+src/terminal/rust/stream_osc_dispatch.rs
+  s_6cee157524a3f1::t_84ad2794af9c02 96
+src/terminal/rust/color_palette.rs
+  s_6cee157524a3f1::t_c2e68c25e805dd 220
+src/terminal/rust/stream_core.rs
+  s_6cee157524a3f1::t_18669053b97538 2
+  s_6cee157524a3f1::t_54d7f5dc3453f7 92-96
+  s_6cee157524a3f1::t_60cd50b684699b 190-192,194-195
+  s_6cee157524a3f1::t_683a07195ee102 214,216-218,220,222
+src/terminal/rust/osc_parsers_basic.rs
+  s_6cee157524a3f1::t_2063c4e4a9e42c 3
+src/terminal/rust/stream_osc_parse.rs
+  s_6cee157524a3f1::t_b0d4fcd4c351ab 3
+  s_6cee157524a3f1::t_a8a65861773ce8 425
+src/terminal/rust/stream_esc_dispatch.rs
+  s_6cee157524a3f1::t_d8ce2e058e76b8 188
+  s_6cee157524a3f1::t_93680e07637145 9
+src/terminal/rust/osc_parser_color.rs
+  s_6cee157524a3f1::t_daa201412eeef5 328
+src/terminal/rust/stream_csi_dispatch.rs
+  s_6cee157524a3f1::t_934d7d0eeb08c9 3
+  s_6cee157524a3f1::t_2c10daa349d680 22,29,36,47,53-55
+  s_6cee157524a3f1::t_f88e99a92e2d47 587
+  s_6cee157524a3f1::t_19daf32c45552f 753
+  s_6cee157524a3f1::t_ea6e77e9ba2b51 174,193,416,493,550,557,573,583,586,617,674,702,773,837
+  s_6cee157524a3f1::t_fb657316abc02a 59-62
+  s_6cee157524a3f1::t_3f48e3c1970dd6 150,294,320,343,420,425,440,533,562,565,597,622,641,667,690,694,715,737,754,782,793,802,827,843
+  s_6cee157524a3f1::t_12431dccbcb160 163,295,668,695,751,805
+  s_6cee157524a3f1::t_cad36e46c2e1d9 111,119,121,125-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0f1f97316072fe52545f284ddef1bb1e6848da9f",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_a4d7b421887081": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "edec1722-237e-498c-8296-49d12a7b62a2",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_d40c4d538bff61": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "96389eda-c85e-4bd1-a546-13eba7774181",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
