@@ -423,6 +423,7 @@ pub fn update(
                 terminal_c.rustOwnedAlloc(wrapper),
             ));
         }
+        return .invalid_value;
     }
 
     const t: *ZigTerminal = terminal_c.terminalZig(terminal_) orelse return .invalid_value;

@@ -592,3 +592,63 @@ fn trim_whitespace(s: &[u8]) -> &[u8] {
     }
     unsafe { s.get_unchecked(start..end) }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_pane_state_line_two_pane_fixture() {
+        let line = b"%0;42;0;1;;;;0;4294967295;4294967295;0;1;0;0;0;0;0;0;0;0;0;;;0;39;8,16,24,32,40,48,56,64,72,80,88,96,104,112,120,128,136,144,152,160";
+        let mut state = ParsedPaneState {
+            pane_id: 0,
+            cursor_x: 0,
+            cursor_y: 0,
+            cursor_flag: false,
+            cursor_shape_ptr: core::ptr::null(),
+            cursor_shape_len: 0,
+            cursor_colour_ptr: core::ptr::null(),
+            cursor_colour_len: 0,
+            cursor_blinking: false,
+            alternate_on: false,
+            alternate_saved_x: 0,
+            alternate_saved_y: 0,
+            insert_flag: false,
+            wrap_flag: false,
+            keypad_flag: false,
+            keypad_cursor_flag: false,
+            origin_flag: false,
+            mouse_all_flag: false,
+            mouse_any_flag: false,
+            mouse_button_flag: false,
+            mouse_standard_flag: false,
+            mouse_utf8_flag: false,
+            mouse_sgr_flag: false,
+            focus_flag: false,
+            bracketed_paste: false,
+            scroll_region_upper: 0,
+            scroll_region_lower: 0,
+            pane_tabs_ptr: core::ptr::null(),
+            pane_tabs_len: 0,
+        };
+        assert_eq!(parse_pane_state_line(line, &mut state as *mut _), 0);
+        assert_eq!(state.pane_id, 0);
+        assert_eq!(state.cursor_x, 42);
+        assert_eq!(state.cursor_y, 0);
+        assert!(state.cursor_flag);
+        assert!(state.wrap_flag);
+        assert!(!state.insert_flag);
+        assert!(!state.origin_flag);
+        assert!(!state.keypad_flag);
+    }
+
+    #[test]
+    fn parse_pane_state_line_rejects_short_line() {
+        let line = b"%0;42;0";
+        let mut state = core::mem::MaybeUninit::<ParsedPaneState>::uninit();
+        assert_eq!(
+            parse_pane_state_line(line, state.as_mut_ptr()),
+            OUTPUT_MISSING_ENTRY
+        );
+    }
+}

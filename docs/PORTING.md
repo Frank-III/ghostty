@@ -67,7 +67,8 @@ of scope for this milestone—not hidden gate failures.
 The main Ghostty app enables `-Dlib-vt-rust` for the terminal module and links
 the Rust VT object (`src/build/SharedDeps.zig`). Opt into a Rust-owned terminal
 in the app with `-Dterminal-rust-owned-app=true` (default false until soak
-passes).
+passes). App soak gate (2026-05): `3037/3052` tests passed, `15` skipped,
+`0` failed with that flag.
 
 ### Validation (VT)
 
@@ -112,7 +113,9 @@ Zig `Terminal` / `PageList` / `Pin` and read fields directly. Safe patterns:
 - **Render bridge**: `render_owned_bridge.zig` fills Zig `RenderState` from Rust
   exports instead of calling `renderpkg.update` on a Zig terminal.
 - **Kitty / formatter**: full accessor paths under rust-owned; no
-  `terminalZig()` fallback.
+  `terminalZig()` fallback. Owned builds return `.invalid_value` (or error)
+  instead of falling through to Zig layout reads when `rustOwnedHandle()` is
+  null.
 
 High-risk files to audit on future changes: `grid_ref.zig`, `grid_ref_tracked.zig`,
 `render.zig`, `kitty_graphics.zig`, `formatter.zig`, `pin_bridge.zig`.

@@ -107,6 +107,7 @@ pub const TrackedGridRef = struct {
                 )) return pages;
                 return null;
             }
+            return null;
         }
         const t = terminal_c.wrapperZig(wrapper) orelse return null;
         if (t.screens.generation(ref.screen_key) != ref.screen_generation) return null;

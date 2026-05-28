@@ -224,6 +224,7 @@ pub fn setopt_from_terminal(
             opts.kitty_flags = @bitCast(@as(u5, @truncate(kitty_raw)));
             return;
         }
+        return;
     }
 
     const t: *ZigTerminal = terminal_c.terminalZig(terminal_) orelse return;

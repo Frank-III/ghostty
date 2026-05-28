@@ -378,6 +378,7 @@ pub fn setopt_from_terminal(
             if (!last_cell_present) wrapper.last_cell = null;
             return;
         }
+        return;
     }
 
     const t: *ZigTerminal = terminal_c.terminalZig(terminal_) orelse return;

@@ -236,6 +236,7 @@ fn terminal_new_(
             };
             return ptr;
         }
+        return error.InvalidValue;
     }
 
     const t: *ZigTerminal = terminal_c.terminalZig(terminal_) orelse return error.InvalidValue;

@@ -494,6 +494,7 @@ fn terminalMetrics(terminal_: terminal_c.Terminal, out: *TerminalMetrics) Result
             if (terminal_c.get(terminal_, .height_px, @ptrCast(&out.height_px)) != .success) return .invalid_value;
             return .success;
         }
+        return .invalid_value;
     }
 
     const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
