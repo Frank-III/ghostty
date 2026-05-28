@@ -25,7 +25,7 @@ stay native; the target is a Rust core library with stable C embedding APIs.
 | Phase | Subsystem | Zig anchor | Rust crate | Status |
 |------:|-----------|------------|------------|--------|
 | 0 | VT / libghostty-vt | `src/terminal/rust/` | `crates/ghostty-vt` | **Done** (C ABI default-on) |
-| 0 | Rust terminal ownership | `src/terminal/c/terminal.zig` | `terminal_owned.rs` | **Opt-in** (`-Dterminal-rust-owned=true`) |
+| 0 | Rust terminal ownership | `src/terminal/c/terminal.zig` | `terminal_owned.rs` | **Default on `-Demit-lib-vt`** (`-Dterminal-rust-owned=true`) |
 | 1 | Foundation | `src/datastruct/`, `unicode/`, `simd/`, `lib/`, `os/` | `ghostty-foundation` | In progress |
 | 2 | Config | `src/config/` | `ghostty-config` | In progress (minimal loader) |
 | 3 | Input | `src/input/` | `ghostty-input` | Not started |
@@ -52,13 +52,17 @@ The `ghostty-vt` crate reuses `src/terminal/rust/lib.rs` as its library root.
 Zig continues to invoke `rustc` directly via `src/build/GhosttyRust.zig` for
 shipping builds; Cargo is the long-term primary build (Phase 8).
 
-### Rust terminal ownership (opt-in)
+### Rust terminal ownership (default on lib-vt)
 
-Pool/page bootstrap FFI lives in `src/terminal/c/pin_bridge.zig`. Rust-owned
-terminals compile only with `-Dterminal-rust-owned=true` (sets
-`ghostty_vt_terminal_owned` cfg). Exports:
+Pool/page bootstrap FFI lives in `src/terminal/c/pin_bridge.zig`. `-Demit-lib-vt`
+enables `-Dterminal-rust-owned=true` by default (sets `ghostty_vt_terminal_owned`
+cfg). Zig C API shims call Rust-owned paths via `rustOwnedHandle()` instead of
+interpreting Rust `Terminal` / `PageList` layouts directly.
 
-- `ghostty_rust_terminal_create` / `destroy` / `write`
+Owned exports include create/destroy/write, grid-ref track, formatter, render
+update bridge, kitty graphics accessors, and selection/format helpers. Deferred
+areas (search viewport, full config schema, renderer) remain intentionally out
+of scope for this milestone—not hidden gate failures.
 
 The main Ghostty app enables `-Dlib-vt-rust` for the terminal module and links
 the Rust VT object (`src/build/SharedDeps.zig`).
@@ -79,14 +83,33 @@ zig build test-lib-vt \
 
 Latest verified result with the explicit rustc above:
 
-- Build summary: `80/80 steps succeeded`.
-- Test summary: `22/22 steps succeeded`; `4233/4251` tests passed, `18`
-  skipped.
-- Rust-backed test leg: `2277` passed, `9` skipped.
-- Rust compiler warnings: `0`.
+- Build summary: `80/80 steps succeeded` (`-Demit-lib-vt -Demit-macos-app=false`).
+- Test summary: `22/22 steps succeeded`; `4234/4252` tests passed, `18`
+  skipped, **0 failed**, **0 leaked**.
+- Rust-owned test leg (`-Dterminal-rust-owned=true`): `2278` passed, `9`
+  skipped (existing skipped tests only).
+- Rust compiler warnings: `0` (no forbidden panic/malloc/free symbols in
+  `ghostty_vt_rust.o`).
 
 On local machines, plain `zig build ...` uses `rustc` from `PATH`; pass
 `-Drustc=...` when the ambient toolchain is not reliable.
+
+### Rust-owned C ABI boundaries (review focus)
+
+When `-Dterminal-rust-owned=true`, Zig must **not** cast `rustOwnedHandle()` to
+Zig `Terminal` / `PageList` / `Pin` and read fields directly. Safe patterns:
+
+- **Handle dispatch**: branch on `rustOwnedHandle()` and call `extern fn`
+  exports (`terminal_owned*.rs`, `grid_ref.rs`).
+- **Opaque pins**: tracked grid refs store `*PageList.Pin` allocated from the
+  Rust pool; cell/grapheme reads go through Rust (`ghostty_rust_grid_ref_*`).
+- **Render bridge**: `render_owned_bridge.zig` fills Zig `RenderState` from Rust
+  exports instead of calling `renderpkg.update` on a Zig terminal.
+- **Kitty / formatter**: full accessor paths under rust-owned; no
+  `terminalZig()` fallback.
+
+High-risk files to audit on future changes: `grid_ref.zig`, `grid_ref_tracked.zig`,
+`render.zig`, `kitty_graphics.zig`, `formatter.zig`, `pin_bridge.zig`.
 
 ### Modules Ported (~50+ Rust files in `src/terminal/rust/`)
 
