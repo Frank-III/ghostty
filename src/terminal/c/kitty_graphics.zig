@@ -710,6 +710,7 @@ pub fn placement_rect(
     if (comptime !build_options.kitty_graphics) return .no_value;
 
     const wrapper = terminal_ orelse return .invalid_value;
+    const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
     const image = image_ orelse return .invalid_value;
     const iter = iter_ orelse return .invalid_value;
     const entry = iter.entry orelse return .invalid_value;
@@ -727,10 +728,10 @@ pub fn placement_rect(
             p.rows,
             p.x_offset,
             p.y_offset,
-            wrapper.terminal.width_px,
-            wrapper.terminal.height_px,
-            wrapper.terminal.cols,
-            wrapper.terminal.rows,
+            t.width_px,
+            t.height_px,
+            t.cols,
+            t.rows,
             &grid_cols,
             &grid_rows,
         ));
@@ -741,7 +742,7 @@ pub fn placement_rect(
             .virtual => return .no_value,
         };
         const grid_cols_minus_one = grid_cols - 1;
-        const terminal_cols_minus_one = wrapper.terminal.cols - 1;
+        const terminal_cols_minus_one = t.cols - 1;
         const br = switch (pin.downOverflow(grid_rows - 1)) {
             .offset => |v| v,
             .overflow => |v| v.end,
@@ -758,7 +759,7 @@ pub fn placement_rect(
         ));
     }
 
-    const r = p.rect(image.*, wrapper.terminal) orelse return .no_value;
+    const r = p.rect(image.*, t) orelse return .no_value;
 
     out.* = .{
         .start = grid_ref.CGridRef.fromPin(r.top_left),
@@ -779,6 +780,7 @@ pub fn placement_pixel_size(
     if (comptime !build_options.kitty_graphics) return .no_value;
 
     const wrapper = terminal_ orelse return .invalid_value;
+    const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
     const image = image_ orelse return .invalid_value;
     const iter = iter_ orelse return .invalid_value;
     const entry = iter.entry orelse return .invalid_value;
@@ -792,16 +794,16 @@ pub fn placement_pixel_size(
             p.source_height,
             p.columns,
             p.rows,
-            wrapper.terminal.width_px,
-            wrapper.terminal.height_px,
-            wrapper.terminal.cols,
-            wrapper.terminal.rows,
+            t.width_px,
+            t.height_px,
+            t.cols,
+            t.rows,
             out_width,
             out_height,
         ));
     }
 
-    const s = p.pixelSize(image.*, wrapper.terminal);
+    const s = p.pixelSize(image.*, t);
     out_width.* = s.width;
     out_height.* = s.height;
 
@@ -818,6 +820,7 @@ pub fn placement_grid_size(
     if (comptime !build_options.kitty_graphics) return .no_value;
 
     const wrapper = terminal_ orelse return .invalid_value;
+    const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
     const image = image_ orelse return .invalid_value;
     const iter = iter_ orelse return .invalid_value;
     const entry = iter.entry orelse return .invalid_value;
@@ -833,16 +836,16 @@ pub fn placement_grid_size(
             p.rows,
             p.x_offset,
             p.y_offset,
-            wrapper.terminal.width_px,
-            wrapper.terminal.height_px,
-            wrapper.terminal.cols,
-            wrapper.terminal.rows,
+            t.width_px,
+            t.height_px,
+            t.cols,
+            t.rows,
             out_cols,
             out_rows,
         ));
     }
 
-    const s = p.gridSize(image.*, wrapper.terminal);
+    const s = p.gridSize(image.*, t);
     out_cols.* = s.cols;
     out_rows.* = s.rows;
 
@@ -859,11 +862,12 @@ pub fn placement_viewport_pos(
     if (comptime !build_options.kitty_graphics) return .no_value;
 
     const wrapper = terminal_ orelse return .invalid_value;
+    const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
     const image = image_ orelse return .invalid_value;
     const iter = iter_ orelse return .invalid_value;
     const entry = iter.entry orelse return .invalid_value;
 
-    const vp = computeViewportPos(entry.value_ptr, image, wrapper.terminal);
+    const vp = computeViewportPos(entry.value_ptr, image, t);
     if (!vp.visible) return .no_value;
 
     out_col.* = vp.col;
@@ -941,6 +945,7 @@ pub fn placement_render_info(
     if (comptime !build_options.kitty_graphics) return .no_value;
 
     const wrapper = terminal_ orelse return .invalid_value;
+    const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
     const image = image_ orelse return .invalid_value;
     const iter = iter_ orelse return .invalid_value;
     const entry = iter.entry orelse return .invalid_value;
@@ -950,7 +955,7 @@ pub fn placement_render_info(
     const p = entry.value_ptr;
 
     if (comptime build_options.lib_vt_rust) {
-        const vp = computeViewportPos(p, image, wrapper.terminal);
+        const vp = computeViewportPos(p, image, t);
         return @enumFromInt(rust.ghostty_rust_kitty_render_info(
             image.width,
             image.height,
@@ -962,10 +967,10 @@ pub fn placement_render_info(
             p.rows,
             p.x_offset,
             p.y_offset,
-            wrapper.terminal.width_px,
-            wrapper.terminal.height_px,
-            wrapper.terminal.cols,
-            wrapper.terminal.rows,
+            t.width_px,
+            t.height_px,
+            t.cols,
+            t.rows,
             vp.col,
             vp.row,
             vp.visible,
@@ -983,15 +988,15 @@ pub fn placement_render_info(
         ));
     }
 
-    const ps = p.pixelSize(image.*, wrapper.terminal);
+    const ps = p.pixelSize(image.*, t);
     out.pixel_width = ps.width;
     out.pixel_height = ps.height;
 
-    const gs = p.gridSize(image.*, wrapper.terminal);
+    const gs = p.gridSize(image.*, t);
     out.grid_cols = gs.cols;
     out.grid_rows = gs.rows;
 
-    const vp = computeViewportPos(p, image, wrapper.terminal);
+    const vp = computeViewportPos(p, image, t);
     out.viewport_col = vp.col;
     out.viewport_row = vp.row;
     out.viewport_visible = vp.visible;

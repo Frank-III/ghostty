@@ -165,6 +165,12 @@ pub const pin_create = pin_bridge.pinCreate;
 pub const pin_destroy = pin_bridge.pinDestroy;
 pub const pool_alloc = pin_bridge.poolAlloc;
 pub const pool_free = pin_bridge.poolFree;
+pub const memory_pool_create = pin_bridge.memoryPoolCreate;
+pub const memory_pool_destroy = pin_bridge.memoryPoolDestroy;
+pub const pool_create_node = pin_bridge.poolCreateNode;
+pub const pool_destroy_node = pin_bridge.poolDestroyNode;
+pub const pool_create_std_page = pin_bridge.poolCreateStdPage;
+pub const pool_destroy_std_page = pin_bridge.poolDestroyStdPage;
 
 pub const system_png_available = system_bridge.systemPngAvailable;
 pub const system_decode_png = system_bridge.systemDecodePng;

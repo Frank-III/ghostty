@@ -354,7 +354,7 @@ pub fn setopt_from_terminal(
     terminal_: Terminal,
 ) callconv(lib.calling_conv) void {
     const wrapper = encoder_ orelse return;
-    const t: *ZigTerminal = (terminal_ orelse return).terminal;
+    const t: *ZigTerminal = @import("terminal.zig").terminalZig(terminal_) orelse return;
     if (comptime build_options.lib_vt_rust) {
         var last_cell_present = wrapper.last_cell != null;
         rust.ghostty_rust_mouse_encoder_from_terminal(

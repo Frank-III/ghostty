@@ -46,7 +46,7 @@ pub const TrackedGridRef = struct {
     /// owning screen has been removed/reinitialized since the ref was created.
     fn pageList(ref: *const TrackedGridRef) ?*PageList {
         const wrapper = ref.terminal orelse return null;
-        const t = wrapper.terminal;
+        const t = terminal_c.wrapperZig(wrapper) orelse return null;
         if (t.screens.generation(ref.screen_key) != ref.screen_generation) return null;
         const screen = t.screens.get(ref.screen_key) orelse return null;
         return &screen.pages;
@@ -155,7 +155,7 @@ pub fn tracked_grid_ref_set(
     const wrapper = terminal_ orelse return .invalid_value;
     if (ref.terminal != terminal_) return .invalid_value;
 
-    const t = wrapper.terminal;
+    const t = terminal_c.wrapperZig(wrapper) orelse return .invalid_value;
     const list = &t.screens.active.pages;
     const p = list.pin(point.Point.fromC(pt)) orelse return .invalid_value;
     const tracked_pin = list.trackPin(p) catch return .out_of_memory;

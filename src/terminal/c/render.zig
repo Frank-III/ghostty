@@ -402,7 +402,7 @@ pub fn update(
     terminal_: terminal_c.Terminal,
 ) callconv(lib.calling_conv) Result {
     const state = state_ orelse return .invalid_value;
-    const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
+    const t: *ZigTerminal = terminal_c.terminalZig(terminal_) orelse return .invalid_value;
 
     state.state.update(state.alloc, t) catch return .out_of_memory;
     return .success;
@@ -1756,7 +1756,7 @@ test "render: row get selection" {
     ));
     defer terminal_c.free(terminal);
 
-    const t = terminal.?.terminal;
+    const t = terminal_c.terminalZig(terminal).?;
     const screen = t.screens.active;
     try screen.select(.init(
         screen.pages.pin(.{ .active = .{ .x = 2, .y = 1 } }).?,
@@ -1836,7 +1836,7 @@ test "render: row cells get selected" {
     ));
     defer terminal_c.free(terminal);
 
-    const t = terminal.?.terminal;
+    const t = terminal_c.terminalZig(terminal).?;
     const screen = t.screens.active;
     try screen.select(.init(
         screen.pages.pin(.{ .active = .{ .x = 2, .y = 1 } }).?,
@@ -2262,7 +2262,7 @@ test "render: cursor primitive getters" {
     try testing.expectEqual(@as(size.CellCountInt, 1), y);
     try testing.expect(!wide_tail);
 
-    terminal.?.terminal.scrollViewport(.top);
+    terminal_c.terminalZig(terminal).?.scrollViewport(.top);
     try testing.expectEqual(Result.success, update(state, terminal));
 
     has_viewport = true;

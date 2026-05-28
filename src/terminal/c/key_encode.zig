@@ -184,7 +184,7 @@ pub fn setopt_from_terminal(
     terminal_: Terminal,
 ) callconv(lib.calling_conv) void {
     const wrapper = encoder_ orelse return;
-    const t: *ZigTerminal = (terminal_ orelse return).terminal;
+    const t: *ZigTerminal = @import("terminal.zig").terminalZig(terminal_) orelse return;
     if (comptime build_options.lib_vt_rust) {
         const opts = &wrapper.opts;
         rust.ghostty_rust_key_encoder_from_terminal(
@@ -370,7 +370,7 @@ test "setopt_from_terminal" {
     try testing.expectEqual(Result.success, terminal_c.mode_set(t, keypad_keys, true));
     try testing.expectEqual(Result.success, terminal_c.mode_set(t, backarrow_key_mode, true));
     try testing.expectEqual(Result.success, terminal_c.mode_set(t, ignore_keypad_with_numlock, false));
-    t.?.terminal.flags.modify_other_keys_2 = true;
+    @import("terminal.zig").terminalZig(t).?.flags.modify_other_keys_2 = true;
 
     const opt_true: OptionAsAlt = .true;
     setopt(e, .macos_option_as_alt, &opt_true);
