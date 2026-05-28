@@ -689,6 +689,7 @@ impl Terminal {
         };
     }
 
+    #[cfg(ghostty_vt_terminal_owned)]
     pub fn switch_screen(&mut self, key: ScreenKey) -> Option<*mut Screen> {
         if self.screens.active_key == key {
             return None;
@@ -732,6 +733,21 @@ impl Terminal {
             }
         }
 
+        self.flags.dirty.clear = true;
+        self.screens.switch_to(key);
+        Some(old)
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
+    pub fn switch_screen(&mut self, key: ScreenKey) -> Option<*mut Screen> {
+        if self.screens.active_key == key {
+            return None;
+        }
+        let new = self.screens.get(key);
+        if new.is_null() {
+            return None;
+        }
+        let old = self.active();
         self.flags.dirty.clear = true;
         self.screens.switch_to(key);
         Some(old)
@@ -816,6 +832,7 @@ impl Terminal {
         }
     }
 
+    #[cfg(ghostty_vt_terminal_owned)]
     pub fn full_reset(&mut self) {
         self.screens.switch_to(ScreenKey::Primary);
         let alloc = self.bootstrap_alloc;
@@ -827,6 +844,16 @@ impl Terminal {
             }
             self.screens.remove_screen(ScreenKey::Alternate);
         }
+        self.full_reset_common();
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
+    pub fn full_reset(&mut self) {
+        self.screens.switch_to(ScreenKey::Primary);
+        self.full_reset_common();
+    }
+
+    fn full_reset_common(&mut self) {
         self.modes.reset();
         self.flags = TerminalFlags::default();
         self.tabstops.reset(TABSTOP_INTERVAL as usize);

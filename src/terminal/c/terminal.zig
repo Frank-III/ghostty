@@ -3118,27 +3118,28 @@ test "set APC max bytes" {
         return;
     }
 
+    const stream = t.?.zigStream() orelse return error.TestExpectedEqual;
     try testing.expectEqual(
         apc.Protocol.defaultMaxBytes(.kitty),
-        t.?.stream.handler.apc_handler.max_bytes.get(.kitty).?,
+        stream.handler.apc_handler.max_bytes.get(.kitty).?,
     );
 
     const all: usize = 123;
     try testing.expectEqual(Result.success, set(t, .apc_max_bytes, @ptrCast(&all)));
-    try testing.expectEqual(all, t.?.stream.handler.apc_handler.max_bytes.get(.kitty).?);
+    try testing.expectEqual(all, stream.handler.apc_handler.max_bytes.get(.kitty).?);
 
     const kitty_max_bytes: usize = 456;
     try testing.expectEqual(Result.success, set(t, .apc_max_bytes_kitty, @ptrCast(&kitty_max_bytes)));
-    try testing.expectEqual(kitty_max_bytes, t.?.stream.handler.apc_handler.max_bytes.get(.kitty).?);
+    try testing.expectEqual(kitty_max_bytes, stream.handler.apc_handler.max_bytes.get(.kitty).?);
 
     try testing.expectEqual(Result.success, set(t, .apc_max_bytes_kitty, null));
-    try testing.expectEqual(@as(?usize, null), t.?.stream.handler.apc_handler.max_bytes.get(.kitty));
+    try testing.expectEqual(@as(?usize, null), stream.handler.apc_handler.max_bytes.get(.kitty));
 
     try testing.expectEqual(Result.success, set(t, .apc_max_bytes, @ptrCast(&all)));
-    try testing.expectEqual(all, t.?.stream.handler.apc_handler.max_bytes.get(.kitty).?);
+    try testing.expectEqual(all, stream.handler.apc_handler.max_bytes.get(.kitty).?);
 
     try testing.expectEqual(Result.success, set(t, .apc_max_bytes, null));
-    try testing.expectEqual(@as(?usize, null), t.?.stream.handler.apc_handler.max_bytes.get(.kitty));
+    try testing.expectEqual(@as(?usize, null), stream.handler.apc_handler.max_bytes.get(.kitty));
 }
 
 test "get total_rows" {

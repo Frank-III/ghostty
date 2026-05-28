@@ -291,6 +291,7 @@ pub fn format_buf(
             },
         },
         .rust => |fmt| {
+            if (comptime !build_options.terminal_rust_owned) unreachable;
             return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_formatter_format_buf(
                 fmt,
                 out_,
@@ -319,6 +320,7 @@ pub fn format_alloc(
     switch (wrapper.kind) {
         .terminal => |*t| t.format(&aw.writer) catch return .out_of_memory,
         .rust => |fmt| {
+            if (comptime !build_options.terminal_rust_owned) unreachable;
             return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_formatter_format_alloc(
                 wrapper.c_alloc,
                 fmt,
@@ -340,6 +342,7 @@ pub fn free(formatter_: Formatter) callconv(lib.calling_conv) void {
     switch (wrapper.kind) {
         .terminal => {},
         .rust => |fmt| {
+            if (comptime !build_options.terminal_rust_owned) unreachable;
             rust_owned.ghostty_rust_terminal_owned_formatter_free(
                 wrapper.c_alloc,
                 fmt,

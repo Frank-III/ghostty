@@ -79,6 +79,10 @@ zig build -Demit-lib-vt -Demit-macos-app=false \
 zig build test-lib-vt \
   -Drustc=$HOME/.rustup/toolchains/1.95.0-aarch64-apple-darwin/bin/rustc \
   --summary all
+
+# Dual-mode matrix (both legs must pass before pushing VT changes):
+zig build test-lib-vt -Dterminal-rust-owned=true -Drustc=... --summary all
+zig build test-lib-vt -Dterminal-rust-owned=false -Drustc=... --summary all
 ```
 
 Latest verified result with the explicit rustc above:

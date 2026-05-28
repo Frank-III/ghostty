@@ -100,6 +100,7 @@ impl ScreenSet {
     /// Get the screen for `key`, initializing it if needed.
     ///
     /// Safety: `alloc` must be the terminal bootstrap allocator.
+    #[cfg(ghostty_vt_terminal_owned)]
     pub unsafe fn get_or_init_screen(
         &mut self,
         alloc: *const GhosttyAllocator,
@@ -130,6 +131,24 @@ impl ScreenSet {
             (ptr as *mut Screen).write(screen);
             self.set_screen(key, ptr as *mut c_void);
             Some(ptr as *mut Screen)
+        }
+    }
+
+    /// Non-owned builds rely on Zig to allocate screens; only return existing screens.
+    #[cfg(not(ghostty_vt_terminal_owned))]
+    pub unsafe fn get_or_init_screen(
+        &mut self,
+        _alloc: *const GhosttyAllocator,
+        key: ScreenKey,
+        _cols: CellCountInt,
+        _rows: CellCountInt,
+        _primary_scrollback: usize,
+    ) -> Option<*mut Screen> {
+        let existing = self.get(key);
+        if existing.is_null() {
+            None
+        } else {
+            Some(existing as *mut Screen)
         }
     }
 }

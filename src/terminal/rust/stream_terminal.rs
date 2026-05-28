@@ -857,12 +857,17 @@ impl StreamHandler for StreamTerminal {
     fn on_dcs_put(&mut self, _code: u8) {}
     fn on_dcs_unhook(&mut self) {}
 
+    #[cfg(ghostty_vt_terminal_owned)]
     fn on_apc_start(&mut self) {
         let term = self.term_mut();
         term.apc_state = crate::apc::ApcStateTag::Identify;
         term.apc_len = 0;
     }
 
+    #[cfg(not(ghostty_vt_terminal_owned))]
+    fn on_apc_start(&mut self) {}
+
+    #[cfg(ghostty_vt_terminal_owned)]
     fn on_apc_end(&mut self) {
         let term = self.term_mut();
         if term.apc_state != crate::apc::ApcStateTag::Kitty {
@@ -897,6 +902,10 @@ impl StreamHandler for StreamTerminal {
         }
     }
 
+    #[cfg(not(ghostty_vt_terminal_owned))]
+    fn on_apc_end(&mut self) {}
+
+    #[cfg(ghostty_vt_terminal_owned)]
     fn on_apc_put(&mut self, code: u8) {
         let term = self.term_mut();
         match term.apc_state {
@@ -951,6 +960,9 @@ impl StreamHandler for StreamTerminal {
             }
         }
     }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
+    fn on_apc_put(&mut self, _code: u8) {}
 
     fn on_end_hyperlink(&mut self) {
         let screen = self.term_mut().active();
