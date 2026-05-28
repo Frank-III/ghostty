@@ -21,6 +21,8 @@ pub struct Config {
     pub background_opacity: f64,
     pub cursor_color: Option<RgbColor>,
     pub font_family: Option<String>,
+    pub scrollback_limit: usize,
+    pub minimum_contrast: f64,
     diagnostics: DiagnosticList,
 }
 
@@ -51,6 +53,8 @@ impl Config {
             background_opacity: 1.0,
             cursor_color: None,
             font_family: None,
+            scrollback_limit: 10_000_000,
+            minimum_contrast: 1.0,
             diagnostics: DiagnosticList::new(),
         }
     }
@@ -168,6 +172,15 @@ impl Config {
                 crate::string_literal::parse(&mut parsed, v)?;
                 self.font_family = Some(parsed);
             }
+            "scrollback-limit" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.scrollback_limit = v.parse().map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "minimum-contrast" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                let parsed: f64 = v.parse().map_err(|_| ConfigError::InvalidValue)?;
+                self.minimum_contrast = parsed.clamp(1.0, 21.0);
+            }
             _ => return Err(ConfigError::InvalidField),
         }
         Ok(())
@@ -219,6 +232,18 @@ mod tests {
     use std::io::Write;
 
     #[test]
+    fn parse_scrollback_and_contrast() {
+        let mut cfg = Config::with_defaults();
+        cfg.load_from_str(
+            "scrollback-limit = 5000000\nminimum-contrast = 42\n",
+            "/tmp/config.ghostty",
+        );
+        assert!(cfg.diagnostics().is_empty());
+        assert_eq!(cfg.scrollback_limit, 5_000_000);
+        assert_eq!(cfg.minimum_contrast, 21.0);
+    }
+
+    #[test]
     fn parse_extended_keys() {
         let mut cfg = Config::with_defaults();
         cfg.load_from_str(
@@ -258,6 +283,8 @@ mod tests {
         assert!(cfg.window_inherit_font_size);
         assert_eq!(cfg.background, default_background());
         assert_eq!(cfg.foreground, default_foreground());
+        assert_eq!(cfg.scrollback_limit, 10_000_000);
+        assert_eq!(cfg.minimum_contrast, 1.0);
         if cfg!(target_os = "macos") {
             assert_eq!(cfg.font_size, 13.0);
         } else {
