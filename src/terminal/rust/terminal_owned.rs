@@ -9,6 +9,11 @@ use crate::early::*;
 use crate::highlight::Pin;
 use crate::selection::GhosttySelection;
 use crate::selection_copy::{grid_ref_to_pin, selection_to_ghostty};
+use crate::screen_selection::{
+    terminal_owned_selection_all_impl, terminal_owned_selection_line_impl,
+    terminal_owned_selection_output_impl, terminal_owned_selection_word_between_impl,
+    terminal_owned_selection_word_impl,
+};
 use crate::selection_methods::{
     terminal_owned_selection_adjust_impl, terminal_owned_selection_contains_from_point_impl,
     terminal_owned_selection_order_impl, terminal_owned_selection_ordered_impl,
@@ -1119,6 +1124,107 @@ pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_contains(
             return GHOSTTY_INVALID_VALUE;
         }
         terminal_owned_selection_contains_from_point_impl(screen, selection, pt, out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_word(
+    handle: *mut c_void,
+    grid: GhosttyGridRef,
+    boundaries_ptr: *const u32,
+    boundaries_len: usize,
+    out: *mut GhosttySelection,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        terminal_owned_selection_word_impl(screen, grid, boundaries_ptr, boundaries_len, out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_word_between(
+    handle: *mut c_void,
+    start: GhosttyGridRef,
+    end: GhosttyGridRef,
+    boundaries_ptr: *const u32,
+    boundaries_len: usize,
+    out: *mut GhosttySelection,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        terminal_owned_selection_word_between_impl(
+            screen,
+            start,
+            end,
+            boundaries_ptr,
+            boundaries_len,
+            out,
+        )
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_line(
+    handle: *mut c_void,
+    grid: GhosttyGridRef,
+    whitespace_ptr: *const u32,
+    whitespace_len: usize,
+    semantic_prompt_boundary: bool,
+    out: *mut GhosttySelection,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        terminal_owned_selection_line_impl(
+            screen,
+            grid,
+            whitespace_ptr,
+            whitespace_len,
+            semantic_prompt_boundary,
+            out,
+        )
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_all(
+    handle: *mut c_void,
+    out: *mut GhosttySelection,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        terminal_owned_selection_all_impl(screen, out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_output(
+    handle: *mut c_void,
+    grid: GhosttyGridRef,
+    out: *mut GhosttySelection,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        terminal_owned_selection_output_impl(screen, grid, out)
     }
 }
 

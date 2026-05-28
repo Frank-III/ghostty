@@ -3102,7 +3102,6 @@ test "set and get selection" {
 }
 
 test "selection derivation helpers" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,

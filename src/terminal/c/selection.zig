@@ -65,6 +65,43 @@ const rust_owned = if (build_options.terminal_rust_owned) struct {
         pt: point.Point.C,
         out: ?*bool,
     ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_selection_word(
+        handle: ?*anyopaque,
+        ref: grid_ref.CGridRef,
+        boundaries_ptr: ?[*]const u32,
+        boundaries_len: usize,
+        out: ?*CSelection,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_selection_word_between(
+        handle: ?*anyopaque,
+        start: grid_ref.CGridRef,
+        end: grid_ref.CGridRef,
+        boundaries_ptr: ?[*]const u32,
+        boundaries_len: usize,
+        out: ?*CSelection,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_selection_line(
+        handle: ?*anyopaque,
+        ref: grid_ref.CGridRef,
+        whitespace_ptr: ?[*]const u32,
+        whitespace_len: usize,
+        semantic_prompt_boundary: bool,
+        out: ?*CSelection,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_selection_all(
+        handle: ?*anyopaque,
+        out: ?*CSelection,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_selection_output(
+        handle: ?*anyopaque,
+        ref: grid_ref.CGridRef,
+        out: ?*CSelection,
+    ) callconv(.c) c_int;
 } else struct {};
 
 pub const Adjustment = Selection.Adjustment;
@@ -133,10 +170,25 @@ pub fn word(
     options: ?*const SelectWordOptions,
     out_selection: ?*CSelection,
 ) callconv(lib.calling_conv) Result {
-    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
     const opts = options orelse return .invalid_value;
     if (opts.size < @sizeOf(SelectWordOptions)) return .invalid_value;
     const out = out_selection orelse return .invalid_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.zigTerminal(terminal) == null) {
+            const wrapper = terminal orelse return .invalid_value;
+            const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_word(
+                handle,
+                opts.ref,
+                opts.boundary_codepoints,
+                opts.boundary_codepoints_len,
+                out,
+            ));
+        }
+    }
+
+    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
 
     const boundary_codepoints = codepointSlice(
         opts.boundary_codepoints,
@@ -156,10 +208,26 @@ pub fn word_between(
     options: ?*const SelectWordBetweenOptions,
     out_selection: ?*CSelection,
 ) callconv(lib.calling_conv) Result {
-    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
     const opts = options orelse return .invalid_value;
     if (opts.size < @sizeOf(SelectWordBetweenOptions)) return .invalid_value;
     const out = out_selection orelse return .invalid_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.zigTerminal(terminal) == null) {
+            const wrapper = terminal orelse return .invalid_value;
+            const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_word_between(
+                handle,
+                opts.start,
+                opts.end,
+                opts.boundary_codepoints,
+                opts.boundary_codepoints_len,
+                out,
+            ));
+        }
+    }
+
+    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
 
     const boundary_codepoints = codepointSlice(
         opts.boundary_codepoints,
@@ -181,10 +249,26 @@ pub fn line(
     options: ?*const SelectLineOptions,
     out_selection: ?*CSelection,
 ) callconv(lib.calling_conv) Result {
-    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
     const opts = options orelse return .invalid_value;
     if (opts.size < @sizeOf(SelectLineOptions)) return .invalid_value;
     const out = out_selection orelse return .invalid_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.zigTerminal(terminal) == null) {
+            const wrapper = terminal orelse return .invalid_value;
+            const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_line(
+                handle,
+                opts.ref,
+                opts.whitespace,
+                opts.whitespace_len,
+                opts.semantic_prompt_boundary,
+                out,
+            ));
+        }
+    }
+
+    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
 
     const whitespace = codepointSlice(
         opts.whitespace,
@@ -204,8 +288,20 @@ pub fn all(
     terminal: terminal_c.Terminal,
     out_selection: ?*CSelection,
 ) callconv(lib.calling_conv) Result {
-    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
     const out = out_selection orelse return .invalid_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.zigTerminal(terminal) == null) {
+            const wrapper = terminal orelse return .invalid_value;
+            const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_all(
+                handle,
+                out,
+            ));
+        }
+    }
+
+    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
 
     return writeSelection(out, t.screens.active.selectAll());
 }
@@ -215,8 +311,21 @@ pub fn output(
     ref: grid_ref.CGridRef,
     out_selection: ?*CSelection,
 ) callconv(lib.calling_conv) Result {
-    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
     const out = out_selection orelse return .invalid_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.zigTerminal(terminal) == null) {
+            const wrapper = terminal orelse return .invalid_value;
+            const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_output(
+                handle,
+                ref,
+                out,
+            ));
+        }
+    }
+
+    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
 
     const screen = t.screens.active;
     const pin = ref.toPin() orelse return .invalid_value;

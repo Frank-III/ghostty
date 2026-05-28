@@ -316,7 +316,9 @@ const lib_vt_modules_base = [_][]const u8{
 const lib_vt_modules_owned = lib_vt_modules_base ++ [_][]const u8{
     "src/terminal/rust/page_list_bootstrap.rs",
     "src/terminal/rust/panic_stubs.rs",
+    "src/terminal/rust/screen_selection.rs",
     "src/terminal/rust/screen_set_methods.rs",
+    "src/terminal/rust/selection_methods.rs",
     "src/terminal/rust/terminal_byte_list.rs",
     "src/terminal/rust/terminal_owned.rs",
 };
