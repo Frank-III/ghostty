@@ -1,0 +1,56 @@
+src/terminal/c/terminal.zig
+  s_4028fe84f0f581::t_076bd8f5a174c6 4765,4769-4770,4774-4775,4779
+  s_4028fe84f0f581::t_b9224e79fef7a7 3097-3100
+  s_4028fe84f0f581::t_f52408c56fdbbe 1820-1840
+  s_4028fe84f0f581::t_7f9bebfd84d04f 4790,4792,4794
+  s_4028fe84f0f581::t_12e36848c1a80b 1097-1104,1114-1121
+  s_4028fe84f0f581::t_3f9a6be2899c05 1169-1176,1188-1195,1204-1211
+  s_4028fe84f0f581::t_828c06ee90f13c 1138-1146
+  s_4028fe84f0f581::t_ca47122c2fed5a 2913-2916
+  s_4028fe84f0f581::t_f82aeaf1bd973e 4843-4845,4847-4849,4851-4854
+  s_4028fe84f0f581::t_828df56b9ca4fb 343-403
+  s_4028fe84f0f581::t_371be61ceee22e 4762-4764,4766-4768,4771-4773,4776-4778,4780-4786
+  s_4028fe84f0f581::t_3e9aac555c4d08 4846,4850
+  s_4028fe84f0f581::t_4f749f05f75bb6 2954-2968
+  s_4028fe84f0f581::t_64722f1ea2a298 3086-3089
+src/terminal/rust/apc.rs
+  s_4028fe84f0f581::t_2b073fa705b547 16,28,32-36,41-55
+  s_4028fe84f0f581::t_4bab9fea9ff8c4 172-175
+src/terminal/rust/screen_set_methods.rs
+  s_4028fe84f0f581::t_0dc34cefd645ba 121-122,128-129
+src/terminal/rust/terminal_types.rs
+  s_4028fe84f0f581::t_28aae67dfeea38 71-80
+  s_4028fe84f0f581::t_017eba1cfb4dcb 327-336
+  s_4028fe84f0f581::t_6858b9b41f3645 376
+  s_4028fe84f0f581::t_72db101c18a942 6
+  s_4028fe84f0f581::t_47f4c90dec48d2 373-375,377-382
+src/terminal/rust/constants.rs
+  s_4028fe84f0f581::t_c8392912f282d9 97-105
+src/terminal/rust/terminal_owned.rs
+  s_4028fe84f0f581::t_8b9e6f093476ed 367-372
+  s_4028fe84f0f581::t_452f0db1e83467 6-7
+  s_4028fe84f0f581::t_b74e50313497a4 16-24
+  s_4028fe84f0f581::t_35b76f24834b01 10-11
+  s_4028fe84f0f581::t_cde6b2fa290087 475,479
+  s_4028fe84f0f581::t_5b8731e157d807 31
+  s_4028fe84f0f581::t_8683f95979b448 988-1105,1107-1113,1115-1189
+  s_4028fe84f0f581::t_c1386bd194222f 324-366,373-474,476-478,480-528
+  s_4028fe84f0f581::t_451613d53f9dc9 1106,1114
+  s_4028fe84f0f581::t_2e67db46324a0b 32-33,35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "43f1b3fce070fab73f715f799b37f3b807c47a34",
+  "prompts": {},
+  "sessions": {
+    "s_4028fe84f0f581": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0cc69c79-76b9-4ce0-9f25-5489efeea427",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
