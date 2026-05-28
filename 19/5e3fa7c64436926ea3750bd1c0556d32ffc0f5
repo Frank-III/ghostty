@@ -1,0 +1,39 @@
+src/tools/props_table_rust_gen.zig
+  s_6cee157524a3f1::t_d235b6ce91e873 67
+  s_6cee157524a3f1::t_5622ff9207df1a 4,20-33
+  s_6cee157524a3f1::t_b2665eb891a167 3
+  s_6cee157524a3f1::t_55d3f19f04674a 1-2,34-66,68-147,150-154
+  s_6cee157524a3f1::t_fa09742979150b 148-149
+  s_6cee157524a3f1::t_c9ca295c4bf0c8 5-19
+src/tools/symbols_table_rust_gen.zig
+  s_f28d02382239b4::t_307d2eb4a6d879 1-80
+src/tools/grapheme_table_gen.zig
+  s_6cee157524a3f1::t_6e60f3ee401936 1-58,65,67-70,75-76,78-80,82
+  s_6cee157524a3f1::t_3723fa723d4d3f 66
+  s_6cee157524a3f1::t_15def24fd3cd2b 71
+  s_6cee157524a3f1::t_6e3b2a1b64f564 59-64,72-74,77,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "195e3fa7c64436926ea3750bd1c0556d32ffc0f5",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_f28d02382239b4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "400c8e68-46dc-4291-a6e4-1eda3d73d8fc",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
