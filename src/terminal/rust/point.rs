@@ -43,14 +43,22 @@ impl Coordinate {
     }
 }
 
+/// C ABI layout for `point.Point.C` (tag + value union + padding).
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union PointCValue {
+    pub active: Coordinate,
+    pub viewport: Coordinate,
+    pub screen: Coordinate,
+    pub history: Coordinate,
+    pub _padding: [u64; 2],
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PointC {
     pub(crate) tag: PointTag,
-    pub(crate) active: Coordinate,
-    pub(crate) viewport: Coordinate,
-    pub(crate) screen: Coordinate,
-    pub(crate) history: Coordinate,
+    pub(crate) value: PointCValue,
 }
 
 pub enum Point {
@@ -70,39 +78,40 @@ impl Point {
     pub fn cval(&self) -> PointC {
         let coord = self.coord();
         let mut out = PointC {
-            tag: PointTag::default(),
-            active: Coordinate::default(),
-            viewport: Coordinate::default(),
-            screen: Coordinate::default(),
-            history: Coordinate::default(),
+            tag: PointTag::ACTIVE,
+            value: PointCValue {
+                _padding: [0; 2],
+            },
         };
         match self {
             Self::Active(_) => {
                 out.tag = PointTag::ACTIVE;
-                out.active = coord;
+                out.value.active = coord;
             }
             Self::Viewport(_) => {
                 out.tag = PointTag::VIEWPORT;
-                out.viewport = coord;
+                out.value.viewport = coord;
             }
             Self::Screen(_) => {
                 out.tag = PointTag::SCREEN;
-                out.screen = coord;
+                out.value.screen = coord;
             }
             Self::History(_) => {
                 out.tag = PointTag::HISTORY;
-                out.history = coord;
+                out.value.history = coord;
             }
         }
         out
     }
 
     pub fn from_c(pt: PointC) -> Self {
-        match pt.tag {
-            PointTag::ACTIVE => Self::Active(pt.active),
-            PointTag::VIEWPORT => Self::Viewport(pt.viewport),
-            PointTag::SCREEN => Self::Screen(pt.screen),
-            PointTag::HISTORY => Self::History(pt.history),
+        unsafe {
+            match pt.tag {
+                PointTag::ACTIVE => Self::Active(pt.value.active),
+                PointTag::VIEWPORT => Self::Viewport(pt.value.viewport),
+                PointTag::SCREEN => Self::Screen(pt.value.screen),
+                PointTag::HISTORY => Self::History(pt.value.history),
+            }
         }
     }
 }

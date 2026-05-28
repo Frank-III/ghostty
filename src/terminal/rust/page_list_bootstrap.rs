@@ -39,7 +39,7 @@ fn std_size() -> usize {
     Page::layout(std_capacity()).total_size
 }
 
-fn min_max_size(cols: CellCountInt, rows: CellCountInt) -> usize {
+fn min_max_size(_cols: CellCountInt, rows: CellCountInt) -> usize {
     let cap = std_capacity();
     let rows_per_page = cap.rows as usize;
     let pages_needed = if rows as usize == 0 {
