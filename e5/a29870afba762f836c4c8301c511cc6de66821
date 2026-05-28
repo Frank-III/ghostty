@@ -1,0 +1,30 @@
+src/terminal/rust/point.rs
+  s_6cee157524a3f1::t_71f1167c48b040 46,49-56,61,81-84,89,93,97,101,108-114
+  s_6cee157524a3f1::t_b35bbcdaa56a66 48
+src/terminal/rust/page_list_bootstrap.rs
+  s_e1573e094e4ba1::t_df86f726ac7af2 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e5a29870afba762f836c4c8301c511cc6de66821",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_e1573e094e4ba1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b4b6bb68-355d-4268-9b3b-9d953484df54",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
