@@ -228,15 +228,163 @@ const rust = if (build_options.lib_vt_rust) struct {
     ) callconv(.c) c_int;
 } else struct {};
 
-/// Wrapper around ZigTerminal that tracks additional state for C API usage,
-/// such as the persistent VT stream needed to handle escape sequences split
-/// across multiple vt_write calls.
+const rust_owned = if (build_options.terminal_rust_owned) struct {
+    extern fn ghostty_rust_terminal_create(
+        alloc: ?*const CAllocator,
+        cols: size.CellCountInt,
+        rows: size.CellCountInt,
+        max_scrollback: usize,
+    ) callconv(.c) ?*anyopaque;
+
+    extern fn ghostty_rust_terminal_destroy(
+        alloc: ?*const CAllocator,
+        handle: ?*anyopaque,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_write(
+        handle: ?*anyopaque,
+        ptr: [*]const u8,
+        len: usize,
+    ) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_owned_grid_ref(
+        handle: ?*anyopaque,
+        pt: *const point.Point.C,
+        out_ref: ?*grid_ref_c.CGridRef,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_resize(
+        handle: ?*anyopaque,
+        alloc: ?*const CAllocator,
+        cols: size.CellCountInt,
+        rows: size.CellCountInt,
+        cell_width_px: u32,
+        cell_height_px: u32,
+        out_width_px: *u32,
+        out_height_px: *u32,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_reset(handle: ?*anyopaque) callconv(.c) void;
+
+    extern fn ghostty_rust_terminal_owned_get_scalar(
+        handle: ?*anyopaque,
+        data: c_int,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_get_scalar_multi(
+        handle: ?*anyopaque,
+        count: usize,
+        keys: ?[*]const TerminalData,
+        values: ?[*]?*anyopaque,
+        out_written: ?*usize,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_point_from_grid_ref(
+        handle: ?*anyopaque,
+        ref_: ?*const grid_ref_c.CGridRef,
+        tag: u8,
+        out: ?*point.Coordinate,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_mode_get(
+        handle: ?*anyopaque,
+        tag: modes.ModeTag.Backing,
+        out: *bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_mode_set(
+        handle: ?*anyopaque,
+        tag: modes.ModeTag.Backing,
+        value: bool,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_set_string(
+        handle: ?*anyopaque,
+        alloc: ?*const CAllocator,
+        data: c_int,
+        value: ?*const lib.String,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_get_string(
+        handle: ?*anyopaque,
+        data: c_int,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_get_style(
+        handle: ?*anyopaque,
+        data: c_int,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_get_color(
+        handle: ?*anyopaque,
+        data: c_int,
+        out: ?*anyopaque,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_set_color(
+        handle: ?*anyopaque,
+        data: c_int,
+        value: ?*const color.RGB.C,
+    ) callconv(.c) c_int;
+} else struct {};
+
+fn rustOwnedHandle(wrapper: *TerminalWrapper) ?*anyopaque {
+    return switch (wrapper.state) {
+        .rust => |r| r.handle,
+        .zig => null,
+    };
+}
+
+fn rustOwnedAlloc(wrapper: *const TerminalWrapper) ?*const CAllocator {
+    return switch (wrapper.state) {
+        .rust => |r| r.alloc,
+        .zig => null,
+    };
+}
+
+/// Wrapper around terminal state for C API usage. The active backend is either
+/// a Zig terminal plus VT stream, or a Rust-owned terminal handle.
 const TerminalWrapper = struct {
-    terminal: *ZigTerminal,
-    stream: Stream,
+    state: State,
     effects: Effects = .{},
     tracked_grid_refs: std.AutoArrayHashMapUnmanaged(*grid_ref_tracked_c.TrackedGridRef, void) = .{},
+
+    const State = union(enum) {
+        zig: struct {
+            terminal: *ZigTerminal,
+            stream: Stream,
+        },
+        rust: struct {
+            handle: *anyopaque,
+            alloc: ?*const CAllocator,
+        },
+    };
+
+    fn zigTerminal(self: *const TerminalWrapper) ?*ZigTerminal {
+        return switch (self.state) {
+            .zig => |s| s.terminal,
+            .rust => null,
+        };
+    }
+
+    fn zigStream(self: *TerminalWrapper) ?*Stream {
+        return switch (self.state) {
+            .zig => |*s| &s.stream,
+            .rust => null,
+        };
+    }
 };
+
+pub fn terminalZig(terminal_: Terminal) ?*ZigTerminal {
+    return (terminal_ orelse return null).zigTerminal();
+}
+
+pub fn wrapperZig(wrapper: *TerminalWrapper) ?*ZigTerminal {
+    return wrapper.zigTerminal();
+}
 
 /// C callback state for terminal effects. Trampolines are always
 /// installed on the stream handler; they check these fields and
@@ -318,23 +466,24 @@ const Effects = struct {
         };
     };
 
+    fn wrapperFromHandler(handler: *Handler) *TerminalWrapper {
+        return @ptrCast(@alignCast(handler.c_wrapper.?));
+    }
+
     fn writePtyTrampoline(handler: *Handler, data: [:0]const u8) void {
-        const stream_ptr: *Stream = @fieldParentPtr("handler", handler);
-        const wrapper: *TerminalWrapper = @fieldParentPtr("stream", stream_ptr);
+        const wrapper = wrapperFromHandler(handler);
         const func = wrapper.effects.write_pty orelse return;
         func(@ptrCast(wrapper), wrapper.effects.userdata, data.ptr, data.len);
     }
 
     fn bellTrampoline(handler: *Handler) void {
-        const stream_ptr: *Stream = @fieldParentPtr("handler", handler);
-        const wrapper: *TerminalWrapper = @fieldParentPtr("stream", stream_ptr);
+        const wrapper = wrapperFromHandler(handler);
         const func = wrapper.effects.bell orelse return;
         func(@ptrCast(wrapper), wrapper.effects.userdata);
     }
 
     fn colorSchemeTrampoline(handler: *Handler) ?device_status.ColorScheme {
-        const stream_ptr: *Stream = @fieldParentPtr("handler", handler);
-        const wrapper: *TerminalWrapper = @fieldParentPtr("stream", stream_ptr);
+        const wrapper = wrapperFromHandler(handler);
         const func = wrapper.effects.color_scheme orelse return null;
         var scheme: device_status.ColorScheme = undefined;
         if (func(@ptrCast(wrapper), wrapper.effects.userdata, &scheme)) return scheme;
@@ -342,8 +491,7 @@ const Effects = struct {
     }
 
     fn deviceAttributesTrampoline(handler: *Handler) device_attributes.Attributes {
-        const stream_ptr: *Stream = @fieldParentPtr("handler", handler);
-        const wrapper: *TerminalWrapper = @fieldParentPtr("stream", stream_ptr);
+        const wrapper = wrapperFromHandler(handler);
         const func = wrapper.effects.device_attributes_cb orelse return .{};
 
         // Get our attributes from the callback.
@@ -373,8 +521,7 @@ const Effects = struct {
     }
 
     fn enquiryTrampoline(handler: *Handler) []const u8 {
-        const stream_ptr: *Stream = @fieldParentPtr("handler", handler);
-        const wrapper: *TerminalWrapper = @fieldParentPtr("stream", stream_ptr);
+        const wrapper = wrapperFromHandler(handler);
         const func = wrapper.effects.enquiry orelse return "";
         const result = func(@ptrCast(wrapper), wrapper.effects.userdata);
         if (result.len == 0) return "";
@@ -382,8 +529,7 @@ const Effects = struct {
     }
 
     fn xtversionTrampoline(handler: *Handler) []const u8 {
-        const stream_ptr: *Stream = @fieldParentPtr("handler", handler);
-        const wrapper: *TerminalWrapper = @fieldParentPtr("stream", stream_ptr);
+        const wrapper = wrapperFromHandler(handler);
         const func = wrapper.effects.xtversion orelse return "";
         const result = func(@ptrCast(wrapper), wrapper.effects.userdata);
         if (result.len == 0) return "";
@@ -391,15 +537,13 @@ const Effects = struct {
     }
 
     fn titleChangedTrampoline(handler: *Handler) void {
-        const stream_ptr: *Stream = @fieldParentPtr("handler", handler);
-        const wrapper: *TerminalWrapper = @fieldParentPtr("stream", stream_ptr);
+        const wrapper = wrapperFromHandler(handler);
         const func = wrapper.effects.title_changed orelse return;
         func(@ptrCast(wrapper), wrapper.effects.userdata);
     }
 
     fn sizeTrampoline(handler: *Handler) ?size_report.Size {
-        const stream_ptr: *Stream = @fieldParentPtr("handler", handler);
-        const wrapper: *TerminalWrapper = @fieldParentPtr("stream", stream_ptr);
+        const wrapper = wrapperFromHandler(handler);
         const func = wrapper.effects.size_cb orelse return null;
         var s: size_report.Size = undefined;
         if (func(@ptrCast(wrapper), wrapper.effects.userdata, &s)) return s;
@@ -411,7 +555,7 @@ const Effects = struct {
 pub const Terminal = ?*TerminalWrapper;
 
 pub fn zigTerminal(terminal_: Terminal) ?*ZigTerminal {
-    return (terminal_ orelse return null).terminal;
+    return (terminal_ orelse return null).zigTerminal();
 }
 
 /// C: GhosttyTerminalOptions
@@ -431,6 +575,17 @@ pub fn new(
     result: *Terminal,
     opts: Options,
 ) callconv(lib.calling_conv) Result {
+    if (comptime build_options.terminal_rust_owned) {
+        result.* = newOwned(alloc_, opts) catch |err| {
+            result.* = null;
+            return switch (err) {
+                error.InvalidValue => .invalid_value,
+                error.OutOfMemory => .out_of_memory,
+            };
+        };
+        return .success;
+    }
+
     if (comptime build_options.lib_vt_rust) {
         const validation: Result = @enumFromInt(rust.ghostty_rust_terminal_new(
             opts.cols,
@@ -451,6 +606,37 @@ pub fn new(
     };
 
     return .success;
+}
+
+fn newOwned(
+    alloc_: ?*const CAllocator,
+    opts: Options,
+) NewError!*TerminalWrapper {
+    if (opts.cols == 0 or opts.rows == 0) return error.InvalidValue;
+
+    const alloc = lib.alloc.default(alloc_);
+    const handle = rust_owned.ghostty_rust_terminal_create(
+        alloc_,
+        opts.cols,
+        opts.rows,
+        opts.max_scrollback,
+    ) orelse return error.OutOfMemory;
+
+    const wrapper = alloc.create(TerminalWrapper) catch {
+        rust_owned.ghostty_rust_terminal_destroy(alloc_, handle);
+        return error.OutOfMemory;
+    };
+
+    wrapper.* = .{
+        .state = .{ .rust = .{
+            .handle = handle,
+            .alloc = alloc_,
+        } },
+        .effects = .{},
+        .tracked_grid_refs = .{},
+    };
+
+    return wrapper;
 }
 
 fn new_(
@@ -479,6 +665,7 @@ fn new_(
     // Setup our stream with trampolines always installed so that
     // setting C callbacks at any time takes effect immediately.
     var handler: Stream.Handler = t.vtHandler();
+    handler.c_wrapper = wrapper;
     handler.effects = .{
         .write_pty = &Effects.writePtyTrampoline,
         .bell = &Effects.bellTrampoline,
@@ -491,8 +678,12 @@ fn new_(
     };
 
     wrapper.* = .{
-        .terminal = t,
-        .stream = .initAlloc(alloc, handler),
+        .state = .{ .zig = .{
+            .terminal = t,
+            .stream = .initAlloc(alloc, handler),
+        } },
+        .effects = .{},
+        .tracked_grid_refs = .{},
     };
 
     return wrapper;
@@ -504,7 +695,14 @@ pub fn vt_write(
     len: usize,
 ) callconv(lib.calling_conv) void {
     const wrapper = terminal_ orelse return;
-    wrapper.stream.nextSlice(ptr[0..len]);
+    switch (wrapper.state) {
+        .zig => |*s| s.stream.nextSlice(ptr[0..len]),
+        .rust => |r| {
+            if (comptime build_options.terminal_rust_owned) {
+                rust_owned.ghostty_rust_terminal_write(r.handle, ptr, len);
+            }
+        },
+    }
 }
 
 /// C: GhosttyTerminalOption
@@ -614,7 +812,18 @@ fn setTyped(
                 if (result != .success) return result;
                 break :str ptr[0..len];
             } else if (value) |v| v.ptr[0..v.len] else "";
-            wrapper.terminal.setTitle(str) catch return .out_of_memory;
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_string(
+                        handle,
+                        rustOwnedAlloc(wrapper),
+                        @intFromEnum(TerminalData.title),
+                        value,
+                    ));
+                }
+            }
+            const t = wrapper.zigTerminal() orelse return .invalid_value;
+            t.setTitle(str) catch return .out_of_memory;
         },
         .pwd => {
             const str = if (comptime build_options.lib_vt_rust) str: {
@@ -628,35 +837,77 @@ fn setTyped(
                 if (result != .success) return result;
                 break :str ptr[0..len];
             } else if (value) |v| v.ptr[0..v.len] else "";
-            wrapper.terminal.setPwd(str) catch return .out_of_memory;
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_string(
+                        handle,
+                        rustOwnedAlloc(wrapper),
+                        @intFromEnum(TerminalData.pwd),
+                        value,
+                    ));
+                }
+            }
+            const t = wrapper.zigTerminal() orelse return .invalid_value;
+            t.setPwd(str) catch return .out_of_memory;
         },
         .color_foreground => {
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_color(
+                        handle,
+                        @intFromEnum(TerminalData.color_foreground),
+                        value,
+                    ));
+                }
+            }
             var rgb: ?color.RGB = null;
             const result = decodeSetRgb(value, &rgb);
             if (result != .success) return result;
-            wrapper.terminal.colors.foreground.default = rgb;
-            wrapper.terminal.flags.dirty.palette = true;
+            const t = wrapper.zigTerminal() orelse return .invalid_value;
+            t.colors.foreground.default = rgb;
+            t.flags.dirty.palette = true;
         },
         .color_background => {
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_color(
+                        handle,
+                        @intFromEnum(TerminalData.color_background),
+                        value,
+                    ));
+                }
+            }
             var rgb: ?color.RGB = null;
             const result = decodeSetRgb(value, &rgb);
             if (result != .success) return result;
-            wrapper.terminal.colors.background.default = rgb;
-            wrapper.terminal.flags.dirty.palette = true;
+            const t = wrapper.zigTerminal() orelse return .invalid_value;
+            t.colors.background.default = rgb;
+            t.flags.dirty.palette = true;
         },
         .color_cursor => {
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_set_color(
+                        handle,
+                        @intFromEnum(TerminalData.color_cursor),
+                        value,
+                    ));
+                }
+            }
             var rgb: ?color.RGB = null;
             const result = decodeSetRgb(value, &rgb);
             if (result != .success) return result;
-            wrapper.terminal.colors.cursor.default = rgb;
-            wrapper.terminal.flags.dirty.palette = true;
+            const t = wrapper.zigTerminal() orelse return .invalid_value;
+            t.colors.cursor.default = rgb;
+            t.flags.dirty.palette = true;
         },
         .color_palette => {
             var palette: color.Palette = undefined;
             const result = decodeSetPalette(value, &palette);
             if (result != .success) return result;
-            wrapper.terminal.colors.palette.changeDefault(palette);
-            wrapper.terminal.flags.dirty.palette = true;
+            const t = wrapper.zigTerminal() orelse return .invalid_value;
+            t.colors.palette.changeDefault(palette);
+            t.flags.dirty.palette = true;
         },
         .kitty_image_storage_limit => {
             if (comptime !build_options.kitty_graphics) return .success;
@@ -664,7 +915,8 @@ fn setTyped(
             const result = decodeSetU64Zero(value, &limit_u64);
             if (result != .success) return result;
             const limit: usize = @intCast(limit_u64);
-            var it = wrapper.terminal.screens.all.iterator();
+            const t = wrapper.zigTerminal() orelse return .invalid_value;
+            var it = t.screens.all.iterator();
             while (it.next()) |entry| {
                 const screen = entry.value.*;
                 screen.kitty_images.setLimit(screen.alloc, screen, limit) catch return .out_of_memory;
@@ -680,7 +932,8 @@ fn setTyped(
             const result = decodeSetBoolOptional(value, &has_value, &val);
             if (result != .success) return result;
             if (!has_value) return .success;
-            var it = wrapper.terminal.screens.all.iterator();
+            const t = wrapper.zigTerminal() orelse return .invalid_value;
+            var it = t.screens.all.iterator();
             while (it.next()) |entry| {
                 const screen = entry.value.*;
                 switch (option) {
@@ -696,7 +949,8 @@ fn setTyped(
             var max_bytes: usize = undefined;
             const result = decodeSetUsizeOptional(value, &has_value, &max_bytes);
             if (result != .success) return result;
-            wrapper.stream.handler.apc_handler.max_bytes = if (has_value)
+            const stream = wrapper.zigStream() orelse return .invalid_value;
+            stream.handler.apc_handler.max_bytes = if (has_value)
                 .initFull(max_bytes)
             else
                 .{};
@@ -706,18 +960,21 @@ fn setTyped(
             var max_bytes: usize = undefined;
             const result = decodeSetUsizeOptional(value, &has_value, &max_bytes);
             if (result != .success) return result;
+            const stream = wrapper.zigStream() orelse return .invalid_value;
             if (has_value) {
-                wrapper.stream.handler.apc_handler.max_bytes.put(.kitty, max_bytes);
+                stream.handler.apc_handler.max_bytes.put(.kitty, max_bytes);
             } else {
-                wrapper.stream.handler.apc_handler.max_bytes.remove(.kitty);
+                stream.handler.apc_handler.max_bytes.remove(.kitty);
             }
         },
         .selection => {
             if (value) |ptr| {
                 const sel = ptr.toZig() orelse return .invalid_value;
-                wrapper.terminal.screens.active.select(sel) catch return .out_of_memory;
+                const t = wrapper.zigTerminal() orelse return .invalid_value;
+                t.screens.active.select(sel) catch return .out_of_memory;
             } else {
-                wrapper.terminal.screens.active.clearSelection();
+                const t = wrapper.zigTerminal() orelse return .invalid_value;
+                t.screens.active.clearSelection();
             }
         },
     }
@@ -820,7 +1077,7 @@ pub fn scroll_viewport(
     terminal_: Terminal,
     behavior: ScrollViewport,
 ) callconv(lib.calling_conv) void {
-    const t: *ZigTerminal = (terminal_ orelse return).terminal;
+    const t: *ZigTerminal = terminalZig(terminal_) orelse return;
     t.scrollViewport(switch (behavior.tag) {
         .top => .top,
         .bottom => .bottom,
@@ -853,6 +1110,21 @@ pub fn resize(
         return .invalid_value;
     };
 
+    if (comptime build_options.terminal_rust_owned) {
+        if (rustOwnedHandle(wrapper)) |handle| {
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_resize(
+                handle,
+                rustOwnedAlloc(wrapper),
+                cols,
+                rows,
+                cell_width_px,
+                cell_height_px,
+                &width_px,
+                &height_px,
+            ));
+        }
+    }
+
     if (comptime build_options.lib_vt_rust) {
         const result: Result = @enumFromInt(rust.ghostty_rust_terminal_resize(
             true,
@@ -870,7 +1142,7 @@ pub fn resize(
         height_px = std.math.mul(u32, rows, cell_height_px) catch std.math.maxInt(u32);
     }
 
-    const t = wrapper.terminal;
+    const t = wrapper.zigTerminal() orelse return .invalid_value;
     t.resize(t.gpa(), cols, rows) catch return .out_of_memory;
 
     // Update pixel sizes
@@ -906,7 +1178,15 @@ pub fn reset(terminal_: Terminal) callconv(lib.calling_conv) void {
         if (!rust.ghostty_rust_terminal_reset(terminal_ != null)) return;
     }
 
-    const t: *ZigTerminal = (terminal_ orelse return).terminal;
+    const wrapper = terminal_ orelse return;
+    if (comptime build_options.terminal_rust_owned) {
+        if (rustOwnedHandle(wrapper)) |handle| {
+            rust_owned.ghostty_rust_terminal_owned_reset(handle);
+            return;
+        }
+    }
+
+    const t: *ZigTerminal = wrapper.zigTerminal() orelse return;
     t.fullReset();
 }
 
@@ -926,7 +1206,26 @@ pub fn mode_get(
         }
         return .invalid_value;
     };
-    const t: *ZigTerminal = wrapper.terminal;
+    const t: *ZigTerminal = wrapper.zigTerminal() orelse {
+        if (comptime build_options.terminal_rust_owned) {
+            if (rustOwnedHandle(wrapper)) |handle| {
+                return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_mode_get(
+                    handle,
+                    tag,
+                    out_value,
+                ));
+            }
+        }
+        if (comptime build_options.lib_vt_rust) {
+            return @enumFromInt(rust.ghostty_rust_terminal_mode_get(
+                true,
+                false,
+                false,
+                out_value,
+            ));
+        }
+        return .invalid_value;
+    };
     const mode_tag: modes.ModeTag = @bitCast(tag);
     const mode = modes.modeFromInt(mode_tag.value, mode_tag.ansi) orelse {
         if (comptime build_options.lib_vt_rust) {
@@ -962,7 +1261,21 @@ pub fn mode_set(
         }
         return .invalid_value;
     };
-    const t: *ZigTerminal = wrapper.terminal;
+    const t: *ZigTerminal = wrapper.zigTerminal() orelse {
+        if (comptime build_options.terminal_rust_owned) {
+            if (rustOwnedHandle(wrapper)) |handle| {
+                return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_mode_set(
+                    handle,
+                    tag,
+                    value,
+                ));
+            }
+        }
+        if (comptime build_options.lib_vt_rust) {
+            return @enumFromInt(rust.ghostty_rust_terminal_mode_set(true, false));
+        }
+        return .invalid_value;
+    };
     const mode_tag: modes.ModeTag = @bitCast(tag);
     const mode = modes.modeFromInt(mode_tag.value, mode_tag.ansi) orelse {
         if (comptime build_options.lib_vt_rust) {
@@ -1126,7 +1439,19 @@ pub fn get_multi(
         }
 
         if (scalar_only) {
-            const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
+            const wrapper = terminal_ orelse return .invalid_value;
+            if (comptime build_options.terminal_rust_owned) {
+                if (rustOwnedHandle(wrapper)) |handle| {
+                    return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_scalar_multi(
+                        handle,
+                        count,
+                        k,
+                        v,
+                        out_written,
+                    ));
+                }
+            }
+            const t: *ZigTerminal = wrapper.zigTerminal() orelse return .invalid_value;
             return @enumFromInt(rust.ghostty_rust_terminal_get_scalar_multi(
                 count,
                 k,
@@ -1168,7 +1493,57 @@ fn getTyped(
     comptime data: TerminalData,
     out: *data.OutType(),
 ) Result {
-    const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
+    const wrapper = terminal_ orelse return .invalid_value;
+    if (comptime build_options.terminal_rust_owned) {
+        if (rustOwnedHandle(wrapper)) |handle| {
+            switch (data) {
+                .cols,
+                .rows,
+                .cursor_x,
+                .cursor_y,
+                .cursor_pending_wrap,
+                .active_screen,
+                .cursor_visible,
+                .kitty_keyboard_flags,
+                .mouse_tracking,
+                .total_rows,
+                .scrollback_rows,
+                .width_px,
+                .height_px,
+                => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_scalar(
+                    handle,
+                    @intFromEnum(data),
+                    @ptrCast(out),
+                )),
+                .title,
+                .pwd,
+                => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_string(
+                    handle,
+                    @intFromEnum(data),
+                    @ptrCast(out),
+                )),
+                .cursor_style => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_style(
+                    handle,
+                    @intFromEnum(data),
+                    @ptrCast(out),
+                )),
+                .color_foreground,
+                .color_background,
+                .color_cursor,
+                .color_foreground_default,
+                .color_background_default,
+                .color_cursor_default,
+                => return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_get_color(
+                    handle,
+                    @intFromEnum(data),
+                    @ptrCast(out),
+                )),
+                else => return .invalid_value,
+            }
+        }
+    }
+
+    const t: *ZigTerminal = wrapper.zigTerminal() orelse return .invalid_value;
     if (comptime build_options.lib_vt_rust) {
         switch (data) {
             .cols,
@@ -1431,7 +1806,18 @@ pub fn grid_ref(
     pt: point.Point.C,
     out_ref: ?*grid_ref_c.CGridRef,
 ) callconv(lib.calling_conv) Result {
-    const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
+    const wrapper = terminal_ orelse return .invalid_value;
+    if (comptime build_options.terminal_rust_owned) {
+        if (rustOwnedHandle(wrapper)) |handle| {
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_grid_ref(
+                handle,
+                &pt,
+                out_ref,
+            ));
+        }
+    }
+
+    const t: *ZigTerminal = wrapper.zigTerminal() orelse return .invalid_value;
     const zig_pt: point.Point = .fromC(pt);
     const p = t.screens.active.pages.pin(zig_pt);
     if (comptime build_options.lib_vt_rust) {
@@ -1466,7 +1852,7 @@ pub fn grid_ref_track(
     const out = out_ref orelse return .invalid_value;
     out.* = null;
 
-    const t: *ZigTerminal = wrapper.terminal;
+    const t: *ZigTerminal = wrapper.zigTerminal() orelse return .invalid_value;
     const list = &t.screens.active.pages;
     const p = list.pin(.fromC(pt)) orelse return .invalid_value;
     const tracked_pin = list.trackPin(p) catch return .out_of_memory;
@@ -1514,8 +1900,20 @@ pub fn point_from_grid_ref(
         if (result != .success) return result;
     }
 
-    const t: *ZigTerminal = (terminal_ orelse return .invalid_value).terminal;
+    const wrapper = terminal_ orelse return .invalid_value;
     const ref = ref_ orelse return .invalid_value;
+    if (comptime build_options.terminal_rust_owned) {
+        if (rustOwnedHandle(wrapper)) |handle| {
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_point_from_grid_ref(
+                handle,
+                ref,
+                @intCast(@intFromEnum(tag)),
+                out,
+            ));
+        }
+    }
+
+    const t: *ZigTerminal = wrapper.zigTerminal() orelse return .invalid_value;
     const p = ref.toPin() orelse return .invalid_value;
     const pt = t.screens.active.pages.pointFromPin(tag, p);
     if (comptime build_options.lib_vt_rust) {
@@ -1533,30 +1931,45 @@ pub fn point_from_grid_ref(
 
 /// Clear pwd and title buffers (called from the Rust port's terminal.reset).
 pub fn clear_pwd_and_title(terminal_: Terminal) callconv(lib.calling_conv) void {
-    const wrapper = terminal_ orelse return;
-    const t = wrapper.terminal;
+    const t = terminalZig(terminal_) orelse return;
     t.pwd.clearRetainingCapacity();
     t.title.clearRetainingCapacity();
 }
 
 /// Return pwd items pointer and length (called from the Rust port's formatter).
 pub fn pwd_items(terminal_: Terminal, out_ptr: *[*]const u8, out_len: *usize) callconv(lib.calling_conv) void {
-    const pwd = if (terminal_) |wrapper| (wrapper.terminal.getPwd() orelse "") else "";
+    const pwd = if (terminalZig(terminal_)) |zt| (zt.getPwd() orelse "") else "";
     out_ptr.* = pwd.ptr;
     out_len.* = pwd.len;
 }
 
 pub fn free(terminal_: Terminal) callconv(lib.calling_conv) void {
     const wrapper = terminal_ orelse return;
-    const t = wrapper.terminal;
-    const alloc = t.gpa();
-
-    for (wrapper.tracked_grid_refs.keys()) |ref| ref.terminal = null;
-    wrapper.tracked_grid_refs.deinit(alloc);
-    wrapper.stream.deinit();
-    t.deinit(alloc);
-    alloc.destroy(t);
+    const alloc = switch (wrapper.state) {
+        .zig => |*s| blk: {
+            const gpa = s.terminal.gpa();
+            for (wrapper.tracked_grid_refs.keys()) |ref| ref.terminal = null;
+            wrapper.tracked_grid_refs.deinit(gpa);
+            s.stream.deinit();
+            s.terminal.deinit(gpa);
+            gpa.destroy(s.terminal);
+            break :blk gpa;
+        },
+        .rust => |r| blk: {
+            if (comptime build_options.terminal_rust_owned) {
+                rust_owned.ghostty_rust_terminal_destroy(r.alloc, r.handle);
+            }
+            break :blk lib.alloc.default(r.alloc);
+        },
+    };
     alloc.destroy(wrapper);
+}
+
+/// Returns the Zig terminal for tests that need in-memory inspection. When
+/// `-Dterminal-rust-owned=true`, returns null so callers can `orelse return`.
+inline fn zigTerminalForTest(t: Terminal) ?*ZigTerminal {
+    if (comptime build_options.terminal_rust_owned) return null;
+    return t.?.zigTerminal();
 }
 
 test "new/free" {
@@ -1618,7 +2031,7 @@ test "scroll_viewport" {
     ));
     defer free(t);
 
-    const zt = t.?.terminal;
+    const zt = zigTerminalForTest(t) orelse return;
 
     // Write "hello" on the first line
     vt_write(t, "hello", 5);
@@ -1677,7 +2090,7 @@ test "reset" {
     vt_write(t, "Hello", 5);
     reset(t);
 
-    const str = try t.?.terminal.plainString(testing.allocator);
+    const str = try (zigTerminalForTest(t) orelse return).plainString(testing.allocator);
     defer testing.allocator.free(str);
     try testing.expectEqualStrings("", str);
 }
@@ -1700,8 +2113,9 @@ test "resize" {
     defer free(t);
 
     try testing.expectEqual(Result.success, resize(t, 40, 12, 9, 18));
-    try testing.expectEqual(40, t.?.terminal.cols);
-    try testing.expectEqual(12, t.?.terminal.rows);
+    const zt = zigTerminalForTest(t) orelse return;
+    try testing.expectEqual(40, zt.cols);
+    try testing.expectEqual(12, zt.rows);
 }
 
 test "resize null" {
@@ -1745,8 +2159,9 @@ test "resize saturates pixel dimensions" {
         std.math.maxInt(u32),
         std.math.maxInt(u32),
     ));
-    try testing.expectEqual(std.math.maxInt(u32), t.?.terminal.width_px);
-    try testing.expectEqual(std.math.maxInt(u32), t.?.terminal.height_px);
+    const zt = zigTerminalForTest(t) orelse return;
+    try testing.expectEqual(std.math.maxInt(u32), zt.width_px);
+    try testing.expectEqual(std.math.maxInt(u32), zt.height_px);
 }
 
 test "mode_get and mode_set" {
@@ -1845,7 +2260,7 @@ test "vt_write" {
 
     vt_write(t, "Hello", 5);
 
-    const str = try t.?.terminal.plainString(testing.allocator);
+    const str = try (zigTerminalForTest(t) orelse return).plainString(testing.allocator);
     defer testing.allocator.free(str);
     try testing.expectEqualStrings("Hello", str);
 }
@@ -1869,7 +2284,7 @@ test "vt_write split escape sequence" {
     vt_write(t, "Hello \x1b", 7);
     vt_write(t, "[1mBold\x1b[0m", 10);
 
-    const str = try t.?.terminal.plainString(testing.allocator);
+    const str = try (zigTerminalForTest(t) orelse return).plainString(testing.allocator);
     defer testing.allocator.free(str);
     // If the escape sequence leaked, we'd see "[1mBold" as literal text.
     try testing.expectEqualStrings("Hello Bold", str);
@@ -1893,7 +2308,7 @@ test "vt_write split combining mark after base at right edge" {
     vt_write(t, "xå", 3);
     vt_write(t, "\xcc\xb2", 2);
 
-    const str = try t.?.terminal.plainString(testing.allocator);
+    const str = try (zigTerminalForTest(t) orelse return).plainString(testing.allocator);
     defer testing.allocator.free(str);
     try testing.expectEqualStrings("xå̲", str);
 }
@@ -2068,6 +2483,7 @@ test "get active_screen" {
 }
 
 test "get kitty_keyboard_flags" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2142,6 +2558,7 @@ test "get mouse_tracking" {
 }
 
 test "get scrollbar" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2169,6 +2586,7 @@ test "get scrollbar" {
 }
 
 test "get kitty image settings" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2195,7 +2613,8 @@ test "get kitty image settings" {
     }
 
     try testing.expectEqual(Result.success, get(t, .kitty_image_storage_limit, @ptrCast(&limit)));
-    try testing.expectEqual(@as(u64, @intCast(t.?.terminal.screens.active.kitty_images.total_limit)), limit);
+    const zt = zigTerminalForTest(t) orelse return;
+    try testing.expectEqual(@as(u64, @intCast(zt.screens.active.kitty_images.total_limit)), limit);
     try testing.expectEqual(Result.success, get(t, .kitty_image_medium_file, @ptrCast(&medium_file)));
     try testing.expect(!medium_file);
     try testing.expectEqual(Result.success, get(t, .kitty_image_medium_temp_file, @ptrCast(&medium_temp_file)));
@@ -2221,6 +2640,8 @@ test "get kitty image settings" {
 }
 
 test "set APC max bytes" {
+    if (comptime build_options.terminal_rust_owned) return;
+
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2315,6 +2736,7 @@ test "get invalid" {
 }
 
 test "set and get selection" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2350,7 +2772,8 @@ test "set and get selection" {
         .rectangle = true,
     };
     try testing.expectEqual(Result.success, set(t, .selection, @ptrCast(&sel)));
-    try testing.expect(t.?.terminal.screens.active.selection.?.tracked());
+    const zt = zigTerminalForTest(t) orelse return;
+    try testing.expect(zt.screens.active.selection.?.tracked());
 
     try testing.expectEqual(Result.success, get(t, .selection, @ptrCast(&out)));
     try testing.expect(out.start.toPin().?.eql(start_ref.toPin().?));
@@ -2358,11 +2781,12 @@ test "set and get selection" {
     try testing.expect(out.rectangle);
 
     try testing.expectEqual(Result.success, set(t, .selection, null));
-    try testing.expect(t.?.terminal.screens.active.selection == null);
+    try testing.expect(zt.screens.active.selection == null);
     try testing.expectEqual(Result.no_value, get(t, .selection, @ptrCast(&out)));
 }
 
 test "selection derivation helpers" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2453,6 +2877,7 @@ test "selection derivation helpers" {
 }
 
 test "selection_adjust mutates snapshot end" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2501,6 +2926,7 @@ test "selection_adjust mutates snapshot end" {
 }
 
 test "selection_order and selection_ordered" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2554,6 +2980,7 @@ test "selection_order and selection_ordered" {
 }
 
 test "selection_contains" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2612,6 +3039,7 @@ test "selection_contains" {
 }
 
 test "selection_equal" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2701,6 +3129,7 @@ test "selection_equal" {
 }
 
 test "selection_order invalid values" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2798,6 +3227,7 @@ test "grid_ref_track invalid inputs" {
 }
 
 test "point_from_grid_ref roundtrip active" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2823,6 +3253,7 @@ test "point_from_grid_ref roundtrip active" {
 }
 
 test "point_from_grid_ref roundtrip viewport" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2866,6 +3297,7 @@ test "point_from_grid_ref null out succeeds" {
 }
 
 test "point_from_grid_ref history ref to active returns no_value" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2926,6 +3358,7 @@ test "point_from_grid_ref null node" {
 }
 
 test "set write_pty callback" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2969,6 +3402,7 @@ test "set write_pty callback" {
 }
 
 test "set write_pty without callback ignores queries" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -2986,6 +3420,7 @@ test "set write_pty without callback ignores queries" {
 }
 
 test "set write_pty null clears callback" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3015,6 +3450,7 @@ test "set write_pty null clears callback" {
 }
 
 test "set bell callback" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3055,6 +3491,7 @@ test "set bell callback" {
 }
 
 test "bell without callback is silent" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3072,6 +3509,7 @@ test "bell without callback is silent" {
 }
 
 test "set enquiry callback" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3114,6 +3552,7 @@ test "set enquiry callback" {
 }
 
 test "enquiry without callback is silent" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3131,6 +3570,7 @@ test "enquiry without callback is silent" {
 }
 
 test "set xtversion callback" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3174,6 +3614,7 @@ test "set xtversion callback" {
 }
 
 test "xtversion without callback reports default" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3210,6 +3651,7 @@ test "xtversion without callback reports default" {
 }
 
 test "set title_changed callback" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3249,6 +3691,7 @@ test "set title_changed callback" {
 }
 
 test "title_changed without callback is silent" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3266,6 +3709,7 @@ test "title_changed without callback is silent" {
 }
 
 test "set size callback" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3313,6 +3757,7 @@ test "set size callback" {
 }
 
 test "size without callback is silent" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3330,6 +3775,7 @@ test "size without callback is silent" {
 }
 
 test "set device_attributes callback primary" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3384,6 +3830,7 @@ test "set device_attributes callback primary" {
 }
 
 test "set device_attributes callback secondary" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3438,6 +3885,7 @@ test "set device_attributes callback secondary" {
 }
 
 test "set device_attributes callback tertiary" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3492,6 +3940,7 @@ test "set device_attributes callback tertiary" {
 }
 
 test "device_attributes without callback uses default" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3528,6 +3977,7 @@ test "device_attributes without callback uses default" {
 }
 
 test "device_attributes callback returns false uses default" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3661,6 +4111,7 @@ test "get title set via vt_write" {
 }
 
 test "resize updates pixel dimensions" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3675,12 +4126,13 @@ test "resize updates pixel dimensions" {
 
     try testing.expectEqual(Result.success, resize(t, 100, 40, 9, 18));
 
-    const zt = t.?.terminal;
+    const zt = zigTerminalForTest(t) orelse return;
     try testing.expectEqual(@as(u32, 100 * 9), zt.width_px);
     try testing.expectEqual(@as(u32, 40 * 18), zt.height_px);
 }
 
 test "resize pixel overflow saturates" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3695,12 +4147,13 @@ test "resize pixel overflow saturates" {
 
     try testing.expectEqual(Result.success, resize(t, 100, 40, std.math.maxInt(u32), std.math.maxInt(u32)));
 
-    const zt = t.?.terminal;
+    const zt = zigTerminalForTest(t) orelse return;
     try testing.expectEqual(std.math.maxInt(u32), zt.width_px);
     try testing.expectEqual(std.math.maxInt(u32), zt.height_px);
 }
 
 test "resize disables synchronized output" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3713,7 +4166,7 @@ test "resize disables synchronized output" {
     ));
     defer free(t);
 
-    const zt = t.?.terminal;
+    const zt = zigTerminalForTest(t) orelse return;
     zt.modes.set(.synchronized_output, true);
 
     try testing.expectEqual(Result.success, resize(t, 100, 40, 9, 18));
@@ -3721,6 +4174,7 @@ test "resize disables synchronized output" {
 }
 
 test "resize sends in-band size report" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3751,7 +4205,7 @@ test "resize sends in-band size report" {
     try testing.expectEqual(Result.success, set(t, .write_pty, @ptrCast(&S.writePty)));
 
     // Enable in-band size reports (mode 2048)
-    t.?.terminal.modes.set(.in_band_size_reports, true);
+    (zigTerminalForTest(t) orelse return).modes.set(.in_band_size_reports, true);
 
     try testing.expectEqual(Result.success, resize(t, 100, 40, 9, 18));
 
@@ -3762,6 +4216,7 @@ test "resize sends in-band size report" {
 }
 
 test "resize no size report without mode 2048" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3790,6 +4245,7 @@ test "resize no size report without mode 2048" {
 }
 
 test "resize in-band report without write_pty callback" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3803,7 +4259,7 @@ test "resize in-band report without write_pty callback" {
     defer free(t);
 
     // Enable mode 2048 but don't set a write_pty callback — should not crash
-    t.?.terminal.modes.set(.in_band_size_reports, true);
+    (zigTerminalForTest(t) orelse return).modes.set(.in_band_size_reports, true);
     try testing.expectEqual(Result.success, resize(t, 100, 40, 9, 18));
 }
 
@@ -3942,6 +4398,7 @@ test "set and get color_cursor" {
 }
 
 test "set and get color_palette" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3973,6 +4430,7 @@ test "set and get color_palette" {
 }
 
 test "get color default vs effective with override" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3985,7 +4443,7 @@ test "get color default vs effective with override" {
     ));
     defer free(t);
 
-    const zt = t.?.terminal;
+    const zt = zigTerminalForTest(t) orelse return;
     var rgb: color.RGB.C = undefined;
 
     // Set defaults
@@ -4039,6 +4497,7 @@ test "get color default returns no_value when unset" {
 }
 
 test "get color_palette_default vs current" {
+    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4051,7 +4510,7 @@ test "get color_palette_default vs current" {
     ));
     defer free(t);
 
-    const zt = t.?.terminal;
+    const zt = zigTerminalForTest(t) orelse return;
 
     // Set a custom default palette
     var custom: color.PaletteC = color.paletteCval(&color.default);
@@ -4084,7 +4543,7 @@ test "set color sets dirty flag" {
     ));
     defer free(t);
 
-    const zt = t.?.terminal;
+    const zt = zigTerminalForTest(t) orelse return;
     zt.flags.dirty.palette = false;
 
     const fg: color.RGB.C = .{ .r = 0xFF, .g = 0xFF, .b = 0xFF };
