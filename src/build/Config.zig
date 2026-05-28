@@ -34,6 +34,7 @@ sentry: bool = true,
 simd: bool = true,
 lib_vt_rust: bool = true,
 terminal_rust_owned: bool = false,
+terminal_rust_owned_app: bool = false,
 rustc: []const u8 = "rustc",
 i18n: bool = true,
 wasm_shared: bool = true,
@@ -376,6 +377,12 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
         "Use Rust-owned terminal state for libghostty-vt C ABI builds.",
     ) orelse config.emit_lib_vt;
 
+    config.terminal_rust_owned_app = b.option(
+        bool,
+        "terminal-rust-owned-app",
+        "Use Rust-owned terminal state in the Ghostty application (opt-in pilot).",
+    ) orelse false;
+
     config.emit_exe = b.option(
         bool,
         "emit-exe",
@@ -596,7 +603,7 @@ pub fn terminalOptions(self: *const Config, artifact: TerminalBuildOptions.Artif
         .simd = self.simd,
         .lib_vt_rust = self.lib_vt_rust,
         .terminal_rust_owned = switch (artifact) {
-            .ghostty => false,
+            .ghostty => self.terminal_rust_owned_app,
             .lib => self.terminal_rust_owned,
         },
         .oniguruma = true,

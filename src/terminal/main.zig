@@ -77,6 +77,28 @@ pub const options = @import("terminal_options");
 /// This is set to true when we're building the C library.
 pub const c_api = if (options.c_abi) @import("c/main.zig") else void;
 
+comptime {
+    if (options.c_abi and options.terminal_rust_owned and options.artifact == .ghostty) {
+        const c = @import("c/main.zig");
+        @export(&c.pin_create, .{ .name = "ghostty_vt_pin_create" });
+        @export(&c.pin_destroy, .{ .name = "ghostty_vt_pin_destroy" });
+        @export(&c.pool_alloc, .{ .name = "ghostty_vt_pool_alloc" });
+        @export(&c.pool_free, .{ .name = "ghostty_vt_pool_free" });
+        @export(&c.memory_pool_create, .{ .name = "ghostty_vt_memory_pool_create" });
+        @export(&c.memory_pool_destroy, .{ .name = "ghostty_vt_memory_pool_destroy" });
+        @export(&c.pool_create_node, .{ .name = "ghostty_vt_pool_create_node" });
+        @export(&c.pool_destroy_node, .{ .name = "ghostty_vt_pool_destroy_node" });
+        @export(&c.pool_create_std_page, .{ .name = "ghostty_vt_pool_create_std_page" });
+        @export(&c.pool_destroy_std_page, .{ .name = "ghostty_vt_pool_destroy_std_page" });
+        @export(&c.render_owned_begin, .{ .name = "ghostty_vt_render_owned_begin" });
+        @export(&c.render_owned_row, .{ .name = "ghostty_vt_render_owned_row" });
+        @export(&c.render_owned_cell_style, .{ .name = "ghostty_vt_render_owned_cell_style" });
+        @export(&c.render_owned_end, .{ .name = "ghostty_vt_render_owned_end" });
+        @export(&c.system_png_available, .{ .name = "ghostty_vt_system_png_available" });
+        @export(&c.system_decode_png, .{ .name = "ghostty_vt_system_decode_png" });
+    }
+}
+
 test {
     @import("std").testing.refAllDecls(@This());
 

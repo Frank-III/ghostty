@@ -65,7 +65,9 @@ areas (search viewport, full config schema, renderer) remain intentionally out
 of scope for this milestone—not hidden gate failures.
 
 The main Ghostty app enables `-Dlib-vt-rust` for the terminal module and links
-the Rust VT object (`src/build/SharedDeps.zig`).
+the Rust VT object (`src/build/SharedDeps.zig`). Opt into a Rust-owned terminal
+in the app with `-Dterminal-rust-owned-app=true` (default false until soak
+passes).
 
 ### Validation (VT)
 
