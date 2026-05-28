@@ -1,6 +1,8 @@
 use core::ffi::c_void;
 
 use crate::ansi::StatusDisplay;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::allocator::GhosttyAllocator;
 use crate::color_palette::{default_palette, DynamicPalette};
 use crate::mode_def::ModeState;
 use crate::mouse_shape::MouseShape;
@@ -37,6 +39,34 @@ impl DynamicRgb {
         override_val: OptionalRgb::UNSET,
         default_val: OptionalRgb::UNSET,
     };
+
+    pub fn get(&self) -> Option<GhosttyColorRgb> {
+        if self.override_val.set {
+            return Some(self.override_val.rgb);
+        }
+        if self.default_val.set {
+            return Some(self.default_val.rgb);
+        }
+        None
+    }
+
+    pub fn default_color(&self) -> Option<GhosttyColorRgb> {
+        if self.default_val.set {
+            Some(self.default_val.rgb)
+        } else {
+            None
+        }
+    }
+
+    pub fn set_default(&mut self, color: Option<GhosttyColorRgb>) {
+        self.default_val = match color {
+            Some(rgb) => OptionalRgb {
+                rgb,
+                set: true,
+            },
+            None => OptionalRgb::UNSET,
+        };
+    }
 }
 
 #[repr(C)]
@@ -277,6 +307,9 @@ pub struct Terminal {
     pub scrolling_region: TerminalScrollingRegion,
     pub pwd: *mut c_void,
     pub title: *mut c_void,
+    #[cfg(ghostty_vt_terminal_owned)]
+    /// Allocator used for title/pwd buffers on the Rust-owned bootstrap path.
+    pub bootstrap_alloc: *const GhosttyAllocator,
     pub colors: TerminalColors,
     pub previous_char: u32,
     pub has_previous_char: bool,
@@ -309,6 +342,8 @@ impl Default for Terminal {
             scrolling_region: TerminalScrollingRegion::default(),
             pwd: core::ptr::null_mut(),
             title: core::ptr::null_mut(),
+            #[cfg(ghostty_vt_terminal_owned)]
+            bootstrap_alloc: core::ptr::null_mut(),
             colors: TerminalColors::default_val(),
             previous_char: 0,
             has_previous_char: false,

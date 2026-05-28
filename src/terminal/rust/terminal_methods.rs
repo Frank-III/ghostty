@@ -2,6 +2,8 @@ use core::ffi::c_void;
 use core::ptr;
 
 use crate::allocator::GhosttyAllocator;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::terminal_byte_list::{byte_list_from_void, ByteList};
 use crate::ansi::{ProtectedMode, StatusDisplay};
 use crate::csi::{EraseDisplay, EraseLine};
 use crate::mode_def::ModeTag;
@@ -88,6 +90,46 @@ impl Terminal {
 
     pub fn mode_set(&mut self, tag: ModeTag, value: bool) {
         self.modes.set_by_tag(tag, value);
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    pub unsafe fn set_title_slice(
+        &mut self,
+        alloc: *const GhosttyAllocator,
+        title: &[u8],
+    ) -> bool {
+        if self.title.is_null() {
+            return false;
+        }
+        unsafe { ByteList::set_slice(alloc, byte_list_from_void(self.title), title) }
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    pub unsafe fn set_pwd_slice(
+        &mut self,
+        alloc: *const GhosttyAllocator,
+        pwd: &[u8],
+    ) -> bool {
+        if self.pwd.is_null() {
+            return false;
+        }
+        unsafe { ByteList::set_slice(alloc, byte_list_from_void(self.pwd), pwd) }
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    pub unsafe fn get_title_slice(&self) -> Option<&[u8]> {
+        if self.title.is_null() {
+            return None;
+        }
+        unsafe { ByteList::as_cstr_slice(byte_list_from_void(self.title)) }
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    pub unsafe fn get_pwd_slice(&self) -> Option<&[u8]> {
+        if self.pwd.is_null() {
+            return None;
+        }
+        unsafe { ByteList::as_cstr_slice(byte_list_from_void(self.pwd)) }
     }
 
     fn cursor_resync(&mut self) {
@@ -641,25 +683,34 @@ impl Terminal {
         } else {
             TerminalScrollingRegion::default()
         };
-        // Clear pwd and title ArrayLists (Zig: clearRetainingCapacity).
-        // Zig ArrayList(u8) layout: { items: []u8, capacity: usize, allocator }
-        // where []u8 = { ptr: *u8, len: usize }
-        // clearRetainingCapacity just sets items.len = 0.
-        #[repr(C)]
-        struct ArrayListLayout {
-            _items_ptr: *mut u8,
-            items_len: usize,
-        }
-        if !self.pwd.is_null() {
-            unsafe {
-                let list = &mut *self.pwd.cast::<ArrayListLayout>();
-                list.items_len = 0;
+        // Clear pwd and title buffers on the Rust-owned bootstrap path.
+        #[cfg(ghostty_vt_terminal_owned)]
+        unsafe {
+            if !self.pwd.is_null() {
+                ByteList::clear_retaining_capacity(byte_list_from_void(self.pwd));
+            }
+            if !self.title.is_null() {
+                ByteList::clear_retaining_capacity(byte_list_from_void(self.title));
             }
         }
-        if !self.title.is_null() {
-            unsafe {
-                let list = &mut *self.title.cast::<ArrayListLayout>();
-                list.items_len = 0;
+        #[cfg(not(ghostty_vt_terminal_owned))]
+        {
+            #[repr(C)]
+            struct ArrayListLayout {
+                _items_ptr: *mut u8,
+                items_len: usize,
+            }
+            if !self.pwd.is_null() {
+                unsafe {
+                    let list = &mut *self.pwd.cast::<ArrayListLayout>();
+                    list.items_len = 0;
+                }
+            }
+            if !self.title.is_null() {
+                unsafe {
+                    let list = &mut *self.title.cast::<ArrayListLayout>();
+                    list.items_len = 0;
+                }
             }
         }
         let primary = self.screens.get(ScreenKey::Primary);
@@ -821,8 +872,9 @@ impl Terminal {
     }
 
     pub fn write(&mut self, data: &[u8]) {
-        use crate::stream_terminal::StreamTerminal;
         use crate::stream_core::Stream;
+        use crate::stream_terminal::StreamTerminal;
+
         let terminal_ptr = self as *mut Terminal as *mut core::ffi::c_void;
         let handler = StreamTerminal::new(terminal_ptr);
         let mut stream = Stream::new(handler);

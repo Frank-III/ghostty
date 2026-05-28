@@ -198,6 +198,10 @@ fn find_free_chunks(bitmaps: &mut [u64], n: usize) -> Option<usize> {
                 i += 1;
             }
 
+            if i >= bitmaps.len() {
+                continue 'search;
+            }
+
             if (!bitmaps[i]).trailing_zeros() as usize >= rem {
                 let suffix = (n - prefix) % 64;
 
@@ -206,7 +210,11 @@ fn find_free_chunks(bitmaps: &mut [u64], n: usize) -> Option<usize> {
                 let full_bitmaps = (n - prefix - suffix) / 64;
                 let mut j: usize = 0;
                 while j < full_bitmaps {
-                    bitmaps[start_bitmap + 1 + j] = 0;
+                    let idx = start_bitmap + 1 + j;
+                    if idx >= bitmaps.len() {
+                        return None;
+                    }
+                    bitmaps[idx] = 0;
                     j += 1;
                 }
                 if suffix > 0 {

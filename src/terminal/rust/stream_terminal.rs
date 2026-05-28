@@ -15,6 +15,8 @@ use crate::mouse_shape::*;
 use crate::ansi::{CursorStyle, ModifyKeyFormat, ProtectedMode, StatusDisplay};
 use crate::csi::SizeReportStyle;
 use crate::screen_types::Screen;
+use crate::sgr_attribute::{Attribute, Name};
+use crate::style_types::{Underline, RGB};
 use crate::terminal_types::{MouseShiftCapture, Terminal, TerminalFlags, TerminalScrollingRegion, TABSTOP_INTERVAL};
 use crate::screen_set::ScreenKey;
 use crate::cursor_style::CursorVisualStyle;
@@ -594,7 +596,38 @@ impl StreamHandler for StreamTerminal {
 
     fn on_decaln(&mut self) {}
 
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_window_title(&mut self, v: WindowTitle<'_>) {
+        const MAX_TITLE_LEN: usize = 1024;
+        let bytes = v.title.as_bytes();
+        let len = bytes.len().min(MAX_TITLE_LEN);
+        let title_bytes = unsafe { core::slice::from_raw_parts(bytes.as_ptr(), len) };
+        let alloc = self.term_mut().bootstrap_alloc;
+        if alloc.is_null() {
+            return;
+        }
+        unsafe {
+            let _ = self
+                .term_mut()
+                .set_title_slice(alloc, title_bytes);
+        }
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_window_title(&mut self, _v: WindowTitle<'_>) {}
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_report_pwd(&mut self, v: ReportPwd<'_>) {
+        let alloc = self.term_mut().bootstrap_alloc;
+        if alloc.is_null() {
+            return;
+        }
+        unsafe {
+            let _ = self.term_mut().set_pwd_slice(alloc, v.url.as_bytes());
+        }
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_report_pwd(&mut self, _v: ReportPwd<'_>) {}
     fn on_show_desktop_notification(&mut self, _v: ShowDesktopNotification<'_>) {}
     fn on_progress_report(&mut self, _v: ProgressReport) {}
@@ -616,7 +649,16 @@ impl StreamHandler for StreamTerminal {
         }
     }
 
-    fn on_set_attribute(&mut self, _v: SgrAttribute) {}
+    fn on_set_attribute(&mut self, v: SgrAttribute) {
+        let attr = sgr_to_attribute(v);
+        let screen = self.active();
+        if screen.is_null() {
+            return;
+        }
+        unsafe {
+            let _ = (*screen).set_attribute(attr);
+        }
+    }
 
     fn on_kitty_color_report(&mut self, _v: KittyColorReport) {}
 
@@ -627,4 +669,92 @@ impl StreamHandler for StreamTerminal {
     fn on_raw_action(&mut self, _tag: ParserActionTag) -> bool {
         false
     }
+}
+
+fn sgr_to_attribute(v: SgrAttribute) -> Attribute {
+    match v.tag {
+        SgrAttributeTag::None => Attribute::Unset,
+        SgrAttributeTag::Bold => Attribute::Bold,
+        SgrAttributeTag::Dim => Attribute::Faint,
+        SgrAttributeTag::Italic => Attribute::Italic,
+        SgrAttributeTag::Underline => Attribute::Underline(Underline::Single),
+        SgrAttributeTag::DoubleUnderline => Attribute::Underline(Underline::Double),
+        SgrAttributeTag::Blink | SgrAttributeTag::RapidBlink => Attribute::Blink,
+        SgrAttributeTag::Reverse => Attribute::Inverse,
+        SgrAttributeTag::Hidden => Attribute::Invisible,
+        SgrAttributeTag::Strikethrough => Attribute::Strikethrough,
+        SgrAttributeTag::Overline => Attribute::Overline,
+        SgrAttributeTag::FgColorReset => Attribute::ResetFg,
+        SgrAttributeTag::BgColorReset => Attribute::ResetBg,
+        SgrAttributeTag::UnderlineColorReset => Attribute::ResetUnderlineColor,
+        SgrAttributeTag::FgColor => fg_color_attribute(v.value),
+        SgrAttributeTag::BgColor => bg_color_attribute(v.value),
+        SgrAttributeTag::FgColorBright => bright_fg_color_attribute(v.value),
+        SgrAttributeTag::BgColorBright => bright_bg_color_attribute(v.value),
+        SgrAttributeTag::UnderlineColor => {
+            let r = ((v.value >> 16) & 0xff) as u8;
+            let g = ((v.value >> 8) & 0xff) as u8;
+            let b = (v.value & 0xff) as u8;
+            if v.value > 0xff {
+                Attribute::UnderlineColor(RGB::new(r, g, b))
+            } else {
+                Attribute::UnderlineColor256(v.value as u8)
+            }
+        }
+        SgrAttributeTag::Font => Attribute::Unknown(Default::default()),
+    }
+}
+
+fn fg_color_attribute(value: u32) -> Attribute {
+    let p = value as u16;
+    if (30..=37).contains(&p) {
+        if let Some(name) = Name::from_u8((p - 30) as u8) {
+            return Attribute::Color8Fg(name);
+        }
+    }
+    if value > 0xff {
+        let r = ((value >> 16) & 0xff) as u8;
+        let g = ((value >> 8) & 0xff) as u8;
+        let b = (value & 0xff) as u8;
+        Attribute::DirectColorFg(RGB::new(r, g, b))
+    } else {
+        Attribute::Palette256Fg(value as u8)
+    }
+}
+
+fn bg_color_attribute(value: u32) -> Attribute {
+    let p = value as u16;
+    if (40..=47).contains(&p) {
+        if let Some(name) = Name::from_u8((p - 40) as u8) {
+            return Attribute::Color8Bg(name);
+        }
+    }
+    if value > 0xff {
+        let r = ((value >> 16) & 0xff) as u8;
+        let g = ((value >> 8) & 0xff) as u8;
+        let b = (value & 0xff) as u8;
+        Attribute::DirectColorBg(RGB::new(r, g, b))
+    } else {
+        Attribute::Palette256Bg(value as u8)
+    }
+}
+
+fn bright_fg_color_attribute(value: u32) -> Attribute {
+    let p = value as u16;
+    if (90..=97).contains(&p) {
+        if let Some(name) = Name::from_u8((p - 90) as u8) {
+            return Attribute::Color8BrightFg(name);
+        }
+    }
+    Attribute::Unknown(Default::default())
+}
+
+fn bright_bg_color_attribute(value: u32) -> Attribute {
+    let p = value as u16;
+    if (100..=107).contains(&p) {
+        if let Some(name) = Name::from_u8((p - 100) as u8) {
+            return Attribute::Color8BrightBg(name);
+        }
+    }
+    Attribute::Unknown(Default::default())
 }
