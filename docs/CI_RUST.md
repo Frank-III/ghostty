@@ -26,7 +26,12 @@ RUSTDOC=$HOME/.rustup/toolchains/1.95.0-aarch64-apple-darwin/bin/rustdoc \
 
 ```bash
 zig build -Demit-macos-app=false -Dterminal-rust-owned-app=true -Drustc=$RUSTC
+zig build test -Demit-macos-app=false -Dterminal-rust-owned-app=true -Drustc=$RUSTC --summary all
 ```
+
+App-owned mode sets `c_abi` on the Ghostty terminal module so pin/render/wrapper
+symbols export for the linked Rust VT object (same bridge as lib-vt, without a
+separate `libghostty-vt` artifact).
 
 ## Phase 8 flip criteria (not yet)
 

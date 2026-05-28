@@ -96,6 +96,7 @@ comptime {
         @export(&c.render_owned_end, .{ .name = "ghostty_vt_render_owned_end" });
         @export(&c.system_png_available, .{ .name = "ghostty_vt_system_png_available" });
         @export(&c.system_decode_png, .{ .name = "ghostty_vt_system_decode_png" });
+        @export(&c.terminal_pwd_items, .{ .name = "ghostty_terminal_pwd_items" });
     }
 }
 

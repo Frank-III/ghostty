@@ -607,7 +607,12 @@ pub fn terminalOptions(self: *const Config, artifact: TerminalBuildOptions.Artif
             .lib => self.terminal_rust_owned,
         },
         .oniguruma = true,
-        .c_abi = false,
+        // Rust-owned app links the VT object and needs C ABI exports (pin, render,
+        // wrapper effects) without building libghostty-vt as a separate artifact.
+        .c_abi = switch (artifact) {
+            .ghostty => self.terminal_rust_owned_app,
+            .lib => false,
+        },
         .version = switch (artifact) {
             .ghostty => self.version,
             .lib => self.lib_version,
