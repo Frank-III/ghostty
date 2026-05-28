@@ -1,0 +1,132 @@
+docs/PORTING.md
+  s_c37daf7d9a11c2::t_3de29d5a1cc148 35
+  s_e65068fc211d48::t_084d89699460f8 29-30
+  s_e94d189bafc19e::t_3cf753b67fbd4a 33
+  s_6cee157524a3f1::t_8dd1d283b2b761 15-16,18-28,31-32,34,36-66
+docs/PORTING_STATUS.tsv
+  s_2e0b70789f2739::t_9c23e0c30f3131 55-56
+  s_d37571afed5b06::t_20e5db535490a2 45
+  s_6cee157524a3f1::t_0a202ab0e76782 23,26-27
+  s_c37daf7d9a11c2::t_d8aff4d7c4ab65 66-70
+  s_6cee157524a3f1::t_a637919421286c 30-32
+  s_3671bd7537cf17::t_e7dc3afaccfc20 25
+  s_6cee157524a3f1::t_d73c25b4a2b9bb 28-29
+  s_e65068fc211d48::t_8ae4c6855732b1 48-51,53-54
+  s_66c0be1033c67f::t_d0e2e9315de66d 71-81
+  s_d37571afed5b06::t_3310b943aed441 52
+  s_525be99bc3cfc0::t_b783c776bdb868 35
+  s_9b818639af919c::t_dd496100daa9dc 39-40,42
+  s_f870d29ca01440::t_ab6fa09d9a0d77 43-44,46-47
+  s_f28d02382239b4::t_3fa3bf24cbf180 37-38
+  s_e94d189bafc19e::t_ee848f3e70558b 62
+  s_6cee157524a3f1::t_59c953a4edf204 33-34,36
+  s_e94d189bafc19e::t_f7025f455bc420 57-61,63-65
+  s_9b818639af919c::t_ee918bc2bbaeab 41
+  s_d37571afed5b06::t_a4e4d0dcee1110 24
+AGENTS.md
+  s_6cee157524a3f1::t_bcc40479e9e265 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "006edd18e3dfdc4012b17faadfa2e954e3e124e0",
+  "prompts": {},
+  "sessions": {
+    "s_2e0b70789f2739": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "387f0b3f-8ac5-40d0-bb5a-ba6028870afb",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_3671bd7537cf17": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "556e0c7c-d827-4f08-a1b2-45015c5e0571",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_525be99bc3cfc0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "587f4666-a26e-40de-90f8-3897dc4bb6b6",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_66c0be1033c67f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a77b6f08-285e-4403-944c-25dce11298eb",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_9b818639af919c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "584c03d8-a283-4f31-953b-c1e1f6036b9f",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_c37daf7d9a11c2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4469add0-1062-4747-a86f-379308a7391a",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_d37571afed5b06": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "015470f4-ef1d-434a-a004-f226a82ce73f",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_e65068fc211d48": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "df2500b1-839e-40b7-af8a-aeef1b5c1d9b",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_e94d189bafc19e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "93d1ca9e-5663-47b4-80b5-19ffb08691dc",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_f28d02382239b4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "400c8e68-46dc-4291-a6e4-1eda3d73d8fc",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_f870d29ca01440": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f8205d10-e8fb-4250-8394-911b6f988324",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
