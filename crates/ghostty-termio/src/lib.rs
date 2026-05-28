@@ -10,6 +10,7 @@ pub mod command;
 pub mod mode;
 pub mod pty;
 pub mod shell;
+pub mod termio;
 pub mod winsize;
 
 #[cfg(unix)]
@@ -18,6 +19,7 @@ pub mod spawn;
 pub use command::{process_exit_from_wait_status, CommandBuildError, CommandBuilder, CommandSpec, ProcessExit};
 pub use mode::PtyMode;
 pub use shell::{shell_escape, ShellCommandBuilder};
+pub use termio::{TermioMailbox, TermioMessage};
 pub use winsize::Winsize;
 pub use ghostty_foundation::{FoundationError, FoundationResult};
 

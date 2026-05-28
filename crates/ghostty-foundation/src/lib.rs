@@ -38,7 +38,7 @@ pub use split_tree::{
 };
 pub use error::{FoundationError, FoundationResult};
 pub use os::{
-    append_env, append_env_always, is_valid_mac_address, prepend_env, printf_q_decode,
-    url_percent_decode, url_percent_encode, DecodeError,
+    append_env, append_env_always, is_valid_mac_address, path_expand, prepend_env, printf_q_decode,
+    url_percent_decode, url_percent_encode, DecodeError, PathExpandError,
 };
 pub use unicode::{grapheme_break, grapheme_break_no_control, BreakState, GraphemeBreak, Properties};

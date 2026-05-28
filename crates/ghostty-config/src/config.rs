@@ -24,6 +24,8 @@ pub struct Config {
     pub scrollback_limit: usize,
     pub minimum_contrast: f64,
     pub mouse_hide_while_typing: bool,
+    pub font_thicken: bool,
+    pub font_thicken_strength: u8,
     diagnostics: DiagnosticList,
 }
 
@@ -57,6 +59,8 @@ impl Config {
             scrollback_limit: 10_000_000,
             minimum_contrast: 1.0,
             mouse_hide_while_typing: false,
+            font_thicken: false,
+            font_thicken_strength: 255,
             diagnostics: DiagnosticList::new(),
         }
     }
@@ -188,6 +192,15 @@ impl Config {
                 self.mouse_hide_while_typing =
                     parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
             }
+            "font-thicken" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.font_thicken = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "font-thicken-strength" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.font_thicken_strength =
+                    v.parse().map_err(|_| ConfigError::InvalidValue)?;
+            }
             _ => return Err(ConfigError::InvalidField),
         }
         Ok(())
@@ -244,6 +257,18 @@ mod tests {
         cfg.load_from_str("mouse-hide-while-typing = true\n", "/tmp/config.ghostty");
         assert!(cfg.diagnostics().is_empty());
         assert!(cfg.mouse_hide_while_typing);
+    }
+
+    #[test]
+    fn parse_font_thicken() {
+        let mut cfg = Config::with_defaults();
+        cfg.load_from_str(
+            "font-thicken = true\nfont-thicken-strength = 128\n",
+            "/tmp/config.ghostty",
+        );
+        assert!(cfg.diagnostics().is_empty());
+        assert!(cfg.font_thicken);
+        assert_eq!(cfg.font_thicken_strength, 128);
     }
 
     #[test]
