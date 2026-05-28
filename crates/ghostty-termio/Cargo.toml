@@ -12,7 +12,5 @@ ghostty-foundation = { path = "../ghostty-foundation" }
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
-[dev-dependencies]
-
 [target.'cfg(unix)'.dev-dependencies]
 libc = "0.2"

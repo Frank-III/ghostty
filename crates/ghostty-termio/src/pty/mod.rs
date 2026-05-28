@@ -7,7 +7,7 @@ pub use crate::winsize::Winsize;
 mod unix;
 
 #[cfg(unix)]
-pub use unix::{PosixPty, PtyOpenError};
+pub use unix::{PosixPty, PtyIoError, PtyOpenError};
 
 #[cfg(not(unix))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

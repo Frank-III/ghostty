@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(dead_code, unused_imports)]
 
@@ -469,7 +469,7 @@ pub(crate) use formatter_page::*;
 pub(crate) use allocator::*;
 pub(crate) use build_info::*;
 
-#[cfg(not(test))]
+#[cfg(all(not(test), not(feature = "std")))]
 #[panic_handler]
 fn panic(_: &PanicInfo<'_>) -> ! {
     loop {}

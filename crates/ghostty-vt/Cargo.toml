@@ -14,3 +14,5 @@ test = false
 [features]
 default = []
 terminal-owned = []
+# Skip `#![no_std]` panic handler when linked into a `std` test/binary crate.
+std = []

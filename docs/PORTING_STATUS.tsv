@@ -43,9 +43,9 @@ crates/ghostty-foundation/src/error.rs	crates/ghostty-foundation/src/error.rs	Fo
 src/os/path.zig	crates/ghostty-foundation/src/os/path.rs	PATH command lookup	partial-rust-ported	cargo test -p ghostty-foundation	unix PATH expand via std::fs; Windows UTF-16 PATH deferred.
 src/pty.zig	crates/ghostty-termio/src/pty/unix.rs	PosixPty open/resize/mode	partial-rust-ported	cargo test -p ghostty-termio	Unix openpty+IUTF8+ioctl winsize; Windows/iOS and childPreExec/process info not ported.
 src/os/shell.zig	crates/ghostty-termio/src/shell.rs	ShellCommandBuilder / shell_escape	rust-ported	cargo test -p ghostty-termio	Space-separated command builder and escape subset from Zig tests.
-src/Command.zig	crates/ghostty-termio/src/command.rs	CommandSpec / CommandBuilder + spawn	partial-rust-ported	cargo test -p ghostty-termio	Argv/env/cwd spec, spawn_on_pty, spawn_pty_command (openpty+fork, winsize roundtrip); Termio thread loop not ported.
+src/Command.zig	crates/ghostty-termio/src/command.rs	CommandSpec / CommandBuilder + spawn	partial-rust-ported	cargo test -p ghostty-termio	Argv/env/cwd spec, spawn_on_pty, spawn_pty_command; TermioHarness mailbox+PTY pump (terminal sink trait ready for rust-owned bridge).
 src/termio/Exec.zig	—	Exec subprocess backend	not-started	—	Depends on full Command spawn and termio thread loop.
-src/termio/Termio.zig	—	Termio mailbox/thread	not-started	—	Phase 3 termio orchestration not started in Rust.
+src/termio/Termio.zig	crates/ghostty-termio/src/harness.rs	Termio mailbox + PTY harness	partial-rust-ported	cargo test -p ghostty-termio	Sync harness: mailbox Write/Resize/Shutdown → PTY; PTY read → TermioSink; rust-owned write deferred until pin_bridge pool bootstrap is cargo-linkable.
 src/config/ErrorList.zig	crates/ghostty-config/src/error.rs	DiagnosticList / ConfigError	rust-ported	cargo test -p ghostty-config	Config and load errors; mirrors Zig ErrorList and CLI base errors.
 src/config/string.zig	crates/ghostty-config/src/string_literal.rs	config string literals	partial-rust-ported	cargo test -p ghostty-config	Common escapes and \\u{{}} only; full Zig escape set deferred.
 src/config/path.zig	crates/ghostty-config/src/types.rs	ConfigPath	partial-rust-ported	cargo test -p ghostty-config	Optional ? prefix and quotes; expandPaths and C API deferred.

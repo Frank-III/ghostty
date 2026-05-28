@@ -88,6 +88,103 @@ impl PosixPty {
         }
         Ok(())
     }
+
+    /// Write bytes to the PTY master (child stdin).
+    pub fn write(&self, buf: &[u8]) -> Result<usize, PtyIoError> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
+        loop {
+            let rc = unsafe {
+                libc::write(
+                    self.master.as_raw_fd(),
+                    buf.as_ptr().cast(),
+                    buf.len(),
+                )
+            };
+            if rc >= 0 {
+                return Ok(rc as usize);
+            }
+            let err = std::io::Error::last_os_error();
+            if err.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(PtyIoError::WriteFailed);
+        }
+    }
+
+    /// Read available bytes from the PTY master (child stdout/stderr).
+    pub fn read(&self, buf: &mut [u8]) -> Result<usize, PtyIoError> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
+        loop {
+            let rc = unsafe {
+                libc::read(
+                    self.master.as_raw_fd(),
+                    buf.as_mut_ptr().cast(),
+                    buf.len(),
+                )
+            };
+            if rc >= 0 {
+                return Ok(rc as usize);
+            }
+            let err = std::io::Error::last_os_error();
+            if err.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            if err.kind() == std::io::ErrorKind::WouldBlock {
+                return Ok(0);
+            }
+            return Err(PtyIoError::ReadFailed);
+        }
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> Result<(), PtyIoError> {
+        let fd = self.master.as_raw_fd();
+        let flags = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+        if flags < 0 {
+            return Err(PtyIoError::SetModeFailed);
+        }
+        let next = if nonblocking {
+            flags | libc::O_NONBLOCK
+        } else {
+            flags & !libc::O_NONBLOCK
+        };
+        if unsafe { libc::fcntl(fd, libc::F_SETFL, next) } < 0 {
+            return Err(PtyIoError::SetModeFailed);
+        }
+        Ok(())
+    }
+
+    /// Wait until the master fd is readable or `timeout_ms` elapses.
+    pub fn poll_readable(&self, timeout_ms: i32) -> Result<bool, PtyIoError> {
+        let fd = self.master.as_raw_fd();
+        let mut pfd = libc::pollfd {
+            fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        loop {
+            let rc = unsafe { libc::poll(&mut pfd, 1, timeout_ms) };
+            if rc < 0 {
+                let err = std::io::Error::last_os_error();
+                if err.kind() == std::io::ErrorKind::Interrupted {
+                    continue;
+                }
+                return Err(PtyIoError::PollFailed);
+            }
+            return Ok(rc > 0 && (pfd.revents & libc::POLLIN) != 0);
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PtyIoError {
+    ReadFailed,
+    WriteFailed,
+    SetModeFailed,
+    PollFailed,
 }
 
 fn set_cloexec(fd: RawFd) {

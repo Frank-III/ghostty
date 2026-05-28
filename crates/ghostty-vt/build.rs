@@ -1,5 +1,8 @@
 fn main() {
     println!("cargo::rustc-check-cfg=cfg(ghostty_vt_terminal_owned)");
+    if std::env::var("CARGO_FEATURE_TERMINAL_OWNED").is_ok() {
+        println!("cargo:rustc-cfg=ghostty_vt_terminal_owned");
+    }
     println!("cargo:rustc-env=GHOSTTY_VT_SIMD=1");
     println!("cargo:rustc-env=GHOSTTY_VT_KITTY_GRAPHICS=1");
     println!("cargo:rustc-env=GHOSTTY_VT_TMUX_CONTROL_MODE=1");

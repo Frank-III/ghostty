@@ -4,9 +4,10 @@
 //! - `src/pty.zig`
 //! - `src/Command.zig`
 //! - `src/os/shell.zig`
-//! - `src/termio/` (Exec, Termio — not yet)
+//! - `src/termio/` (Exec, Termio thread — harness started in `harness.rs`)
 
 pub mod command;
+pub mod harness;
 pub mod mode;
 pub mod pty;
 pub mod shell;
@@ -17,6 +18,7 @@ pub mod winsize;
 pub mod spawn;
 
 pub use command::{process_exit_from_wait_status, CommandBuildError, CommandBuilder, CommandSpec, ProcessExit};
+pub use harness::{TermioHarness, TermioSink};
 pub use mode::PtyMode;
 pub use shell::{shell_escape, ShellCommandBuilder};
 pub use termio::{TermioMailbox, TermioMessage};

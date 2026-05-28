@@ -20,6 +20,9 @@ Expected: **4234/4252** tests passed, **18** skipped, **0** failed, **0** leaked
 ```bash
 RUSTDOC=$HOME/.rustup/toolchains/1.95.0-aarch64-apple-darwin/bin/rustdoc \
   cargo test --workspace --exclude ghostty-vt
+
+# Phase 3 termio harness (PTY + mailbox, no VT link yet)
+cargo test -p ghostty-termio
 ```
 
 ## App-owned pilot (opt-in)
