@@ -1,0 +1,31 @@
+crates/ghostty-config/src/config.rs
+  s_e1573e094e4ba1::t_d1601145070e65 56-57
+  s_6cee157524a3f1::t_c3e8ce43e415d4 175-183
+  s_e1573e094e4ba1::t_77e8dff14e8116 286-287
+  s_e1573e094e4ba1::t_46dabb0e69e0cd 24-25
+  s_e1573e094e4ba1::t_d4850209471240 235-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4dc1605b54d56e2133903dd9ef26c04b60245f1a",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_e1573e094e4ba1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b4b6bb68-355d-4268-9b3b-9d953484df54",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
