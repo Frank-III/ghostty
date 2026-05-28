@@ -12,12 +12,58 @@ or runtime choices into Ghostty by default.
 
 ## Current Port Status
 
-The `libghostty-vt` Rust port is **default-ready on the validated macOS/iOS
-targets**. All core terminal emulation logic, from VT parsing through
-screen/terminal state management, is backed by Rust for C ABI builds unless
-explicitly disabled with `-Dlib-vt-rust=false`.
+**VT milestone:** `libghostty-vt` Rust port is default-ready on validated macOS/iOS
+targets. C ABI helpers are Rust-backed unless `-Dlib-vt-rust=false`.
 
-### Validation
+**Whole-project Rust rewrite:** Early. A Cargo workspace exists under `crates/`
+(Phase 0 bootstrap). The Ghostty application, renderer, font stack, config, and
+`libghostty` embedding API remain Zig-owned. macOS Swift and GTK apprt shells
+stay native; the target is a Rust core library with stable C embedding APIs.
+
+### Project inventory
+
+| Phase | Subsystem | Zig anchor | Rust crate | Status |
+|------:|-----------|------------|------------|--------|
+| 0 | VT / libghostty-vt | `src/terminal/rust/` | `crates/ghostty-vt` | **Done** (C ABI default-on) |
+| 0 | Rust terminal ownership | `src/terminal/c/terminal.zig` | `terminal_owned.rs` | **Opt-in** (`-Dterminal-rust-owned=true`) |
+| 1 | Foundation | `src/datastruct/`, `unicode/`, `simd/`, `lib/`, `os/` | `ghostty-foundation` | In progress |
+| 2 | Config | `src/config/` | `ghostty-config` | In progress (minimal loader) |
+| 3 | Input | `src/input/` | `ghostty-input` | Not started |
+| 3 | Termio / PTY | `src/termio/`, `pty.zig`, `Command.zig` | `ghostty-termio` | Not started |
+| 4 | Font | `src/font/` | `ghostty-font` | In progress (metrics, descriptor, discovery skeleton) |
+| 5 | Renderer | `src/renderer/` | `ghostty-renderer` | Not started |
+| 6 | App / Surface / embed | `App.zig`, `Surface.zig`, `apprt/embedded.zig` | `ghostty-core`, `ghostty-ffi` | Not started |
+| 7 | CLI / inspector / crash | `src/cli/`, `inspector/`, `crash/` | `ghostty-cli`, `ghostty` | Not started |
+| 8 | Build system | `build.zig`, `src/build/` | Cargo primary | Hybrid (Zig orchestrates, Cargo workspace bootstrapped) |
+| — | macOS UI | `macos/` (Swift) | — | **Keep** (links Rust `libghostty` when ready) |
+| — | Linux UI | `src/apprt/gtk/` | — | **Keep** (thin glue over Rust core) |
+
+### Cargo workspace
+
+```bash
+# Check stub crates and ghostty-vt sources
+cargo check --workspace
+
+# Zig still builds the shipping artifacts
+zig build -Demit-lib-vt -Demit-macos-app=false
+```
+
+The `ghostty-vt` crate reuses `src/terminal/rust/lib.rs` as its library root.
+Zig continues to invoke `rustc` directly via `src/build/GhosttyRust.zig` for
+shipping builds; Cargo is the long-term primary build (Phase 8).
+
+### Rust terminal ownership (opt-in)
+
+Pool/page bootstrap FFI lives in `src/terminal/c/pin_bridge.zig`. Rust-owned
+terminals compile only with `-Dterminal-rust-owned=true` (sets
+`ghostty_vt_terminal_owned` cfg). Exports:
+
+- `ghostty_rust_terminal_create` / `destroy` / `write`
+
+The main Ghostty app enables `-Dlib-vt-rust` for the terminal module and links
+the Rust VT object (`src/build/SharedDeps.zig`).
+
+### Validation (VT)
 
 ```bash
 # Build default Rust-backed lib-vt. Use an explicit rustc to avoid PATH surprises.

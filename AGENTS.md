@@ -15,6 +15,8 @@ A file for [guiding coding agents](https://agents.md/).
 - **Formatting (Zig)**: `zig fmt .`
 - **Formatting (Swift)**: `swiftlint lint --strict --fix`
 - **Formatting (other)**: `prettier -w .`
+- **Test (Rust workspace)**: `cargo test --workspace --exclude ghostty-vt`
+  - `ghostty-vt` is `#![no_std]` and is built/tested via Zig (`test-lib-vt`), not `cargo test`.
 
 ## libghostty-vt
 
