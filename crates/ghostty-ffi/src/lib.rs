@@ -88,6 +88,12 @@ pub unsafe extern "C" fn ghostty_app_userdata(app: *mut GhosttyApp) -> *mut c_vo
         .unwrap_or(ptr::null_mut())
 }
 
+/// Returns the Rust port milestone string for embedders (bootstrap ABI).
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_port_milestone() -> *const u8 {
+    b"phase6-core-ffi-bootstrap\0".as_ptr()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
