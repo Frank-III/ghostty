@@ -1,0 +1,19 @@
+src/terminal/rust/terminal_methods.rs
+  s_6cee157524a3f1::t_b4f1eef92e029a 232-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ce6d0bcbbbf47003fac6f1b7ae574536b2a1ade",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
