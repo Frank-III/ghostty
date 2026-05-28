@@ -14,8 +14,6 @@ use std::os::fd::AsRawFd;
 use crate::command::CommandSpec;
 #[cfg(unix)]
 use crate::pty::{PosixPty, PtyOpenError};
-#[cfg(unix)]
-use crate::winsize::Winsize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpawnError {
@@ -194,7 +192,7 @@ mod tests {
             .build()
             .expect("command spec");
 
-        let (mut pty, pid) = spawn_pty_command(
+        let (pty, pid) = spawn_pty_command(
             &spec,
             Winsize {
                 rows: 24,
@@ -254,6 +252,41 @@ mod tests {
             }
         }
 
+        assert!(libc::WIFEXITED(status));
+        assert_eq!(libc::WEXITSTATUS(status), 0);
+    }
+
+    #[test]
+    fn spawn_pty_command_preserves_winsize() {
+        let spec = CommandBuilder::new()
+            .path("/bin/sh")
+            .arg("sh")
+            .arg("-c")
+            .arg("exit 0")
+            .build()
+            .expect("command spec");
+
+        let winsize = Winsize {
+            rows: 40,
+            cols: 120,
+            x_pixels: 0,
+            y_pixels: 0,
+        };
+
+        let (pty, pid) = spawn_pty_command(&spec, winsize).expect("spawn pty command");
+        assert!(pid > 0);
+
+        let size = pty.size().expect("TIOCGWINSZ");
+        assert_eq!(size.rows, winsize.rows);
+        assert_eq!(size.cols, winsize.cols);
+
+        let mut status: i32 = 0;
+        loop {
+            let rc = unsafe { libc::waitpid(pid, &mut status, 0) };
+            if rc == pid {
+                break;
+            }
+        }
         assert!(libc::WIFEXITED(status));
         assert_eq!(libc::WEXITSTATUS(status), 0);
     }
