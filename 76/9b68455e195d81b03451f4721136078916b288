@@ -1,0 +1,34 @@
+src/terminal/rust/stream_core.rs
+  s_6cee157524a3f1::t_43d900bf8ce3b8 208-257
+  s_6cee157524a3f1::t_f20564f7c54d24 184-203
+src/terminal/rust/vt_parser.rs
+  s_76b3b07216903e::t_1b20b378ba181a 382-388
+  s_6cee157524a3f1::t_da742fafaefcd4 187
+src/terminal/rust/stream_osc_parse.rs
+  s_6cee157524a3f1::t_4eeba23000bbac 495
+  s_6cee157524a3f1::t_4b11b70e72c620 458-462
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "769b68455e195d81b03451f4721136078916b288",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_76b3b07216903e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "87442876-4c7e-488c-bda8-8bfbb76c79c0",
+        "model": "composer-2.5"
+      },
+      "human_author": null
+    }
+  }
+}
