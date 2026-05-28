@@ -1,0 +1,41 @@
+src/terminal/rust/stream_terminal.rs
+  s_6cee157524a3f1::t_a2f10bac24015c 860,867-870
+  s_6cee157524a3f1::t_123da056425d51 905-908
+  s_6cee157524a3f1::t_802ac00a8a69ad 964-966
+docs/PORTING_STATUS.tsv
+  s_6cee157524a3f1::t_49dcaa59194a08 24
+src/terminal/c/formatter.zig
+  s_6cee157524a3f1::t_afe5a376b67c80 345
+  s_6cee157524a3f1::t_8fc11cb044fd42 294
+  s_6cee157524a3f1::t_5a4f3e9689ffb8 323
+src/terminal/rust/screen_set.rs
+  s_6cee157524a3f1::t_f409cbeb57ff98 103,136-151
+src/terminal/rust/terminal_owned_render.rs
+  s_6cee157524a3f1::t_06bf3574da052a 32-34,46-48
+  s_6cee157524a3f1::t_2396571db78265 306-308
+  s_6cee157524a3f1::t_7f70c26db5ee20 230-232
+src/terminal/c/terminal.zig
+  s_6cee157524a3f1::t_a27ff65d7b4c7e 3142
+  s_6cee157524a3f1::t_6686db86badfd3 3121,3124,3129,3133,3136,3139
+src/terminal/rust/terminal_methods.rs
+  s_6cee157524a3f1::t_fb46e7d2e81613 835,847-856
+  s_6cee157524a3f1::t_72315c876f8aa9 692,741-750
+docs/PORTING.md
+  s_6cee157524a3f1::t_f9e3d6fcf7c0f7 82-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c3ea196e4b2cd505875ea22bc6412a3252587d12",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
