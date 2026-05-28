@@ -310,6 +310,9 @@ pub struct Terminal {
     #[cfg(ghostty_vt_terminal_owned)]
     /// Allocator used for title/pwd buffers on the Rust-owned bootstrap path.
     pub bootstrap_alloc: *const GhosttyAllocator,
+    #[cfg(ghostty_vt_terminal_owned)]
+    /// C `TerminalWrapper` for effect callbacks (write_pty, bell, etc.).
+    pub effects_wrapper: *mut c_void,
     pub colors: TerminalColors,
     pub previous_char: u32,
     pub has_previous_char: bool,
@@ -344,6 +347,8 @@ impl Default for Terminal {
             title: core::ptr::null_mut(),
             #[cfg(ghostty_vt_terminal_owned)]
             bootstrap_alloc: core::ptr::null_mut(),
+            #[cfg(ghostty_vt_terminal_owned)]
+            effects_wrapper: core::ptr::null_mut(),
             colors: TerminalColors::default_val(),
             previous_char: 0,
             has_previous_char: false,

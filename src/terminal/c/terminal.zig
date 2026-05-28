@@ -335,6 +335,11 @@ const rust_owned = if (build_options.terminal_rust_owned) struct {
         data: c_int,
         value: ?*const color.RGB.C,
     ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_set_wrapper(
+        handle: ?*anyopaque,
+        wrapper: ?*TerminalWrapper,
+    ) callconv(.c) void;
 } else struct {};
 
 fn rustOwnedHandle(wrapper: *TerminalWrapper) ?*anyopaque {
@@ -557,6 +562,124 @@ const Effects = struct {
     }
 };
 
+fn wrapperWritePty(wrapper: *TerminalWrapper, data: []const u8) void {
+    const func = wrapper.effects.write_pty orelse return;
+    func(@ptrCast(wrapper), wrapper.effects.userdata, data.ptr, data.len);
+}
+
+fn deviceAttributesFromWrapper(wrapper: *TerminalWrapper) device_attributes.Attributes {
+    const func = wrapper.effects.device_attributes_cb orelse return .{};
+    var c_attrs: Effects.CDeviceAttributes = undefined;
+    if (!func(@ptrCast(wrapper), wrapper.effects.userdata, &c_attrs)) return .{};
+
+    const n: usize = @min(c_attrs.primary.num_features, 64);
+    for (0..n) |i| wrapper.effects.da_features_buf[i] = @enumFromInt(c_attrs.primary.features[i]);
+
+    return .{
+        .primary = .{
+            .conformance_level = @enumFromInt(c_attrs.primary.conformance_level),
+            .features = wrapper.effects.da_features_buf[0..n],
+        },
+        .secondary = .{
+            .device_type = @enumFromInt(c_attrs.secondary.device_type),
+            .firmware_version = c_attrs.secondary.firmware_version,
+            .rom_cartridge = c_attrs.secondary.rom_cartridge,
+        },
+        .tertiary = .{
+            .unit_id = c_attrs.tertiary.unit_id,
+        },
+    };
+}
+
+/// Write PTY output for a rust-owned terminal via wrapper effects.
+pub export fn ghostty_terminal_wrapper_write_pty(
+    wrapper: ?*TerminalWrapper,
+    ptr: [*]const u8,
+    len: usize,
+) callconv(.c) void {
+    const w = wrapper orelse return;
+    if (len == 0) return;
+    wrapperWritePty(w, ptr[0..len]);
+}
+
+/// Ring the terminal bell via wrapper effects.
+pub export fn ghostty_terminal_wrapper_bell(wrapper: ?*TerminalWrapper) callconv(.c) void {
+    const w = wrapper orelse return;
+    const func = w.effects.bell orelse return;
+    func(@ptrCast(w), w.effects.userdata);
+}
+
+/// Notify that the window title changed via wrapper effects.
+pub export fn ghostty_terminal_wrapper_title_changed(wrapper: ?*TerminalWrapper) callconv(.c) void {
+    const w = wrapper orelse return;
+    const func = w.effects.title_changed orelse return;
+    func(@ptrCast(w), w.effects.userdata);
+}
+
+/// Respond to ENQ using wrapper effects.
+pub export fn ghostty_terminal_wrapper_report_enquiry(wrapper: ?*TerminalWrapper) callconv(.c) void {
+    const w = wrapper orelse return;
+    const func = w.effects.enquiry orelse return;
+    if (w.effects.write_pty == null) return;
+    const result = func(@ptrCast(w), w.effects.userdata);
+    if (result.len == 0) return;
+    wrapperWritePty(w, result.ptr[0..result.len]);
+}
+
+/// Respond to XTVERSION using wrapper effects.
+pub export fn ghostty_terminal_wrapper_report_xtversion(wrapper: ?*TerminalWrapper) callconv(.c) void {
+    const w = wrapper orelse return;
+    if (w.effects.write_pty == null) return;
+    const version = if (w.effects.xtversion) |func| func(@ptrCast(w), w.effects.userdata) else lib.String{ .ptr = "", .len = 0 };
+    var buf: [288]u8 = undefined;
+    const resp = std.fmt.bufPrint(
+        &buf,
+        "\x1BP>|{s}\x1B\\",
+        .{if (version.len > 0) version.ptr[0..version.len] else "libghostty"},
+    ) catch return;
+    wrapperWritePty(w, resp);
+}
+
+/// Respond to device attribute queries using wrapper effects.
+pub export fn ghostty_terminal_wrapper_report_device_attributes(
+    wrapper: ?*TerminalWrapper,
+    req: u8,
+) callconv(.c) void {
+    const w = wrapper orelse return;
+    if (w.effects.write_pty == null) return;
+    const req_enum: device_attributes.Req = @enumFromInt(req);
+    const attrs = deviceAttributesFromWrapper(w);
+    var buf: [256]u8 = undefined;
+    var writer: std.Io.Writer = .fixed(&buf);
+    attrs.encode(req_enum, &writer) catch return;
+    const len = writer.buffered().len;
+    wrapperWritePty(w, buf[0..len]);
+}
+
+/// Fill size report values from the size callback.
+pub export fn ghostty_terminal_wrapper_query_size(
+    wrapper: ?*TerminalWrapper,
+    out: *size_report.Size,
+) callconv(.c) bool {
+    const w = wrapper orelse return false;
+    const func = w.effects.size_cb orelse return false;
+    return func(@ptrCast(w), w.effects.userdata, out);
+}
+
+/// Respond to color scheme DSR using wrapper effects.
+pub export fn ghostty_terminal_wrapper_report_color_scheme(wrapper: ?*TerminalWrapper) callconv(.c) void {
+    const w = wrapper orelse return;
+    const func = w.effects.color_scheme orelse return;
+    if (w.effects.write_pty == null) return;
+    var scheme: device_status.ColorScheme = undefined;
+    if (!func(@ptrCast(w), w.effects.userdata, &scheme)) return;
+    const resp: []const u8 = switch (scheme) {
+        .dark => "\x1B[?997;1n",
+        .light => "\x1B[?997;2n",
+    };
+    wrapperWritePty(w, resp);
+}
+
 /// C: GhosttyTerminal
 pub const Terminal = ?*TerminalWrapper;
 
@@ -641,6 +764,8 @@ fn newOwned(
         .effects = .{},
         .tracked_grid_refs = .{},
     };
+
+    rust_owned.ghostty_rust_terminal_owned_set_wrapper(handle, wrapper);
 
     return wrapper;
 }
@@ -2527,7 +2652,6 @@ test "get active_screen" {
 }
 
 test "get kitty_keyboard_flags" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3398,7 +3522,6 @@ test "point_from_grid_ref null node" {
 }
 
 test "set write_pty callback" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3442,7 +3565,6 @@ test "set write_pty callback" {
 }
 
 test "set write_pty without callback ignores queries" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3460,7 +3582,6 @@ test "set write_pty without callback ignores queries" {
 }
 
 test "set write_pty null clears callback" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3490,7 +3611,6 @@ test "set write_pty null clears callback" {
 }
 
 test "set bell callback" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3531,7 +3651,6 @@ test "set bell callback" {
 }
 
 test "bell without callback is silent" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3549,7 +3668,6 @@ test "bell without callback is silent" {
 }
 
 test "set enquiry callback" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3592,7 +3710,6 @@ test "set enquiry callback" {
 }
 
 test "enquiry without callback is silent" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3610,7 +3727,6 @@ test "enquiry without callback is silent" {
 }
 
 test "set xtversion callback" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3654,7 +3770,6 @@ test "set xtversion callback" {
 }
 
 test "xtversion without callback reports default" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3691,7 +3806,6 @@ test "xtversion without callback reports default" {
 }
 
 test "set title_changed callback" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3731,7 +3845,6 @@ test "set title_changed callback" {
 }
 
 test "title_changed without callback is silent" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3749,7 +3862,6 @@ test "title_changed without callback is silent" {
 }
 
 test "set size callback" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3797,7 +3909,6 @@ test "set size callback" {
 }
 
 test "size without callback is silent" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3815,7 +3926,6 @@ test "size without callback is silent" {
 }
 
 test "set device_attributes callback primary" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3870,7 +3980,6 @@ test "set device_attributes callback primary" {
 }
 
 test "set device_attributes callback secondary" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3925,7 +4034,6 @@ test "set device_attributes callback secondary" {
 }
 
 test "set device_attributes callback tertiary" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3980,7 +4088,6 @@ test "set device_attributes callback tertiary" {
 }
 
 test "device_attributes without callback uses default" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -4017,7 +4124,6 @@ test "device_attributes without callback uses default" {
 }
 
 test "device_attributes callback returns false uses default" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,

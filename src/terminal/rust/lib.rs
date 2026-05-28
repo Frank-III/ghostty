@@ -72,6 +72,8 @@ mod terminal_byte_list;
 mod screen_set_methods;
 #[cfg(ghostty_vt_terminal_owned)]
 mod terminal_owned;
+#[cfg(ghostty_vt_terminal_owned)]
+mod terminal_effects;
 mod terminal_lifecycle;
 mod terminal_grid_ref;
 mod terminal_mode;

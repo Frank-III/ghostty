@@ -39,6 +39,13 @@ pub struct RustTerminalOwned {
     pub terminal: Terminal,
 }
 
+#[cfg(ghostty_vt_terminal_owned)]
+impl RustTerminalOwned {
+    pub unsafe fn set_wrapper(&mut self, wrapper: *mut c_void) {
+        self.terminal.effects_wrapper = wrapper;
+    }
+}
+
 impl RustTerminalOwned {
     pub unsafe fn new(
         alloc: *const GhosttyAllocator,
@@ -504,6 +511,20 @@ pub unsafe extern "C" fn ghostty_rust_terminal_destroy(
             return;
         }
         RustTerminalOwned::destroy(alloc, handle as *mut RustTerminalOwned);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_wrapper(
+    handle: *mut c_void,
+    wrapper: *mut c_void,
+) {
+    unsafe {
+        if handle.is_null() {
+            return;
+        }
+        let owned = &mut *(handle as *mut RustTerminalOwned);
+        owned.set_wrapper(wrapper);
     }
 }
 

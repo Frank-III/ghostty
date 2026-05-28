@@ -21,6 +21,24 @@ use crate::terminal_types::{MouseShiftCapture, Terminal, TerminalFlags, Terminal
 use crate::screen_set::ScreenKey;
 use crate::cursor_style::CursorVisualStyle;
 use crate::size_types::CellCountInt;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::constants::{
+    GhosttySizeReportSize, SIZE_REPORT_CSI_14_T, SIZE_REPORT_CSI_16_T, SIZE_REPORT_CSI_18_T,
+};
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::device_status::DeviceStatusRequest;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::early::GHOSTTY_SUCCESS;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::mode_def::ModeReportState;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::mode_report_encode::mode_report_encode;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::size_report::size_report_encode_impl;
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::simple_write::{write_bytes, write_decimal};
+#[cfg(ghostty_vt_terminal_owned)]
+use crate::terminal_effects;
 
 pub struct StreamTerminal {
     pub terminal: *mut c_void,
@@ -37,6 +55,103 @@ impl StreamTerminal {
 
     fn term_mut(&mut self) -> &mut Terminal {
         unsafe { &mut *(self.terminal as *mut Terminal) }
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn effects_wrapper(&self) -> *mut core::ffi::c_void {
+        self.term().effects_wrapper
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn write_pty(&self, data: &[u8]) {
+        unsafe {
+            terminal_effects::write_pty(self.effects_wrapper(), data);
+        }
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn send_mode_report(&self, tag: ModeTag, state: ModeReportState) {
+        let wrapper = self.effects_wrapper();
+        if wrapper.is_null() {
+            return;
+        }
+        let mut buf = [0u8; 64];
+        let mut written = 0usize;
+        let rc = unsafe {
+            mode_report_encode(
+                tag.to_u16(),
+                state as core::ffi::c_int,
+                buf.as_mut_ptr(),
+                buf.len(),
+                &mut written,
+            )
+        };
+        if rc == GHOSTTY_SUCCESS && written > 0 {
+            self.write_pty(&buf[..written]);
+        }
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn report_cursor_position(&self) {
+        let term = self.term();
+        let screen = term.active();
+        if screen.is_null() {
+            return;
+        }
+        let origin = term.mode_get(ModeTag { value: 6, ansi: false });
+        let (x, y) = unsafe {
+            let s = &*screen;
+            if origin {
+                (
+                    s.cursor.x.saturating_sub(term.scrolling_region.left),
+                    s.cursor.y.saturating_sub(term.scrolling_region.top),
+                )
+            } else {
+                (s.cursor.x, s.cursor.y)
+            }
+        };
+        let mut buf = [0u8; 32];
+        let mut off = 0usize;
+        unsafe {
+            write_bytes(buf.as_mut_ptr(), &mut off, b"\x1B[");
+            write_decimal(buf.as_mut_ptr(), &mut off, (y as u64) + 1);
+            write_bytes(buf.as_mut_ptr(), &mut off, b";");
+            write_decimal(buf.as_mut_ptr(), &mut off, (x as u64) + 1);
+            write_bytes(buf.as_mut_ptr(), &mut off, b"R");
+        }
+        self.write_pty(&buf[..off]);
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn report_kitty_keyboard(&self) {
+        let screen = self.term().active();
+        if screen.is_null() {
+            return;
+        }
+        let flags = unsafe { (*screen).kitty_keyboard.current().value() };
+        let mut buf = [0u8; 16];
+        let mut off = 0usize;
+        unsafe {
+            write_bytes(buf.as_mut_ptr(), &mut off, b"\x1B[?");
+            write_decimal(buf.as_mut_ptr(), &mut off, flags as u64);
+            write_bytes(buf.as_mut_ptr(), &mut off, b"u");
+        }
+        self.write_pty(&buf[..off]);
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn report_size_csi_21t(&self) {
+        let title = unsafe { self.term().get_title_slice() }.unwrap_or(b"");
+        let mut buf = [0u8; 1088];
+        let mut off = 0usize;
+        unsafe {
+            write_bytes(buf.as_mut_ptr(), &mut off, b"\x1b]l");
+            let title_len = title.len().min(buf.len() - off - 2);
+            core::ptr::copy_nonoverlapping(title.as_ptr(), buf.as_mut_ptr().add(off), title_len);
+            off += title_len;
+            write_bytes(buf.as_mut_ptr(), &mut off, b"\x1b\\");
+        }
+        self.write_pty(&buf[..off]);
     }
 
     fn active(&self) -> *mut Screen {
@@ -123,6 +238,14 @@ impl StreamHandler for StreamTerminal {
         self.term_mut().print_repeat(count);
     }
 
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_bell(&mut self) {
+        unsafe {
+            terminal_effects::bell(self.effects_wrapper());
+        }
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_bell(&mut self) {}
 
     fn on_backspace(&mut self) {
@@ -145,6 +268,14 @@ impl StreamHandler for StreamTerminal {
         self.term_mut().carriage_return();
     }
 
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_enquiry(&mut self) {
+        unsafe {
+            terminal_effects::report_enquiry(self.effects_wrapper());
+        }
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_enquiry(&mut self) {}
 
     fn on_invoke_charset(&mut self, v: InvokeCharset) {
@@ -418,8 +549,26 @@ impl StreamHandler for StreamTerminal {
         self.set_mode_by_tag(v.mode, restored);
     }
 
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_request_mode(&mut self, v: Mode) {
+        let (_, state) = self.term().modes.get_report(v.mode);
+        self.send_mode_report(v.mode, state);
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_request_mode(&mut self, _v: Mode) {}
 
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_request_mode_unknown(&mut self, v: RawMode) {
+        let tag = ModeTag {
+            value: v.mode,
+            ansi: v.ansi,
+        };
+        let (_, state) = self.term().modes.get_report(tag);
+        self.send_mode_report(tag, state);
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_request_mode_unknown(&mut self, _v: RawMode) {}
 
     fn on_top_and_bottom_margin(&mut self, v: Margin) {
@@ -516,14 +665,89 @@ impl StreamHandler for StreamTerminal {
         }
     }
 
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_size_report(&mut self, v: SizeReportStyle) {
+        if v == SizeReportStyle::Csi21t {
+            self.report_size_csi_21t();
+            return;
+        }
+        let wrapper = self.effects_wrapper();
+        if wrapper.is_null() {
+            return;
+        }
+        let mut size = GhosttySizeReportSize {
+            rows: 0,
+            columns: 0,
+            cell_width: 0,
+            cell_height: 0,
+        };
+        if !unsafe { terminal_effects::query_size(wrapper, &mut size) } {
+            return;
+        }
+        let style = match v {
+            SizeReportStyle::Csi14t => SIZE_REPORT_CSI_14_T,
+            SizeReportStyle::Csi16t => SIZE_REPORT_CSI_16_T,
+            SizeReportStyle::Csi18t => SIZE_REPORT_CSI_18_T,
+            SizeReportStyle::Csi21t => return,
+        };
+        let mut buf = [0u8; 256];
+        let mut written = 0usize;
+        let rc = unsafe {
+            size_report_encode_impl(style, size, buf.as_mut_ptr(), buf.len(), &mut written)
+        };
+        if rc == GHOSTTY_SUCCESS && written > 0 {
+            self.write_pty(&buf[..written]);
+        }
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_size_report(&mut self, _v: SizeReportStyle) {}
 
     fn on_title_push(&mut self, _v: u16) {}
     fn on_title_pop(&mut self, _v: u16) {}
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_xtversion(&mut self) {
+        unsafe {
+            terminal_effects::report_xtversion(self.effects_wrapper());
+        }
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_xtversion(&mut self) {}
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_device_attributes(&mut self, v: DeviceAttributeReq) {
+        unsafe {
+            terminal_effects::report_device_attributes(self.effects_wrapper(), v as u8);
+        }
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_device_attributes(&mut self, _v: DeviceAttributeReq) {}
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_device_status(&mut self, v: DeviceStatus) {
+        let Some(req) = DeviceStatusRequest::from_int(v.request, v.question) else {
+            return;
+        };
+        match req {
+            DeviceStatusRequest::OperatingStatus => self.write_pty(b"\x1B[0n"),
+            DeviceStatusRequest::CursorPosition => self.report_cursor_position(),
+            DeviceStatusRequest::ColorScheme => unsafe {
+                terminal_effects::report_color_scheme(self.effects_wrapper());
+            },
+        }
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_device_status(&mut self, _v: DeviceStatus) {}
 
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_kitty_keyboard_query(&mut self) {
+        self.report_kitty_keyboard();
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_kitty_keyboard_query(&mut self) {}
 
     fn on_kitty_keyboard_push(&mut self, v: KittyKeyboardFlags) {
@@ -610,6 +834,9 @@ impl StreamHandler for StreamTerminal {
             let _ = self
                 .term_mut()
                 .set_title_slice(alloc, title_bytes);
+        }
+        unsafe {
+            terminal_effects::title_changed(self.effects_wrapper());
         }
     }
 
