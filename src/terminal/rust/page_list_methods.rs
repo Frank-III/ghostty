@@ -452,7 +452,7 @@ impl PageIteratorChunk {
     }
 }
 
-enum PageIteratorLimit {
+pub(crate) enum PageIteratorLimit {
     None,
     Count(usize),
     Row(Pin),
@@ -470,6 +470,17 @@ impl PageIterator {
             row: None,
             limit: PageIteratorLimit::None,
             direction: PageListDirection::RightDown,
+        }
+    }
+
+    pub fn new_at_pin(start: Pin, direction: PageListDirection, limit: Option<Pin>) -> Self {
+        Self {
+            row: Some(start),
+            limit: match limit {
+                Some(p) => PageIteratorLimit::Row(p),
+                None => PageIteratorLimit::None,
+            },
+            direction,
         }
     }
 
@@ -665,7 +676,15 @@ impl RowIterator {
     }
 
     pub fn new_from_pin(start: Pin, direction: PageListDirection) -> Self {
-        let mut page_it = PageIterator::new_unlimited(start, direction);
+        Self::new_from_pin_with_limit(start, direction, None)
+    }
+
+    pub fn new_from_pin_with_limit(
+        start: Pin,
+        direction: PageListDirection,
+        limit: Option<Pin>,
+    ) -> Self {
+        let mut page_it = PageIterator::new_at_pin(start, direction, limit);
         let chunk = page_it.next();
         let offset = match &chunk {
             Some(c) => match direction {
@@ -721,6 +740,19 @@ impl RowIterator {
 pub struct CellIterator {
     pub row_it: RowIterator,
     cell: Option<Pin>,
+}
+
+pub fn cell_iterator_at_pin(
+    start: Pin,
+    direction: PageListDirection,
+    limit: Option<Pin>,
+) -> CellIterator {
+    let mut row_it = RowIterator::new_from_pin_with_limit(start, direction, limit);
+    let mut cell = row_it.next();
+    if let Some(ref mut c) = cell {
+        c.x = start.x;
+    }
+    CellIterator { row_it, cell }
 }
 
 impl CellIterator {

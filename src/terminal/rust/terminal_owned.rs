@@ -8,6 +8,11 @@ use crate::color_palette::{default_palette, Palette};
 use crate::early::*;
 use crate::highlight::Pin;
 use crate::selection::GhosttySelection;
+use crate::selection_copy::{grid_ref_to_pin, selection_to_ghostty};
+use crate::selection_methods::{
+    terminal_owned_selection_adjust_impl, terminal_owned_selection_contains_from_point_impl,
+    terminal_owned_selection_order_impl, terminal_owned_selection_ordered_impl,
+};
 use crate::selection_types::Selection;
 use crate::constants::{
     TERMINAL_DATA_COLOR_BACKGROUND, TERMINAL_DATA_COLOR_BACKGROUND_DEFAULT,
@@ -1043,6 +1048,81 @@ pub unsafe extern "C" fn ghostty_rust_terminal_owned_get_selection(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_adjust(
+    handle: *mut c_void,
+    selection: *mut GhosttySelection,
+    adjustment: c_int,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        terminal_owned_selection_adjust_impl(screen, selection, adjustment)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_order(
+    handle: *mut c_void,
+    selection: *const GhosttySelection,
+    out_order: *mut c_int,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        if screen.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        terminal_owned_selection_order_impl(screen, selection, out_order)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_ordered(
+    handle: *mut c_void,
+    selection: *const GhosttySelection,
+    desired: c_int,
+    out: *mut GhosttySelection,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        if screen.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        terminal_owned_selection_ordered_impl(screen, selection, desired, out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_rust_terminal_owned_selection_contains(
+    handle: *mut c_void,
+    selection: *const GhosttySelection,
+    pt: PointC,
+    out: *mut bool,
+) -> c_int {
+    unsafe {
+        if handle.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        let owned = &*(handle as *mut RustTerminalOwned);
+        let screen = owned.terminal.active();
+        if screen.is_null() {
+            return GHOSTTY_INVALID_VALUE;
+        }
+        terminal_owned_selection_contains_from_point_impl(screen, selection, pt, out)
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_terminal_owned_set_apc_max_bytes(
     handle: *mut c_void,
     value: *const usize,
@@ -1155,36 +1235,6 @@ fn palette_from_c(ptr: *const GhosttyColorRgb) -> Palette {
         i += 1;
     }
     palette
-}
-
-fn grid_ref_to_pin(grid: GhosttyGridRef) -> Option<Pin> {
-    if grid.node.is_null() {
-        return None;
-    }
-    Some(Pin {
-        node: grid.node as *mut crate::page_list_types::PageListNode,
-        x: grid.x,
-        y: grid.y,
-        garbage: false,
-    })
-}
-
-fn grid_ref_from_pin(pin: Pin) -> GhosttyGridRef {
-    GhosttyGridRef {
-        size: mem::size_of::<GhosttyGridRef>(),
-        node: pin.node as *mut c_void,
-        x: pin.x,
-        y: pin.y,
-    }
-}
-
-fn selection_to_ghostty(sel: &Selection) -> GhosttySelection {
-    GhosttySelection {
-        size: mem::size_of::<GhosttySelection>(),
-        start: grid_ref_from_pin(sel.start()),
-        end: grid_ref_from_pin(sel.end_pin()),
-        rectangle: sel.rectangle,
-    }
 }
 
 fn color_snapshot(slot: &DynamicRgb) -> (bool, GhosttyColorRgb) {

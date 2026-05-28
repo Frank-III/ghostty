@@ -39,6 +39,34 @@ const rust = if (build_options.lib_vt_rust) struct {
     ) callconv(.c) c_int;
 } else struct {};
 
+const rust_owned = if (build_options.terminal_rust_owned) struct {
+    extern fn ghostty_rust_terminal_owned_selection_adjust(
+        handle: ?*anyopaque,
+        selection: ?*CSelection,
+        adjustment: Selection.Adjustment,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_selection_order(
+        handle: ?*anyopaque,
+        selection: ?*const CSelection,
+        out_order: ?*Selection.Order,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_selection_ordered(
+        handle: ?*anyopaque,
+        selection: ?*const CSelection,
+        desired: Selection.Order,
+        out: ?*CSelection,
+    ) callconv(.c) c_int;
+
+    extern fn ghostty_rust_terminal_owned_selection_contains(
+        handle: ?*anyopaque,
+        selection: ?*const CSelection,
+        pt: point.Point.C,
+        out: ?*bool,
+    ) callconv(.c) c_int;
+} else struct {};
+
 pub const Adjustment = Selection.Adjustment;
 pub const Order = Selection.Order;
 pub const Format = formatterpkg.Format;
@@ -351,8 +379,21 @@ pub fn adjust(
         };
     }
 
-    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
+    const wrapper = terminal orelse return .invalid_value;
     const sel_ptr = selection orelse return .invalid_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal_c.zigTerminal(terminal) == null) {
+            const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+            return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_adjust(
+                handle,
+                sel_ptr,
+                adjustment,
+            ));
+        }
+    }
+
+    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
     var sel = sel_ptr.toZig() orelse return .invalid_value;
     sel.adjust(t.screens.active, adjustment);
     return writeSelection(sel_ptr, sel);
@@ -363,10 +404,24 @@ pub fn order(
     selection: ?*const CSelection,
     out_order: ?*Selection.Order,
 ) callconv(lib.calling_conv) Result {
-    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
-    const sel = (selection orelse return .invalid_value).toZig() orelse
-        return .invalid_value;
     const out = out_order orelse return .invalid_value;
+    const sel_ptr = selection orelse return .invalid_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal) |wrapper| {
+            if (terminal_c.zigTerminal(terminal) == null) {
+                const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+                return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_order(
+                    handle,
+                    sel_ptr,
+                    out,
+                ));
+            }
+        } else return .invalid_value;
+    }
+
+    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
+    const sel = sel_ptr.toZig() orelse return .invalid_value;
 
     const value = sel.order(t.screens.active);
     if (comptime build_options.lib_vt_rust) {
@@ -393,10 +448,25 @@ pub fn ordered(
         };
     }
 
-    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
-    const sel = (selection orelse return .invalid_value).toZig() orelse
-        return .invalid_value;
+    const sel_ptr = selection orelse return .invalid_value;
     const out = out_selection orelse return .invalid_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal) |wrapper| {
+            if (terminal_c.zigTerminal(terminal) == null) {
+                const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+                return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_ordered(
+                    handle,
+                    sel_ptr,
+                    desired,
+                    out,
+                ));
+            }
+        } else return .invalid_value;
+    }
+
+    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
+    const sel = sel_ptr.toZig() orelse return .invalid_value;
 
     return writeSelection(out, sel.ordered(t.screens.active, desired));
 }
@@ -407,10 +477,25 @@ pub fn contains(
     pt: point.Point.C,
     out_contains: ?*bool,
 ) callconv(lib.calling_conv) Result {
-    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
-    const sel = (selection orelse return .invalid_value).toZig() orelse
-        return .invalid_value;
+    const sel_ptr = selection orelse return .invalid_value;
     const out = out_contains orelse return .invalid_value;
+
+    if (comptime build_options.terminal_rust_owned) {
+        if (terminal) |wrapper| {
+            if (terminal_c.zigTerminal(terminal) == null) {
+                const handle = terminal_c.rustOwnedHandle(wrapper) orelse return .invalid_value;
+                return @enumFromInt(rust_owned.ghostty_rust_terminal_owned_selection_contains(
+                    handle,
+                    sel_ptr,
+                    pt,
+                    out,
+                ));
+            }
+        } else return .invalid_value;
+    }
+
+    const t = terminal_c.zigTerminal(terminal) orelse return .invalid_value;
+    const sel = sel_ptr.toZig() orelse return .invalid_value;
 
     const screen = t.screens.active;
     const pin = screen.pages.pin(.fromC(pt)) orelse return .invalid_value;

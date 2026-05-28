@@ -71,6 +71,8 @@ mod terminal_byte_list;
 #[cfg(ghostty_vt_terminal_owned)]
 mod screen_set_methods;
 #[cfg(ghostty_vt_terminal_owned)]
+mod selection_methods;
+#[cfg(ghostty_vt_terminal_owned)]
 mod terminal_owned;
 #[cfg(ghostty_vt_terminal_owned)]
 mod terminal_effects;

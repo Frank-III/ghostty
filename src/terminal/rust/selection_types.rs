@@ -6,6 +6,7 @@ use crate::highlight::Pin;
 use crate::page_list_types::PageList;
 
 #[repr(u8)]
+#[derive(PartialEq, Eq)]
 pub enum SelectionOrder {
     Forward = 0,
     Reverse = 1,

@@ -403,7 +403,7 @@ const rust_owned = if (build_options.terminal_rust_owned) struct {
     ) callconv(.c) c_int;
 } else struct {};
 
-fn rustOwnedHandle(wrapper: *TerminalWrapper) ?*anyopaque {
+pub fn rustOwnedHandle(wrapper: *TerminalWrapper) ?*anyopaque {
     return switch (wrapper.state) {
         .rust => |r| r.handle,
         .zig => null,
@@ -3193,7 +3193,6 @@ test "selection derivation helpers" {
 }
 
 test "selection_adjust mutates snapshot end" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3242,7 +3241,6 @@ test "selection_adjust mutates snapshot end" {
 }
 
 test "selection_order and selection_ordered" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3296,7 +3294,6 @@ test "selection_order and selection_ordered" {
 }
 
 test "selection_contains" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3355,7 +3352,6 @@ test "selection_contains" {
 }
 
 test "selection_equal" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,
@@ -3445,7 +3441,6 @@ test "selection_equal" {
 }
 
 test "selection_order invalid values" {
-    if (comptime build_options.terminal_rust_owned) return;
     var t: Terminal = null;
     try testing.expectEqual(Result.success, new(
         &lib.alloc.test_allocator,

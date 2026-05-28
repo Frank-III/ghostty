@@ -1,8 +1,11 @@
-use core::ffi::c_int;
-use core::ptr;
+use core::ffi::{c_int, c_void};
+use core::{mem, ptr};
 
 use crate::early::*;
+use crate::highlight::Pin;
+use crate::page_list_types::PageListNode;
 use crate::selection::*;
+use crate::selection_types::Selection;
 
 pub(crate) fn grid_ref_valid(value: GhosttyGridRef) -> bool {
     !value.node.is_null()
@@ -76,4 +79,40 @@ pub(crate) unsafe fn copy_selection(
     }
 
     GHOSTTY_SUCCESS
+}
+
+pub(crate) fn grid_ref_to_pin(grid: GhosttyGridRef) -> Option<Pin> {
+    if grid.node.is_null() {
+        return None;
+    }
+    Some(Pin {
+        node: grid.node as *mut PageListNode,
+        x: grid.x,
+        y: grid.y,
+        garbage: false,
+    })
+}
+
+pub(crate) fn grid_ref_from_pin(pin: Pin) -> GhosttyGridRef {
+    GhosttyGridRef {
+        size: mem::size_of::<GhosttyGridRef>(),
+        node: pin.node as *mut c_void,
+        x: pin.x,
+        y: pin.y,
+    }
+}
+
+pub(crate) fn selection_from_ghostty(c: &GhosttySelection) -> Option<Selection> {
+    let start = grid_ref_to_pin(c.start)?;
+    let end = grid_ref_to_pin(c.end)?;
+    Some(Selection::init(start, end, c.rectangle))
+}
+
+pub(crate) fn selection_to_ghostty(sel: &Selection) -> GhosttySelection {
+    GhosttySelection {
+        size: mem::size_of::<GhosttySelection>(),
+        start: grid_ref_from_pin(sel.start()),
+        end: grid_ref_from_pin(sel.end_pin()),
+        rectangle: sel.rectangle,
+    }
 }
