@@ -1,0 +1,39 @@
+crates/ghostty-input/Cargo.toml
+  s_6cee157524a3f1::t_db8b21dc0ccf29 8-10
+crates/ghostty-termio/src/lib.rs
+  s_6cee157524a3f1::t_21517e0abe30b4 22
+crates/ghostty-foundation/src/lib.rs
+  s_6cee157524a3f1::t_d9614cb3a6fb16 12-13
+  s_6cee157524a3f1::t_0ef5e0278f5f6b 39
+crates/ghostty-foundation/src/error.rs
+  s_6cee157524a3f1::t_3ae5f883b398d5 30,35-36
+  s_6cee157524a3f1::t_aeb18e36948100 1-26
+  s_6cee157524a3f1::t_6a06c603b27925 27-29,31-34
+crates/ghostty-config/src/config.rs
+  s_6cee157524a3f1::t_9d16c7f497f18c 59
+  s_6cee157524a3f1::t_b5c23414391f90 26
+  s_6cee157524a3f1::t_2031f706bdfdd9 242-248
+  s_6cee157524a3f1::t_842f63d3ab2ffe 186-190
+crates/ghostty-config/src/lib.rs
+  s_6cee157524a3f1::t_92bff643dffa52 30
+crates/ghostty-termio/Cargo.toml
+  s_6cee157524a3f1::t_e7db7b4c1952a5 10
+crates/ghostty-input/src/lib.rs
+  s_6cee157524a3f1::t_36cab790a6b1d8 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "50128cd89a9ef530a98036793cfcdb964da871a4",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
