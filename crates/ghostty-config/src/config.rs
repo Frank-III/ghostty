@@ -23,6 +23,7 @@ pub struct Config {
     pub font_family: Option<String>,
     pub scrollback_limit: usize,
     pub minimum_contrast: f64,
+    pub mouse_hide_while_typing: bool,
     diagnostics: DiagnosticList,
 }
 
@@ -55,6 +56,7 @@ impl Config {
             font_family: None,
             scrollback_limit: 10_000_000,
             minimum_contrast: 1.0,
+            mouse_hide_while_typing: false,
             diagnostics: DiagnosticList::new(),
         }
     }
@@ -181,6 +183,11 @@ impl Config {
                 let parsed: f64 = v.parse().map_err(|_| ConfigError::InvalidValue)?;
                 self.minimum_contrast = parsed.clamp(1.0, 21.0);
             }
+            "mouse-hide-while-typing" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.mouse_hide_while_typing =
+                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
             _ => return Err(ConfigError::InvalidField),
         }
         Ok(())
@@ -230,6 +237,14 @@ fn parse_bool(s: &str) -> Result<bool, ()> {
 mod tests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn parse_mouse_hide_while_typing() {
+        let mut cfg = Config::with_defaults();
+        cfg.load_from_str("mouse-hide-while-typing = true\n", "/tmp/config.ghostty");
+        assert!(cfg.diagnostics().is_empty());
+        assert!(cfg.mouse_hide_while_typing);
+    }
 
     #[test]
     fn parse_scrollback_and_contrast() {

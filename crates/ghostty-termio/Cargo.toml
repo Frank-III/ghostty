@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+ghostty-foundation = { path = "../ghostty-foundation" }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

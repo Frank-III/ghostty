@@ -9,6 +9,8 @@
 
 pub mod os;
 
+pub mod error;
+
 pub mod array_list_collection;
 pub mod blocking_queue;
 pub mod cache_table;
@@ -34,6 +36,7 @@ pub use split_tree::{
     Goto, NodeHandle, Side, Spatial, SpatialDirection, SpatialSlot, SplitDirection, SplitLayout,
     SplitTree, SplitTreeIterator, ViewEntry,
 };
+pub use error::{FoundationError, FoundationResult};
 pub use os::{
     append_env, append_env_always, is_valid_mac_address, prepend_env, printf_q_decode,
     url_percent_decode, url_percent_encode, DecodeError,

@@ -19,6 +19,7 @@ pub use command::{process_exit_from_wait_status, CommandBuildError, CommandBuild
 pub use mode::PtyMode;
 pub use shell::{shell_escape, ShellCommandBuilder};
 pub use winsize::Winsize;
+pub use ghostty_foundation::{FoundationError, FoundationResult};
 
 #[cfg(unix)]
 pub use spawn::{spawn_on_pty, spawn_pty_command, SpawnError, SpawnPtyError};

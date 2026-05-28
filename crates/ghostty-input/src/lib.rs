@@ -7,3 +7,4 @@ pub mod kitty_sequence;
 
 pub use key_mods::{Mod, ModKeys, ModSide, ModSides, Mods, OptionAsAlt};
 pub use kitty_sequence::{KittyEvent, KittyMods, KittySequence};
+pub use ghostty_foundation::{FoundationError, FoundationResult};
