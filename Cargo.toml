@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/ghostty-vt",
+    "crates/ghostty-foundation",
+    "crates/ghostty-config",
+    "crates/ghostty-input",
+    "crates/ghostty-termio",
+    "crates/ghostty-font",
+    "crates/ghostty-renderer",
+    "crates/ghostty-core",
+    "crates/ghostty-cli",
+    "crates/ghostty-ffi",
+    "crates/ghostty",
+]
+
+[workspace.package]
+version = "0.1.0-dev"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/ghostty-org/ghostty"
+
+[profile.dev]
+panic = "abort"
+opt-level = 1
+
+[profile.release]
+panic = "abort"

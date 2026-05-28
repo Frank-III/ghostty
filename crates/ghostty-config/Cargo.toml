@@ -1,0 +1,10 @@
+[package]
+name = "ghostty-config"
+description = "Ghostty configuration schema and loader"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ghostty-foundation = { path = "../ghostty-foundation" }

@@ -1,0 +1,17 @@
+[package]
+name = "ghostty-termio"
+description = "Ghostty PTY and subprocess I/O"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"

@@ -1,0 +1,11 @@
+[package]
+name = "ghostty-cli"
+description = "Ghostty CLI actions"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ghostty-config = { path = "../ghostty-config" }
+ghostty-core = { path = "../ghostty-core" }

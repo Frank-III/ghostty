@@ -1,0 +1,10 @@
+[package]
+name = "ghostty-font"
+description = "Ghostty font discovery, shaping, and atlas"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Config font-family keys will wire here in a later phase.

@@ -1,0 +1,15 @@
+[package]
+name = "ghostty"
+description = "Ghostty terminal emulator binary"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "ghostty"
+path = "src/main.rs"
+
+[dependencies]
+ghostty-cli = { path = "../ghostty-cli" }
+ghostty-core = { path = "../ghostty-core" }
