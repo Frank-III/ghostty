@@ -33,7 +33,7 @@ pub fn get(name: &str) -> Option<RGB> {
     while lo < hi {
         let mid = lo + (hi - lo) / 2;
         let e = &ENTRIES[mid];
-        let entry_name = &e.name[..e.len as usize];
+        let entry_name = crate::bytes_util::subslice_len(&e.name, e.len as usize);
         match cmp_bytes_icase(query, entry_name) {
             core::cmp::Ordering::Equal => return Some(RGB::new(e.r, e.g, e.b)),
             core::cmp::Ordering::Less => hi = mid,

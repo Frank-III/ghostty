@@ -1,45 +1,9 @@
 #![allow(unused)]
 
+use crate::bytes_util::{bytes_to_str, find_byte, get_u8, subslice, subslice_from, subslice_len};
 use crate::osc_types::*;
 use crate::stream_types::*;
 use crate::vt_parser::{ParserOsc, MAX_OSC_BUF};
-
-#[inline]
-fn get_byte(data: &[u8], idx: usize) -> Option<u8> {
-    if idx < data.len() {
-        Some(unsafe { *data.get_unchecked(idx) })
-    } else {
-        None
-    }
-}
-
-#[inline]
-fn subslice(data: &[u8], start: usize, end: usize) -> &[u8] {
-    if start > end || end > data.len() {
-        return &[];
-    }
-    unsafe { data.get_unchecked(start..end) }
-}
-
-#[inline]
-fn subslice_from(data: &[u8], start: usize) -> &[u8] {
-    if start >= data.len() {
-        return &[];
-    }
-    unsafe { data.get_unchecked(start..data.len()) }
-}
-
-#[inline]
-fn find_byte(data: &[u8], b: u8) -> Option<usize> {
-    let mut i = 0;
-    while i < data.len() {
-        if unsafe { *data.get_unchecked(i) } == b {
-            return Some(i);
-        }
-        i += 1;
-    }
-    None
-}
 
 #[inline]
 fn bytes_eq(data: &[u8], start: usize, needle: &[u8]) -> bool {
@@ -72,14 +36,6 @@ fn parse_u16(data: &[u8]) -> Option<u16> {
         i += 1;
     }
     Some(acc)
-}
-
-#[inline]
-fn bytes_to_str(bytes: &[u8]) -> &str {
-    match core::str::from_utf8(bytes) {
-        Ok(s) => s,
-        Err(_) => "",
-    }
 }
 
 fn color_op_from_num(num: u16) -> Option<ColorOscOp> {
@@ -466,7 +422,7 @@ pub fn parse(osc: &ParserOsc) -> Command<'_> {
         return Command::Invalid;
     }
 
-    let data: &[u8] = &osc.data[..len];
+    let data = subslice_len(&osc.data, len);
 
     let semi = find_byte(data, b';');
     let num_end = match semi {

@@ -1,18 +1,12 @@
 #![allow(unused)]
 
+use crate::bytes_util::{bytes_to_str, find_byte_from, subslice, subslice_from};
 use crate::osc_types::*;
 
 // ─── OSC 8 Hyperlinks ──────────────────────────────────────────────────────
 
 fn find_byte_misc(haystack: &[u8], needle: u8, start: usize) -> Option<usize> {
-    let mut i = start;
-    while i < haystack.len() {
-        if unsafe { *haystack.get_unchecked(i) } == needle {
-            return Some(i);
-        }
-        i += 1;
-    }
-    None
+    find_byte_from(haystack, needle, start)
 }
 
 fn bytes_eq_misc(a: &[u8], b: &[u8]) -> bool {
@@ -30,10 +24,7 @@ fn bytes_eq_misc(a: &[u8], b: &[u8]) -> bool {
 }
 
 fn bytes_to_str_misc(bytes: &[u8]) -> &str {
-    match core::str::from_utf8(bytes) {
-        Ok(s) => s,
-        Err(_) => "",
-    }
+    bytes_to_str(bytes)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

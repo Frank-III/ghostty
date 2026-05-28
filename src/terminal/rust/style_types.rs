@@ -59,6 +59,7 @@ pub const FLAG_STRIKETHROUGH: u16 = 1 << 6;
 pub const FLAG_OVERLINE: u16 = 1 << 7;
 pub const FLAG_UNDERLINE: u16 = 1 << 8;
 
+#[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct Flags(pub u16);
 
@@ -181,6 +182,7 @@ impl Flags {
     }
 }
 
+#[repr(C, u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Color {
     None,
@@ -206,6 +208,7 @@ impl Color {
     }
 }
 
+#[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub struct Style {
     pub fg_color: Color,
@@ -231,7 +234,14 @@ impl Style {
     pub fn underline_rgb(&self, palette: &crate::color_palette::Palette) -> Option<RGB> {
         match self.underline_color {
             Color::None => None,
-            Color::Palette(idx) => Some(rgb_from_ghostty(palette[idx as usize])),
+            Color::Palette(idx) => {
+                let i = idx as usize;
+                if i < palette.len() {
+                    Some(rgb_from_ghostty(unsafe { *palette.get_unchecked(i) }))
+                } else {
+                    None
+                }
+            }
             Color::Rgb(rgb) => Some(rgb),
         }
     }
@@ -259,26 +269,38 @@ impl Style {
             tag(&self.fg_color),
             tag(&self.bg_color),
             tag(&self.underline_color),
-            fg[0], fg[1], fg[2],
-            bg[0], bg[1], bg[2],
-            ul[0], ul[1], ul[2],
-            fl[0], fl[1], 0, 0,
+            fg[0],
+            fg[1],
+            fg[2],
+            bg[0],
+            bg[1],
+            bg[2],
+            ul[0],
+            ul[1],
+            ul[2],
+            fl[0],
+            fl[1],
+            0,
+            0,
         ]
     }
 
     pub fn hash(&self) -> u64 {
         let bytes = self.packed_bytes();
         let wide = unsafe { core::mem::transmute::<[u8; 16], [u64; 2]>(bytes) };
-        hash_int(wide[0] ^ wide[1])
+        hash_int(unsafe { wide.get_unchecked(0) ^ wide.get_unchecked(1) })
     }
 
     pub fn fmt_vt(&self, buf: &mut [u8]) -> usize {
         let mut pos: usize = 0;
         let push = |buf: &mut [u8], pos: &mut usize, s: &[u8]| {
-            let end = *pos + s.len();
-            if end <= buf.len() {
-                buf[*pos..end].copy_from_slice(s);
-                *pos = end;
+            let mut i: usize = 0;
+            while i < s.len() && *pos < buf.len() {
+                unsafe {
+                    *buf.get_unchecked_mut(*pos) = *s.get_unchecked(i);
+                }
+                *pos += 1;
+                i += 1;
             }
         };
         push(buf, &mut pos, b"\x1b[0m");
@@ -328,13 +350,24 @@ impl Style {
     }
 }
 
-fn fmt_color_vt(buf: &mut [u8], mut pos: usize, prefix: u8, color: Color, palette: Option<&[GhosttyColorRgb; 256]>) -> usize {
+fn fmt_color_vt(
+    buf: &mut [u8],
+    mut pos: usize,
+    prefix: u8,
+    color: Color,
+    palette: Option<&[GhosttyColorRgb; 256]>,
+) -> usize {
     match color {
         Color::None => {}
         Color::Palette(idx) => {
             if let Some(p) = palette {
-                let rgb = p[idx as usize];
-                pos = write_fmt_rgb(buf, pos, prefix, rgb.r, rgb.g, rgb.b);
+                let i = idx as usize;
+                if i < p.len() {
+                    let rgb = unsafe { p.get_unchecked(i) };
+                    pos = write_fmt_rgb(buf, pos, prefix, rgb.r, rgb.g, rgb.b);
+                } else {
+                    pos = write_fmt_palette(buf, pos, prefix, idx);
+                }
             } else {
                 pos = write_fmt_palette(buf, pos, prefix, idx);
             }
@@ -349,73 +382,74 @@ fn fmt_color_vt(buf: &mut [u8], mut pos: usize, prefix: u8, color: Color, palett
 fn write_fmt_rgb(buf: &mut [u8], pos: usize, prefix: u8, r: u8, g: u8, b: u8) -> usize {
     let mut tmp = [0u8; 32];
     let mut n: usize = 0;
-    tmp[n] = b'\x1b';
-    n += 1;
-    tmp[n] = b'[';
-    n += 1;
+    n = push_tmp_byte(&mut tmp, n, b'\x1b');
+    n = push_tmp_byte(&mut tmp, n, b'[');
     n = decimal_to_buf(&mut tmp, n, prefix as u16);
-    tmp[n] = b';';
-    n += 1;
-    tmp[n] = b'2';
-    n += 1;
-    tmp[n] = b';';
-    n += 1;
+    n = push_tmp_byte(&mut tmp, n, b';');
+    n = push_tmp_byte(&mut tmp, n, b'2');
+    n = push_tmp_byte(&mut tmp, n, b';');
     n = decimal_to_buf(&mut tmp, n, r as u16);
-    tmp[n] = b';';
-    n += 1;
+    n = push_tmp_byte(&mut tmp, n, b';');
     n = decimal_to_buf(&mut tmp, n, g as u16);
-    tmp[n] = b';';
-    n += 1;
+    n = push_tmp_byte(&mut tmp, n, b';');
     n = decimal_to_buf(&mut tmp, n, b as u16);
-    tmp[n] = b'm';
-    n += 1;
-    let end = pos + n;
-    if end <= buf.len() {
-        buf[pos..end].copy_from_slice(&tmp[..n]);
-    }
-    end
+    n = push_tmp_byte(&mut tmp, n, b'm');
+    copy_tmp_to_buf(buf, pos, &tmp, n)
 }
 
 fn write_fmt_palette(buf: &mut [u8], pos: usize, prefix: u8, idx: u8) -> usize {
     let mut tmp = [0u8; 24];
     let mut n: usize = 0;
-    tmp[n] = b'\x1b';
-    n += 1;
-    tmp[n] = b'[';
-    n += 1;
+    n = push_tmp_byte(&mut tmp, n, b'\x1b');
+    n = push_tmp_byte(&mut tmp, n, b'[');
     n = decimal_to_buf(&mut tmp, n, prefix as u16);
-    tmp[n] = b';';
-    n += 1;
-    tmp[n] = b'5';
-    n += 1;
-    tmp[n] = b';';
-    n += 1;
+    n = push_tmp_byte(&mut tmp, n, b';');
+    n = push_tmp_byte(&mut tmp, n, b'5');
+    n = push_tmp_byte(&mut tmp, n, b';');
     n = decimal_to_buf(&mut tmp, n, idx as u16);
-    tmp[n] = b'm';
-    n += 1;
-    let end = pos + n;
-    if end <= buf.len() {
-        buf[pos..end].copy_from_slice(&tmp[..n]);
+    n = push_tmp_byte(&mut tmp, n, b'm');
+    copy_tmp_to_buf(buf, pos, &tmp, n)
+}
+
+#[inline]
+fn push_tmp_byte(tmp: &mut [u8], n: usize, b: u8) -> usize {
+    if n < tmp.len() {
+        unsafe {
+            *tmp.get_unchecked_mut(n) = b;
+        }
+        n + 1
+    } else {
+        n
     }
-    end
+}
+
+#[inline]
+fn copy_tmp_to_buf(buf: &mut [u8], pos: usize, tmp: &[u8], n: usize) -> usize {
+    let mut j: usize = 0;
+    while j < n && pos + j < buf.len() && j < tmp.len() {
+        unsafe {
+            *buf.get_unchecked_mut(pos + j) = *tmp.get_unchecked(j);
+        }
+        j += 1;
+    }
+    pos + j
 }
 
 fn decimal_to_buf(buf: &mut [u8], mut pos: usize, v: u16) -> usize {
     if v == 0 {
-        buf[pos] = b'0';
-        return pos + 1;
+        return push_tmp_byte(buf, pos, b'0');
     }
     let mut tmp = [0u8; 5];
     let mut n = 0usize;
     let mut val = v;
-    while val > 0 {
-        tmp[n] = b'0' + (val % 10) as u8;
-        n += 1;
+    while val > 0 && n < tmp.len() {
+        n = push_tmp_byte(&mut tmp, n, b'0' + (val % 10) as u8);
         val /= 10;
     }
-    for i in (0..n).rev() {
-        buf[pos] = tmp[i];
-        pos += 1;
+    let mut i = n;
+    while i > 0 {
+        i -= 1;
+        pos = push_tmp_byte(buf, pos, unsafe { *tmp.get_unchecked(i) });
     }
     pos
 }

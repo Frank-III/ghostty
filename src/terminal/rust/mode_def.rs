@@ -119,7 +119,11 @@ pub fn mode_find_index(value: u16, ansi: bool) -> Option<u8> {
 }
 
 pub fn mode_tag_from_index(idx: u8) -> ModeTag {
-    let entry = &MODE_ENTRIES[idx as usize];
+    let idx = idx as usize;
+    if idx >= MODE_COUNT {
+        return ModeTag { value: 0, ansi: true };
+    }
+    let entry = unsafe { MODE_ENTRIES.get_unchecked(idx) };
     ModeTag {
         value: entry.value,
         ansi: entry.ansi,

@@ -6,6 +6,7 @@ use crate::ansi::*;
 use crate::charsets::*;
 use crate::vt_parser::*;
 use crate::stream_types::*;
+use crate::bytes_util::subslice_len;
 use crate::stream_handler::StreamHandler;
 use crate::stream_core::Stream;
 use crate::mode_def::ModeTag;
@@ -184,5 +185,5 @@ pub fn esc_dispatch<H: StreamHandler>(
 }
 
 fn esc_intermediates(esc: &ParserEsc) -> &[u8] {
-    &esc.intermediates[..esc.intermediates_len as usize]
+    subslice_len(&esc.intermediates, esc.intermediates_len as usize)
 }

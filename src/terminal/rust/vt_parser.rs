@@ -175,8 +175,11 @@ impl VtParser {
     }
 
     fn osc_put(&mut self, c: u8) {
-        if (self.osc_len as usize) < MAX_OSC_BUF {
-            self.osc_buf[self.osc_len as usize] = c;
+        let idx = self.osc_len as usize;
+        if idx < MAX_OSC_BUF {
+            unsafe {
+                *self.osc_buf.get_unchecked_mut(idx) = c;
+            }
             self.osc_len += 1;
         }
     }
@@ -198,19 +201,25 @@ impl VtParser {
     }
 
     fn collect(&mut self, c: u8) {
-        if (self.intermediates_idx as usize) >= MAX_INTERMEDIATE {
+        let idx = self.intermediates_idx as usize;
+        if idx >= MAX_INTERMEDIATE {
             return;
         }
-        self.intermediates[self.intermediates_idx as usize] = c;
+        unsafe {
+            *self.intermediates.get_unchecked_mut(idx) = c;
+        }
         self.intermediates_idx += 1;
     }
 
     fn do_param(&mut self, c: u8) {
         if c == b';' || c == b':' {
-            if (self.params_idx as usize) >= MAX_PARAMS {
+            let idx = self.params_idx as usize;
+            if idx >= MAX_PARAMS {
                 return;
             }
-            self.params[self.params_idx as usize] = self.param_acc;
+            unsafe {
+                *self.params.get_unchecked_mut(idx) = self.param_acc;
+            }
             if c == b':' {
                 self.params_sep |= 1u32 << (self.params_idx as u32);
             }
@@ -233,10 +242,14 @@ impl VtParser {
         let mut plen = self.params_idx;
         let psep = self.params_sep;
         for i in 0..(plen as usize) {
-            params[i] = self.params[i];
+            unsafe {
+                *params.get_unchecked_mut(i) = *self.params.get_unchecked(i);
+            }
         }
         if self.param_acc_idx > 0 {
-            params[plen as usize] = self.param_acc;
+            unsafe {
+                *params.get_unchecked_mut(plen as usize) = self.param_acc;
+            }
             plen += 1;
         }
         if c != b'm' && psep != 0 {
@@ -244,7 +257,9 @@ impl VtParser {
         }
         let mut intermediates = [0u8; MAX_INTERMEDIATE];
         for i in 0..(self.intermediates_idx as usize) {
-            intermediates[i] = self.intermediates[i];
+            unsafe {
+                *intermediates.get_unchecked_mut(i) = *self.intermediates.get_unchecked(i);
+            }
         }
         let csi = ParserCsi {
             intermediates,
@@ -267,7 +282,9 @@ impl VtParser {
     fn make_esc(&self, c: u8) -> ParserAction {
         let mut intermediates = [0u8; MAX_INTERMEDIATE];
         for i in 0..(self.intermediates_idx as usize) {
-            intermediates[i] = self.intermediates[i];
+            unsafe {
+                *intermediates.get_unchecked_mut(i) = *self.intermediates.get_unchecked(i);
+            }
         }
         let esc = ParserEsc {
             intermediates,
@@ -291,15 +308,21 @@ impl VtParser {
         let mut params = [0u16; MAX_PARAMS];
         let mut plen = self.params_idx;
         for i in 0..(plen as usize) {
-            params[i] = self.params[i];
+            unsafe {
+                *params.get_unchecked_mut(i) = *self.params.get_unchecked(i);
+            }
         }
         if self.param_acc_idx > 0 {
-            params[plen as usize] = self.param_acc;
+            unsafe {
+                *params.get_unchecked_mut(plen as usize) = self.param_acc;
+            }
             plen += 1;
         }
         let mut intermediates = [0u8; MAX_INTERMEDIATE];
         for i in 0..(self.intermediates_idx as usize) {
-            intermediates[i] = self.intermediates[i];
+            unsafe {
+                *intermediates.get_unchecked_mut(i) = *self.intermediates.get_unchecked(i);
+            }
         }
         let dcs = ParserDcs {
             intermediates,
@@ -371,7 +394,11 @@ impl VtParser {
     }
 
     pub fn next(&mut self, c: u8) -> [Option<ParserAction>; 3] {
-        let effect = TABLE[c as usize][self.state as usize];
+        let effect = unsafe {
+            *TABLE
+                .get_unchecked(c as usize)
+                .get_unchecked(self.state as usize)
+        };
         let next_state = effect.state;
         let action = effect.action;
 
@@ -424,7 +451,10 @@ impl VtParser {
                     if (self.params_idx as usize) >= MAX_PARAMS {
                         None
                     } else if self.param_acc_idx > 0 {
-                        self.params[self.params_idx as usize] = self.param_acc;
+                        let idx = self.params_idx as usize;
+                        unsafe {
+                            *self.params.get_unchecked_mut(idx) = self.param_acc;
+                        }
                         self.params_idx += 1;
                         let hook = ParserAction {
                             tag: ParserActionTag::DcsHook,

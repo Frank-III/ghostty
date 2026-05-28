@@ -93,7 +93,4 @@ pub fn osc_dispatch<H: StreamHandler>(handler: &mut H, cmd: Command<'_>) {
     }
 }
 
-#[inline]
-fn is_valid_utf8(bytes: &[u8]) -> bool {
-    core::str::from_utf8(bytes).is_ok()
-}
+use crate::bytes_util::is_valid_utf8;

@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use crate::bytes_util::bytes_to_str;
 use crate::osc_types::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -67,12 +68,6 @@ fn parse_u8_clamped(s: &[u8]) -> Option<u8> {
     }
 }
 
-fn bytes_to_str(bytes: &[u8]) -> &str {
-    match core::str::from_utf8(bytes) {
-        Ok(s) => s,
-        Err(_) => "",
-    }
-}
 
 pub fn parse_conemu_osc9<'a>(data: &'a [u8]) -> ConemuOsc9Result<'a> {
     if data.is_empty() {

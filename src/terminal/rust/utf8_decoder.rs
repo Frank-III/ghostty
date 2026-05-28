@@ -58,7 +58,7 @@ impl Utf8Decoder {
     }
 
     pub fn next(&mut self, byte: u8) -> (Option<u32>, bool) {
-        let char_class = CHAR_CLASSES[byte as usize];
+        let char_class = unsafe { *CHAR_CLASSES.get_unchecked(byte as usize) };
         let initial_state = self.state;
 
         if self.state != ACCEPT_STATE {
@@ -67,7 +67,9 @@ impl Utf8Decoder {
             self.accumulator = ((0xFF >> char_class) as u32) & (byte as u32);
         }
 
-        self.state = TRANSITIONS[(self.state as usize) + (char_class as usize)];
+        let state_idx = self.state as usize;
+        let class_idx = state_idx + char_class as usize;
+        self.state = unsafe { *TRANSITIONS.get_unchecked(class_idx) };
 
         if self.state == ACCEPT_STATE {
             let cp = self.accumulator;

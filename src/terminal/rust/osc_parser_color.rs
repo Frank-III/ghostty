@@ -325,7 +325,7 @@ pub fn rgb_parse(value: &[u8]) -> Option<RGB> {
         };
     }
 
-    if let Ok(s) = core::str::from_utf8(trimmed) {
+    if let Some(s) = crate::bytes_util::bytes_to_str_opt(trimmed) {
         if let Some(rgb) = x11_color::get(s) {
             return Some(rgb);
         }

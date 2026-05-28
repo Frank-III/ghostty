@@ -9,6 +9,7 @@ use core::ptr;
 
 
 mod early;
+mod bytes_util;
 mod constants;
 mod ansi;
 mod size_types;
@@ -76,6 +77,12 @@ mod selection_methods;
 mod screen_selection;
 #[cfg(ghostty_vt_terminal_owned)]
 mod terminal_owned;
+#[cfg(ghostty_vt_terminal_owned)]
+mod terminal_owned_grid_ref;
+#[cfg(ghostty_vt_terminal_owned)]
+mod terminal_owned_formatter;
+#[cfg(ghostty_vt_terminal_owned)]
+mod terminal_owned_render;
 #[cfg(ghostty_vt_terminal_owned)]
 mod terminal_effects;
 mod terminal_lifecycle;

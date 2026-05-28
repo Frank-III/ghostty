@@ -1,40 +1,6 @@
 use crate::osc_types::*;
 
-#[inline]
-fn find_byte(data: &[u8], b: u8) -> Option<usize> {
-    let mut i = 0;
-    while i < data.len() {
-        if unsafe { *data.get_unchecked(i) } == b {
-            return Some(i);
-        }
-        i += 1;
-    }
-    None
-}
-
-#[inline]
-fn subslice(data: &[u8], start: usize, end: usize) -> &[u8] {
-    if start > end || end > data.len() {
-        return &[];
-    }
-    unsafe { data.get_unchecked(start..end) }
-}
-
-#[inline]
-fn subslice_from(data: &[u8], start: usize) -> &[u8] {
-    if start >= data.len() {
-        return &[];
-    }
-    unsafe { data.get_unchecked(start..data.len()) }
-}
-
-#[inline]
-fn bytes_to_str(bytes: &[u8]) -> &str {
-    match core::str::from_utf8(bytes) {
-        Ok(s) => s,
-        Err(_) => "",
-    }
-}
+use crate::bytes_util::{bytes_to_str, find_byte, subslice, subslice_from};
 
 #[inline]
 fn bytes_eq(data: &[u8], start: usize, needle: &[u8]) -> bool {

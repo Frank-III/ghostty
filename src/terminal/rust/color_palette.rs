@@ -217,7 +217,7 @@ pub(crate) fn rgb_from_hex_component(value: &[u8]) -> Option<u8> {
 }
 
 pub(crate) fn rgb_from_intensity_component(value: &[u8]) -> Option<u8> {
-    let value = core::str::from_utf8(value).ok()?;
+    let value = crate::bytes_util::bytes_to_str_opt(value)?;
     let intensity = value.parse::<f64>().ok()?;
     if !(0.0..=1.0).contains(&intensity) {
         return None;
