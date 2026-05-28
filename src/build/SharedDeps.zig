@@ -5,6 +5,7 @@ const builtin = @import("builtin");
 
 const Config = @import("Config.zig");
 const HelpStrings = @import("HelpStrings.zig");
+const GhosttyRust = @import("GhosttyRust.zig");
 const MetallibStep = @import("MetallibStep.zig");
 const UnicodeTables = @import("UnicodeTables.zig");
 const GhosttyFrameData = @import("GhosttyFrameData.zig");
@@ -134,6 +135,14 @@ pub fn add(
 
     // Every exe needs the terminal options
     self.config.terminalOptions(.ghostty).add(b, step.root_module);
+
+    // Link the Rust terminal object when requested for app builds.
+    if (self.config.lib_vt_rust) {
+        var vt_opts = self.config.terminalOptions(.ghostty);
+        vt_opts.c_abi = true;
+        const rust_object = GhosttyRust.libVtObject(b, self.config, vt_opts, "ghostty_vt_rust");
+        step.addObjectFile(rust_object);
+    }
 
     // C imports for locale constants and functions
     {

@@ -34,4 +34,6 @@ vgcore.*
 *.rlib
 /slate.json
 /references/
+/target/
+/Cargo.lock
 

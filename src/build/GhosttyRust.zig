@@ -31,22 +31,43 @@ pub fn libVtObject(
     addBuildInfoEnv(run, b, cfg, options);
 
     switch (cfg.optimize) {
-        .Debug => run.addArgs(&.{ "-C", "opt-level=1", "-C", "debuginfo=2" }),
+        .Debug => {
+            if (!options.terminal_rust_owned) {
+                run.addArgs(&.{ "-C", "opt-level=1", "-C", "debuginfo=2" });
+            } else {
+                run.addArgs(&.{ "-C", "debuginfo=2" });
+            }
+        },
         .ReleaseSafe => run.addArgs(&.{ "-C", "opt-level=3", "-C", "debuginfo=1" }),
         .ReleaseFast => run.addArgs(&.{ "-C", "opt-level=3" }),
         .ReleaseSmall => run.addArgs(&.{ "-C", "opt-level=z" }),
     }
 
+    if (options.terminal_rust_owned) {
+        run.addArgs(&.{
+            "-C",
+            "overflow-checks=no",
+            "-C",
+            "opt-level=3",
+            "--cfg=ghostty_vt_terminal_owned",
+        });
+    }
+
     run.addArg("-o");
     const output = run.addOutputFileArg(objectName(target));
     run.addFileArg(b.path("src/terminal/rust/lib.rs"));
-    for (lib_vt_modules) |module| {
+    for (libVtModuleList(options)) |module| {
         run.addFileInput(b.path(module));
     }
     return output;
 }
 
-const lib_vt_modules = [_][]const u8{
+fn libVtModuleList(options: TerminalBuildOptions) []const []const u8 {
+    if (options.terminal_rust_owned) return &lib_vt_modules_owned;
+    return &lib_vt_modules_base;
+}
+
+const lib_vt_modules_base = [_][]const u8{
     "src/terminal/rust/allocator.rs",
     "src/terminal/rust/ansi.rs",
     "src/terminal/rust/build_info.rs",
@@ -290,6 +311,14 @@ const lib_vt_modules = [_][]const u8{
     "src/terminal/rust/terminal_methods.rs",
     "src/terminal/rust/utf8_decoder.rs",
     "src/terminal/rust/vt_parser.rs",
+};
+
+const lib_vt_modules_owned = lib_vt_modules_base ++ [_][]const u8{
+    "src/terminal/rust/page_list_bootstrap.rs",
+    "src/terminal/rust/panic_stubs.rs",
+    "src/terminal/rust/screen_set_methods.rs",
+    "src/terminal/rust/terminal_byte_list.rs",
+    "src/terminal/rust/terminal_owned.rs",
 };
 
 fn addBuildInfoEnv(

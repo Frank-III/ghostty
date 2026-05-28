@@ -389,4 +389,103 @@ pub fn build(b: *std.Build) !void {
     } else {
         try translations_step.addError("cannot update translations when i18n is disabled", .{});
     }
+
+    // Generate the Rust grapheme precompute table for ghostty-foundation.
+    {
+        const gen_exe = b.addExecutable(.{
+            .name = "grapheme-table-gen",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/tools/grapheme_table_gen.zig"),
+                .target = b.graph.host,
+                .optimize = .ReleaseFast,
+            }),
+        });
+        deps.addUucode(
+            b,
+            gen_exe.root_module,
+            config.baselineTarget(),
+            .ReleaseFast,
+        );
+
+        const gen_step = b.step(
+            "gen-grapheme-table",
+            "Generate Rust grapheme precompute table for ghostty-foundation",
+        );
+        const run = b.addRunArtifact(gen_exe);
+        const stdout = run.captureStdOut();
+        const update = b.addUpdateSourceFiles();
+        update.addCopyFileToSource(
+            stdout,
+            "crates/ghostty-foundation/src/unicode/grapheme_table.rs",
+        );
+        gen_step.dependOn(&update.step);
+    }
+
+    // Generate the Rust unicode properties lookup table for ghostty-foundation.
+    {
+        const gen_exe = b.addExecutable(.{
+            .name = "props-table-rust-gen",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/tools/props_table_rust_gen.zig"),
+                .target = b.graph.host,
+                .optimize = .ReleaseFast,
+            }),
+        });
+        deps.addUucode(
+            b,
+            gen_exe.root_module,
+            config.baselineTarget(),
+            .ReleaseFast,
+        );
+        gen_exe.root_module.addAnonymousImport("lut", .{
+            .root_source_file = b.path("src/unicode/lut.zig"),
+        });
+
+        const gen_step = b.step(
+            "gen-props-table",
+            "Generate Rust unicode properties lookup table for ghostty-foundation",
+        );
+        const run = b.addRunArtifact(gen_exe);
+        const stdout = run.captureStdOut();
+        const update = b.addUpdateSourceFiles();
+        update.addCopyFileToSource(
+            stdout,
+            "crates/ghostty-foundation/src/unicode/props_table.rs",
+        );
+        gen_step.dependOn(&update.step);
+    }
+
+    // Generate the Rust unicode symbols lookup table for ghostty-foundation.
+    {
+        const gen_exe = b.addExecutable(.{
+            .name = "symbols-table-rust-gen",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/tools/symbols_table_rust_gen.zig"),
+                .target = b.graph.host,
+                .optimize = .ReleaseFast,
+            }),
+        });
+        deps.addUucode(
+            b,
+            gen_exe.root_module,
+            config.baselineTarget(),
+            .ReleaseFast,
+        );
+        gen_exe.root_module.addAnonymousImport("lut", .{
+            .root_source_file = b.path("src/unicode/lut.zig"),
+        });
+
+        const gen_step = b.step(
+            "gen-symbols-table",
+            "Generate Rust unicode symbols lookup table for ghostty-foundation",
+        );
+        const run = b.addRunArtifact(gen_exe);
+        const stdout = run.captureStdOut();
+        const update = b.addUpdateSourceFiles();
+        update.addCopyFileToSource(
+            stdout,
+            "crates/ghostty-foundation/src/unicode/symbols_table.rs",
+        );
+        gen_step.dependOn(&update.step);
+    }
 }

@@ -33,6 +33,7 @@ wayland: bool = false,
 sentry: bool = true,
 simd: bool = true,
 lib_vt_rust: bool = true,
+terminal_rust_owned: bool = false,
 rustc: []const u8 = "rustc",
 i18n: bool = true,
 wasm_shared: bool = true,
@@ -217,6 +218,11 @@ pub fn init(b: *std.Build, appVersion: []const u8, libVersion: []const u8) !Conf
         "rustc",
         "Rust compiler command for -Dlib-vt-rust builds.",
     ) orelse "rustc";
+    config.terminal_rust_owned = b.option(
+        bool,
+        "terminal-rust-owned",
+        "Use Rust-owned terminal state for libghostty-vt C ABI builds.",
+    ) orelse false;
 
     config.wayland = b.option(
         bool,
@@ -587,7 +593,11 @@ pub fn terminalOptions(self: *const Config, artifact: TerminalBuildOptions.Artif
     return .{
         .artifact = artifact,
         .simd = self.simd,
-        .lib_vt_rust = false,
+        .lib_vt_rust = self.lib_vt_rust,
+        .terminal_rust_owned = switch (artifact) {
+            .ghostty => false,
+            .lib => self.terminal_rust_owned,
+        },
         .oniguruma = true,
         .c_abi = false,
         .version = switch (artifact) {

@@ -30,6 +30,9 @@ pub const Options = struct {
     /// Whether selected libghostty-vt C ABI entrypoints are backed by Rust.
     lib_vt_rust: bool,
 
+    /// When true with lib_vt_rust, the C ABI terminal object is owned by Rust.
+    terminal_rust_owned: bool,
+
     /// True if we should enable the "slow" runtime safety checks. These
     /// are runtime safety checks that are slower than typical and should
     /// generally be disabled in production builds.
@@ -57,6 +60,7 @@ pub const Options = struct {
         opts.addOption(bool, "oniguruma", self.oniguruma);
         opts.addOption(bool, "simd", self.simd);
         opts.addOption(bool, "lib_vt_rust", self.lib_vt_rust);
+        opts.addOption(bool, "terminal_rust_owned", self.terminal_rust_owned);
         opts.addOption(bool, "slow_runtime_safety", self.slow_runtime_safety);
 
         // Kitty graphics is almost always true. This used to be conditional on
