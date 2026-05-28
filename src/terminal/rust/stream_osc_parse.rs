@@ -455,6 +455,11 @@ fn parse_osc9(payload: &[u8]) -> Command<'_> {
     }
 }
 
+#[inline]
+pub(crate) fn parse_osc_number(data: &[u8]) -> Option<u16> {
+    parse_u16(data)
+}
+
 pub fn parse(osc: &ParserOsc) -> Command<'_> {
     let len = (osc.data_len as usize).min(MAX_OSC_BUF);
     if len == 0 {
@@ -487,7 +492,7 @@ pub fn parse(osc: &ParserOsc) -> Command<'_> {
     };
 
     match osc_num {
-        0 | 2 => Command::ChangeWindowTitle(bytes_to_str(payload)),
+        0 | 2 => Command::Invalid,
         1 => Command::ChangeWindowIcon(bytes_to_str(payload)),
         4 | 5 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 104 | 105 | 110 | 111
         | 112 | 113 | 114 | 115 | 116 | 117 | 118 | 119 => {

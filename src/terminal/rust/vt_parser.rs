@@ -184,7 +184,7 @@ impl VtParser {
     fn osc_end(&mut self, c: u8) -> Option<ParserAction> {
         let osc = ParserOsc {
             data: self.osc_buf,
-            data_len: self.osc_len,
+            data_len: self.osc_len.min(MAX_OSC_BUF as u16),
             terminator: c,
         };
         Some(ParserAction {
@@ -379,7 +379,13 @@ impl VtParser {
             None
         } else {
             match self.state {
-                State::OscString => self.osc_end(c),
+                State::OscString => {
+                    if c == 0x07 || c == 0x1B || c == 0x9C {
+                        self.osc_end(c)
+                    } else {
+                        None
+                    }
+                }
                 State::DcsPassthrough => Some(ParserAction {
                     tag: ParserActionTag::DcsUnhook,
                     byte: 0,

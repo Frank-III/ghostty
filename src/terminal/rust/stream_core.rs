@@ -181,7 +181,77 @@ impl<H: StreamHandler> Stream<H> {
     }
 
     fn osc_dispatch(&mut self, osc: ParserOsc) {
+        let len = (osc.data_len as usize).min(MAX_OSC_BUF);
+        if len > 0 {
+            let data = &osc.data[..len];
+            if let Some(semi) = data.iter().position(|&b| b == b';') {
+                if let Some(num) = crate::stream_osc_parse::parse_osc_number(&data[..semi]) {
+                    if num == 0 || num == 2 {
+                        let payload = &data[semi + 1..];
+                        let title = if is_valid_osc_utf8(payload) {
+                            // SAFETY: validated above.
+                            unsafe { core::str::from_utf8_unchecked(payload) }
+                        } else {
+                            ""
+                        };
+                        self.handler.on_window_title(WindowTitle { title });
+                        return;
+                    }
+                }
+            }
+        }
+
         let cmd = crate::stream_osc_parse::parse(&osc);
         crate::stream_osc_dispatch::osc_dispatch(&mut self.handler, cmd);
     }
+}
+
+#[inline]
+fn is_valid_osc_utf8(bytes: &[u8]) -> bool {
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b <= 0x7F {
+            i += 1;
+            continue;
+        }
+        if (b & 0xE0) == 0xC0 {
+            if i + 1 >= bytes.len() {
+                return false;
+            }
+            let b1 = bytes[i + 1];
+            if (b1 & 0xC0) != 0x80 || b < 0xC2 {
+                return false;
+            }
+            i += 2;
+            continue;
+        }
+        if (b & 0xF0) == 0xE0 {
+            if i + 2 >= bytes.len() {
+                return false;
+            }
+            let b1 = bytes[i + 1];
+            let b2 = bytes[i + 2];
+            if (b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 {
+                return false;
+            }
+            i += 3;
+            continue;
+        }
+        if (b & 0xF8) == 0xF0 {
+            if i + 3 >= bytes.len() {
+                return false;
+            }
+            let b1 = bytes[i + 1];
+            let b2 = bytes[i + 2];
+            let b3 = bytes[i + 3];
+            if (b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80 || b > 0xF4 {
+                return false;
+            }
+            i += 4;
+            continue;
+        }
+        return false;
+    }
+    true
 }
