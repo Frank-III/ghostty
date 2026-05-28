@@ -2,7 +2,7 @@
 
 use crate::osc_types::*;
 use crate::stream_types::*;
-use crate::vt_parser::ParserOsc;
+use crate::vt_parser::{ParserOsc, MAX_OSC_BUF};
 
 #[inline]
 fn get_byte(data: &[u8], idx: usize) -> Option<u8> {
@@ -456,12 +456,12 @@ fn parse_osc9(payload: &[u8]) -> Command<'_> {
 }
 
 pub fn parse(osc: &ParserOsc) -> Command<'_> {
-    let len = osc.data_len as usize;
+    let len = (osc.data_len as usize).min(MAX_OSC_BUF);
     if len == 0 {
         return Command::Invalid;
     }
 
-    let data: &[u8] = unsafe { osc.data.get_unchecked(0..len) };
+    let data: &[u8] = &osc.data[..len];
 
     let semi = find_byte(data, b';');
     let num_end = match semi {

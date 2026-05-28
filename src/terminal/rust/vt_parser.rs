@@ -379,13 +379,7 @@ impl VtParser {
             None
         } else {
             match self.state {
-                State::OscString => {
-                    if c == 0x07 || (c == 0x1B) {
-                        self.osc_end(c)
-                    } else {
-                        None
-                    }
-                }
+                State::OscString => self.osc_end(c),
                 State::DcsPassthrough => Some(ParserAction {
                     tag: ParserActionTag::DcsUnhook,
                     byte: 0,
@@ -958,7 +952,7 @@ const TABLE: [[Transition; NUM_STATES]; 256] = {
         table[i * NUM_STATES + sos] = t(osc_string, ig);
         i += 1;
     }
-    table[0x07 * NUM_STATES + sos] = t(g, none);
+    // OSC payload bytes (matches Zig parse_table: range 0x20..0xFF osc_put).
     i = 0x20;
     while i <= 0xFF {
         table[i * NUM_STATES + sos] = t(osc_string, op);
@@ -967,6 +961,10 @@ const TABLE: [[Transition; NUM_STATES]; 256] = {
         }
         i += 1;
     }
+    // XTerm accepts BEL or ST for terminating OSC sequences.
+    table[0x07 * NUM_STATES + sos] = t(g, none);
+    // ST may begin with ESC (handled by the anywhere => escape transition).
+    table[0x1B * NUM_STATES + sos] = t(esc, none);
 
     // Build 2D array from flat
     let mut result = [[T; NUM_STATES]; 256];
