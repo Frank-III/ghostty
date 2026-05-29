@@ -1,0 +1,45 @@
+crates/ghostty-config/src/config.rs
+  s_6cee157524a3f1::t_de5716e1056528 8
+  s_b8a4734c171148::t_9b37e6fd95dc7c 89-100,113
+  s_6cee157524a3f1::t_6730d006191866 41-52
+  s_6cee157524a3f1::t_eed55f1106f64d 505-516
+  s_b8a4734c171148::t_45e5555472bf68 603,608
+  s_6cee157524a3f1::t_cc00753b35338e 308-360
+  s_6cee157524a3f1::t_3ba859f801622f 101-112
+  s_b8a4734c171148::t_0f524f87297f79 495-504,517-518
+  s_b8a4734c171148::t_575f5375922ea6 254-307,361-370
+  s_b8a4734c171148::t_7e1b619682b93a 29-40,53
+  s_b8a4734c171148::t_beb7ef58d74a43 409-411
+  s_b8a4734c171148::t_a29313c625fc6e 550-602,604-607,609-610
+  s_6cee157524a3f1::t_a6408f7d403037 623-647
+crates/ghostty-config/src/lib.rs
+  s_b8a4734c171148::t_a3a950b3e314f2 29
+crates/ghostty-config/src/types.rs
+  s_b8a4734c171148::t_e34ab48c70090b 25-42
+  s_b8a4734c171148::t_6239ff5100c7e6 160-199
+  s_6cee157524a3f1::t_45f23b519622ac 200-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e3371c97cfa961cc175a97ec3bfd542797373afd",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_b8a4734c171148": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_18f2534ccffeuzZLOaKTyHj0kp",
+        "model": "qwen3.7-max"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
