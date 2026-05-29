@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::error::{ConfigError, DiagnosticList, LoadError};
 use crate::file_load;
 use crate::parse::{strip_utf8_bom, LineIter};
-use crate::types::{RgbColor, WindowPadding};
+use crate::types::{BackgroundBlur, CursorStyle, GraphemeWidthMethod, LinkPreviews, MouseShiftCapture, RgbColor, WindowPadding};
 
 /// Subset of Ghostty config fields used across the stack (full schema deferred).
 #[derive(Debug, Clone, PartialEq)]
@@ -26,6 +26,31 @@ pub struct Config {
     pub mouse_hide_while_typing: bool,
     pub font_thicken: bool,
     pub font_thicken_strength: u8,
+    pub term: String,
+    pub enquiry_response: String,
+    pub cursor_style: CursorStyle,
+    pub cursor_opacity: f64,
+    pub cursor_click_to_move: bool,
+    pub mouse_shift_capture: MouseShiftCapture,
+    pub mouse_reporting: bool,
+    pub clipboard_paste_protection: bool,
+    pub command: Option<String>,
+    pub wait_after_command: bool,
+    pub selection_clear_on_typing: bool,
+    pub focus_follows_mouse: bool,
+    pub selection_clear_on_copy: bool,
+    pub background_opacity_cells: bool,
+    pub link_url: bool,
+    pub link_previews: LinkPreviews,
+    pub palette_generate: bool,
+    pub palette_harmonious: bool,
+    pub unfocused_split_opacity: f64,
+    pub background_image_opacity: f32,
+    pub cursor_style_blink: Option<bool>,
+    pub maximize: bool,
+    pub grapheme_width_method: GraphemeWidthMethod,
+    pub background_blur: BackgroundBlur,
+    pub env: Vec<(String, String)>,
     diagnostics: DiagnosticList,
 }
 
@@ -61,6 +86,31 @@ impl Config {
             mouse_hide_while_typing: false,
             font_thicken: false,
             font_thicken_strength: 255,
+            term: "xterm-ghostty".to_string(),
+            enquiry_response: String::new(),
+            cursor_style: CursorStyle::Block,
+            cursor_opacity: 1.0,
+            cursor_click_to_move: true,
+            mouse_shift_capture: MouseShiftCapture::False,
+            mouse_reporting: true,
+            clipboard_paste_protection: true,
+            command: None,
+            wait_after_command: false,
+            selection_clear_on_typing: true,
+            focus_follows_mouse: false,
+            selection_clear_on_copy: false,
+            background_opacity_cells: false,
+            link_url: true,
+            link_previews: LinkPreviews::True,
+            palette_generate: false,
+            palette_harmonious: false,
+            unfocused_split_opacity: 0.7,
+            background_image_opacity: 1.0,
+            cursor_style_blink: None,
+            maximize: false,
+            grapheme_width_method: GraphemeWidthMethod::Unicode,
+            background_blur: BackgroundBlur::False,
+            env: Vec::new(),
             diagnostics: DiagnosticList::new(),
         }
     }
@@ -201,6 +251,123 @@ impl Config {
                 self.font_thicken_strength =
                     v.parse().map_err(|_| ConfigError::InvalidValue)?;
             }
+            "term" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.term = v.to_string();
+            }
+            "enquiry-response" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.enquiry_response = v.to_string();
+            }
+            "cursor-style" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.cursor_style = CursorStyle::parse_cli(v)?;
+            }
+            "cursor-opacity" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.cursor_opacity = v.parse().map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "cursor-click-to-move" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.cursor_click_to_move =
+                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "mouse-shift-capture" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.mouse_shift_capture = MouseShiftCapture::parse_cli(v)?;
+            }
+            "mouse-reporting" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.mouse_reporting =
+                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "clipboard-paste-protection" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.clipboard_paste_protection =
+                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "command" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.command = if v.is_empty() { None } else { Some(v.to_string()) };
+            }
+            "wait-after-command" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.wait_after_command =
+                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "selection-clear-on-typing" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.selection_clear_on_typing =
+                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "focus-follows-mouse" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.focus_follows_mouse =
+                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "selection-clear-on-copy" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.selection_clear_on_copy =
+                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "background-opacity-cells" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.background_opacity_cells =
+                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "link-url" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.link_url = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "link-previews" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.link_previews = LinkPreviews::parse_cli(v)?;
+            }
+            "palette-generate" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.palette_generate = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "palette-harmonious" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.palette_harmonious =
+                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "unfocused-split-opacity" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                let parsed: f64 = v.parse().map_err(|_| ConfigError::InvalidValue)?;
+                self.unfocused_split_opacity = parsed.clamp(0.15, 1.0);
+            }
+            "background-image-opacity" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.background_image_opacity =
+                    v.parse().map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "cursor-style-blink" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.cursor_style_blink = Some(parse_bool(v).map_err(|_| ConfigError::InvalidValue)?);
+            }
+            "maximize" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.maximize = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "grapheme-width-method" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.grapheme_width_method = GraphemeWidthMethod::parse_cli(v)?;
+            }
+            "background-blur" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.background_blur = BackgroundBlur::parse_cli(v)?;
+            }
+            "env" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                if let Some(eq) = v.find('=') {
+                    let key = v[..eq].trim().to_string();
+                    let val = v[eq + 1..].trim().to_string();
+                    self.env.push((key, val));
+                } else {
+                    return Err(ConfigError::InvalidValue);
+                }
+            }
             _ => return Err(ConfigError::InvalidField),
         }
         Ok(())
@@ -239,9 +406,9 @@ fn default_foreground() -> RgbColor {
 }
 
 fn parse_bool(s: &str) -> Result<bool, ()> {
-    match s {
-        "true" => Ok(true),
-        "false" => Ok(false),
+    match s.to_ascii_lowercase().as_str() {
+        "true" | "1" | "yes" | "on" => Ok(true),
+        "false" | "0" | "no" | "off" => Ok(false),
         _ => Err(()),
     }
 }
@@ -325,6 +492,30 @@ mod tests {
         assert_eq!(cfg.foreground, default_foreground());
         assert_eq!(cfg.scrollback_limit, 10_000_000);
         assert_eq!(cfg.minimum_contrast, 1.0);
+        assert_eq!(cfg.term, "xterm-ghostty");
+        assert_eq!(cfg.cursor_style, CursorStyle::Block);
+        assert_eq!(cfg.cursor_opacity, 1.0);
+        assert!(cfg.cursor_click_to_move);
+        assert_eq!(cfg.mouse_shift_capture, MouseShiftCapture::False);
+        assert!(cfg.mouse_reporting);
+        assert!(cfg.clipboard_paste_protection);
+        assert!(cfg.selection_clear_on_typing);
+        assert!(!cfg.focus_follows_mouse);
+        assert!(!cfg.wait_after_command);
+        assert!(!cfg.selection_clear_on_copy);
+        assert!(!cfg.background_opacity_cells);
+        assert!(cfg.link_url);
+        assert_eq!(cfg.link_previews, LinkPreviews::True);
+        assert!(!cfg.palette_generate);
+        assert!(!cfg.palette_harmonious);
+        assert_eq!(cfg.unfocused_split_opacity, 0.7);
+        assert_eq!(cfg.background_image_opacity, 1.0);
+        assert_eq!(cfg.cursor_style_blink, None);
+        assert!(!cfg.maximize);
+        assert_eq!(cfg.grapheme_width_method, GraphemeWidthMethod::Unicode);
+        assert_eq!(cfg.background_blur, BackgroundBlur::False);
+        assert!(cfg.command.is_none());
+        assert!(cfg.env.is_empty());
         if cfg!(target_os = "macos") {
             assert_eq!(cfg.font_size, 13.0);
         } else {
@@ -356,6 +547,68 @@ mod tests {
     }
 
     #[test]
+    fn parse_new_fields() {
+        let mut cfg = Config::with_defaults();
+        cfg.load_from_str(
+            "term = xterm-256color\ncursor-style = bar\ncursor-opacity = 0.8\n\
+             cursor-click-to-move = false\nmouse-shift-capture = always\n\
+             mouse-reporting = false\nclipboard-paste-protection = false\n\
+             selection-clear-on-typing = false\nfocus-follows-mouse = true\n\
+             wait-after-command = true\ncommand = /bin/bash\n",
+            "/tmp/config",
+        );
+        assert!(cfg.diagnostics().is_empty(), "{:?}", cfg.diagnostics());
+        assert_eq!(cfg.term, "xterm-256color");
+        assert_eq!(cfg.cursor_style, CursorStyle::Bar);
+        assert_eq!(cfg.cursor_opacity, 0.8);
+        assert!(!cfg.cursor_click_to_move);
+        assert_eq!(cfg.mouse_shift_capture, MouseShiftCapture::Always);
+        assert!(!cfg.mouse_reporting);
+        assert!(!cfg.clipboard_paste_protection);
+        assert!(!cfg.selection_clear_on_typing);
+        assert!(cfg.focus_follows_mouse);
+        assert!(cfg.wait_after_command);
+        assert_eq!(cfg.command.as_deref(), Some("/bin/bash"));
+    }
+
+    #[test]
+    fn parse_env_entries() {
+        let mut cfg = Config::with_defaults();
+        cfg.load_from_str(
+            "env = EDITOR=nvim\nenv = TERM=xterm-256color\n",
+            "/tmp/config",
+        );
+        assert!(cfg.diagnostics().is_empty(), "{:?}", cfg.diagnostics());
+        assert_eq!(cfg.env.len(), 2);
+        assert_eq!(cfg.env[0], ("EDITOR".to_string(), "nvim".to_string()));
+        assert_eq!(cfg.env[1], ("TERM".to_string(), "xterm-256color".to_string()));
+    }
+
+    #[test]
+    fn bool_parsing_case_insensitive() {
+        let mut cfg = Config::with_defaults();
+        cfg.load_from_str(
+            "mouse-hide-while-typing = TRUE\nfont-thicken = False\n",
+            "/tmp/config",
+        );
+        assert!(cfg.diagnostics().is_empty());
+        assert!(cfg.mouse_hide_while_typing);
+        assert!(!cfg.font_thicken);
+    }
+
+    #[test]
+    fn named_colors_expanded() {
+        let mut cfg = Config::with_defaults();
+        cfg.load_from_str(
+            "background = navy\nforeground = orange\n",
+            "/tmp/config",
+        );
+        assert!(cfg.diagnostics().is_empty(), "{:?}", cfg.diagnostics());
+        assert_eq!(cfg.background, RgbColor { r: 0, g: 0, b: 0x80 });
+        assert_eq!(cfg.foreground, RgbColor { r: 0xff, g: 0xa5, b: 0 });
+    }
+
+    #[test]
     fn unknown_field_diagnostic() {
         let mut cfg = Config::with_defaults();
         cfg.load_from_str("not-a-real-key = 1\n", "/tmp/config.ghostty");
@@ -364,6 +617,32 @@ mod tests {
             cfg.diagnostics().items()[0].key.as_deref(),
             Some("not-a-real-key")
         );
+    }
+
+    #[test]
+    fn parse_extended_slice_table() {
+        let mut cfg = Config::with_defaults();
+        cfg.load_from_str(
+            "selection-clear-on-copy = true\nbackground-opacity-cells = true\nlink-url = false\n\
+             link-previews = osc8\npalette-generate = true\npalette-harmonious = true\n\
+             unfocused-split-opacity = 0.5\nbackground-image-opacity = 0.25\n\
+             cursor-style-blink = false\nmaximize = true\ngrapheme-width-method = legacy\n\
+             background-blur = true\n",
+            "/tmp/config",
+        );
+        assert!(cfg.diagnostics().is_empty(), "{:?}", cfg.diagnostics());
+        assert!(cfg.selection_clear_on_copy);
+        assert!(cfg.background_opacity_cells);
+        assert!(!cfg.link_url);
+        assert_eq!(cfg.link_previews, LinkPreviews::Osc8);
+        assert!(cfg.palette_generate);
+        assert!(cfg.palette_harmonious);
+        assert_eq!(cfg.unfocused_split_opacity, 0.5);
+        assert_eq!(cfg.background_image_opacity, 0.25);
+        assert_eq!(cfg.cursor_style_blink, Some(false));
+        assert!(cfg.maximize);
+        assert_eq!(cfg.grapheme_width_method, GraphemeWidthMethod::Legacy);
+        assert_eq!(cfg.background_blur, BackgroundBlur::True);
     }
 
     #[test]

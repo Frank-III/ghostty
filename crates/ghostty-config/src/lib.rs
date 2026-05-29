@@ -26,5 +26,5 @@ pub use file_load::{
 pub use file_load::{default_app_support_path, legacy_default_app_support_path};
 pub use parse::{strip_utf8_bom, ConfigLine, LineIter};
 pub use string_literal::parse as parse_string_literal;
-pub use types::{ConfigPath, ReadableIo, RgbColor, WindowPadding};
+pub use types::{ConfigPath, CursorStyle, MouseShiftCapture, ReadableIo, RgbColor, WindowPadding};
 pub use ghostty_foundation::{FoundationError, FoundationResult};
