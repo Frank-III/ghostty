@@ -8,7 +8,7 @@ use crate::file_load;
 use crate::parse::{strip_utf8_bom, LineIter};
 use crate::types::{
     BackgroundBlur, CursorStyle, GraphemeWidthMethod, LinkPreviews, MouseShiftCapture, RgbColor,
-    WindowPadding,
+    ShellIntegration, WindowPadding,
 };
 
 /// Subset of Ghostty config fields used across the stack (full schema deferred).
@@ -57,6 +57,9 @@ pub struct Config {
     pub env: Vec<(String, String)>,
     pub working_directory: Option<String>,
     pub initial_window: bool,
+    pub shell_integration: ShellIntegration,
+    /// Path to a theme file (palette/CSS). Full theme loader deferred.
+    pub theme: Option<String>,
     diagnostics: DiagnosticList,
 }
 
@@ -119,8 +122,15 @@ impl Config {
             env: Vec::new(),
             working_directory: None,
             initial_window: true,
+            shell_integration: ShellIntegration::default(),
+            theme: None,
             diagnostics: DiagnosticList::new(),
         }
+    }
+
+    /// Resolved theme file path if set (loading palette deferred).
+    pub fn theme_path(&self) -> Option<&Path> {
+        self.theme.as_deref().map(Path::new)
     }
 
     pub fn diagnostics(&self) -> &DiagnosticList {
@@ -399,6 +409,16 @@ impl Config {
             "initial-window" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
                 self.initial_window = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+            }
+            "shell-integration" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.shell_integration = ShellIntegration::parse_cli(v)?;
+            }
+            "theme" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                let mut parsed = String::new();
+                crate::string_literal::parse(&mut parsed, v)?;
+                self.theme = Some(parsed);
             }
             _ => return Err(ConfigError::InvalidField),
         }
@@ -748,5 +768,23 @@ mod tests {
         cfg.load_from_str("working-directory = /var/tmp\n", "/tmp/config");
         assert_eq!(cfg.working_directory.as_deref(), Some("/var/tmp"));
         assert!(cfg.diagnostics().is_empty());
+    }
+
+    #[test]
+    fn parse_shell_integration_and_theme_table() {
+        let mut cfg = Config::with_defaults();
+        cfg.load_from_str(
+            "shell-integration = zsh\ntheme = \"/tmp/my-theme\"\n",
+            "/tmp/config",
+        );
+        assert!(cfg.diagnostics().is_empty(), "{:?}", cfg.diagnostics());
+        assert_eq!(cfg.shell_integration, ShellIntegration::Zsh);
+        assert_eq!(cfg.theme.as_deref(), Some("/tmp/my-theme"));
+        let app: crate::derived_config::DerivedAppConfig = (&cfg).into();
+        assert_eq!(app.shell_integration, ShellIntegration::Zsh);
+        assert_eq!(
+            app.theme.as_deref().and_then(|p| p.to_str()),
+            Some("/tmp/my-theme")
+        );
     }
 }

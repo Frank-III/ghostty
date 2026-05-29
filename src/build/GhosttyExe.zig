@@ -2,6 +2,7 @@ const Ghostty = @This();
 
 const std = @import("std");
 const Config = @import("Config.zig");
+const GhosttyRust = @import("GhosttyRust.zig");
 const SharedDeps = @import("SharedDeps.zig");
 
 /// The primary Ghostty executable.
@@ -32,6 +33,13 @@ pub fn init(b: *std.Build, cfg: *const Config, deps: *const SharedDeps) !Ghostty
     // Add the shared dependencies. When building only lib-vt we skip
     // heavy deps so cross-compilation doesn't pull in GTK, etc.
     if (!cfg.emit_lib_vt) _ = try deps.add(exe);
+
+    // App-owned pilot: link Cargo `ghostty-ffi` staticlib (VT object satisfies its symbols).
+    if (cfg.terminal_rust_owned_app) {
+        const rust_core_build = GhosttyRust.coreStaticLibBuild(b, cfg);
+        exe.step.dependOn(rust_core_build);
+        exe.addObjectFile(GhosttyRust.coreStaticLibPath(b, cfg));
+    }
 
     // Check for possible issues
     try checkNixShell(exe, cfg);

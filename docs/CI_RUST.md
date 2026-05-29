@@ -33,16 +33,21 @@ RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-ffi --features
 RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-vt-tmux-tests
 ```
 
-## App-owned pilot (opt-in)
+## App-owned pilot
 
 ```bash
+export RUSTFLAGS='--cfg ghostty_vt_terminal_owned'
+cargo build -p ghostty-ffi --features rust-vt
+
 zig build -Demit-macos-app=false -Dterminal-rust-owned-app=true -Drustc=$RUSTC
 zig build test -Demit-macos-app=false -Dterminal-rust-owned-app=true -Drustc=$RUSTC --summary all
+zig build rust-core -Demit-macos-app=false -Dterminal-rust-owned-app=true
 ```
 
 App-owned mode sets `c_abi` on the Ghostty terminal module so pin/render/wrapper
 symbols export for the linked Rust VT object (same bridge as lib-vt, without a
-separate `libghostty-vt` artifact).
+separate `libghostty-vt` artifact). `-Dterminal-rust-owned-app=true` runs the
+`rust-core` step and links `target/<triple>/{debug,release}/libghostty_ffi.a`.
 
 ## Phase 7 Cargo-primary bootstrap
 
@@ -65,6 +70,7 @@ The `rust-core` step runs `cargo build -p ghostty-ffi --features rust-vt` with
 
 - [x] `coreStaticLibBuild` / `coreStaticLibPath` in `GhosttyRust.zig`
 - [x] `zig build -Drust-core-pilot=true` → `rust-core` step (Cargo `ghostty-ffi` staticlib)
+- [x] `-Dterminal-rust-owned-app=true` → auto `rust-core` + link `libghostty_ffi.a` in app exe
 - [ ] All `crates/*` tests green on Linux + macOS CI
 - [ ] `ghostty-vt` object built via Cargo artifact, not direct `rustc` invoke
 - [ ] Zig build reduced to packaging, codegen, and platform shells only

@@ -51,7 +51,7 @@ src/config/ErrorList.zig	crates/ghostty-config/src/error.rs	DiagnosticList / Con
 src/config/string.zig	crates/ghostty-config/src/string_literal.rs	config string literals	partial-rust-ported	cargo test -p ghostty-config	Common escapes and \\u{{}} only; full Zig escape set deferred.
 src/config/path.zig	crates/ghostty-config/src/path.rs + types.rs	expand_tilde / ConfigPath	partial-rust-ported	cargo test -p ghostty-config	tilde + relative resolve; config-file includes use expand_tilde; full expandPaths deferred.
 src/config/io.zig	crates/ghostty-config/src/types.rs	ReadableIo	partial-rust-ported	cargo test -p ghostty-config	raw:/path: tags and implicit raw; RepeatableReadableIO deferred.
-src/config/Config.zig	crates/ghostty-config/src/config.rs + derived_config.rs	Config subset + derived slices	partial-rust-ported	cargo test -p ghostty-config	Extended slice + DerivedCore/Termio/Font/Renderer configs; recursive config-file include; full schema/CLI deferred.
+src/config/Config.zig	crates/ghostty-config/src/config.rs + derived_config.rs	Config subset + derived slices	partial-rust-ported	cargo test -p ghostty-config	shell-integration + theme keys; DerivedAppConfig; full schema/theme loader deferred.
 src/config/file_load.zig	crates/ghostty-config/src/file_load.rs	default paths + recursive load	partial-rust-ported	cargo test -p ghostty-config	XDG/macOS paths; config-file cycle-safe recursive load; open/template/write deferred.
 src/cli/args.zig	crates/ghostty-config/src/cli.rs + parse.rs	CliArgs + LineIter	partial-rust-ported	cargo test -p ghostty-config	--config-file/--help/--version; load_config + default files; full CLI compatibility deferred.
 src/input/key_mods.zig	crates/ghostty-input/src/key_mods.rs	Mod / Mods / OptionAsAlt	partial-rust-ported	cargo test -p ghostty-input	Backing int layout, keys/binding/unset/without_locks; macOS translation test; RemapSet deferred.
@@ -60,13 +60,13 @@ src/font/backend.zig	crates/ghostty-font/src/backend.rs	Backend enum	partial-rus
 src/font/face.zig	crates/ghostty-font/src/face.rs	DesiredSize / Variation / GlyphSize	partial-rust-ported	cargo test -p ghostty-font	Options and RenderOptions subset; Constraint/render and platform Face FFI deferred.
 src/font/Metrics.zig	crates/ghostty-font/src/metrics.rs	Metrics / FaceMetrics / calc / Modifier	partial-rust-ported	cargo test -p ghostty-font	Zig-parity unit tests for calc, modifiers, and apply(cell/icon height).
 src/font/discovery.zig	crates/ghostty-font/src/descriptor.rs	Descriptor	partial-rust-ported	cargo test -p ghostty-font	Hash/clone; Fontconfig/CoreText pattern builders deferred.
-src/font/discovery.zig	crates/ghostty-font/src/discovery.rs	Discover trait / stubs	partial-rust-ported	cargo test -p ghostty-font	CoreText/Fontconfig/Windows list_matching return BackendNotImplemented until FFI.
+src/font/discovery.zig	crates/ghostty-font/src/discovery.rs	Discover / select_primary / platform paths	partial-rust-ported	cargo test -p ghostty-font	macOS/Linux fixture paths + family rank; CTFontCreateWithName/FcFontMatch FFI deferred.
 src/font/face/coretext.zig	crates/ghostty-font/src/face.rs (platform)	CoreText Face	stub	not-started	—	macos cfg stub only.
 src/font/face/freetype.zig	crates/ghostty-font/src/face/freetype.rs	FreeType Face	stub	not-started	—	Non-wasm cfg stub only.
 src/font/face/web_canvas.zig	crates/ghostty-font/src/face/web_canvas.rs	web_canvas Face	stub	not-started	—	wasm32 cfg stub only.
 src/font/main.zig	crates/ghostty-font/src/style.rs	Style / Presentation	partial-rust-ported	cargo test -p ghostty-font	Collection/sprite indices and library deferred.
 src/App.zig	crates/ghostty-core/src/app.rs	App lifecycle	partial-rust-ported	RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-core --features rust-vt	create/delete/focus surfaces; tick events; title/focus/child-exit; PTY tests in tests/app_session.rs.
-src/Surface.zig	crates/ghostty-core/src/surface.rs	Surface owns session	partial-rust-ported	RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-core --features rust-vt	Option<SurfaceSession> write/resize/tick/shutdown; renderer/input deferred.
+src/Surface.zig	crates/ghostty-core/src/surface.rs	Surface owns session	partial-rust-ported	RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-core --features rust-vt	Option<SurfaceSession> write/resize/tick/shutdown; snapshot_for_render/damage; GPU deferred.
 src/apprt/embedded.zig	crates/ghostty-core/src/runtime.rs	RuntimeConfig + events	partial-rust-ported	cargo test -p ghostty-core	RuntimeConfig userdata flags; C callbacks and full embedded App deferred.
 src/apprt/embedded.zig	crates/ghostty-ffi/src/lib.rs	App/surface FFI bootstrap	partial-rust-ported	RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-ffi --features rust-vt	app new/free/tick/create/delete/focus/poll_event + surface session C API (rust-vt).
 src/apprt/action.zig	crates/ghostty-core/src/events.rs	ActionTargetTag / ActionTag subset	partial-rust-ported	cargo test -p ghostty-core	Bootstrap tag enums only; full ghostty_action_s union deferred.
@@ -76,7 +76,7 @@ src/renderer/cell.zig	crates/ghostty-renderer/src/cell.rs	CellBg / CellText / co
 src/renderer/cursor.zig	crates/ghostty-renderer/src/cursor.rs	CursorStyle / resolve_style	rust-ported	cargo test -p ghostty-renderer	Uses RenderCursorState snapshot instead of terminal.RenderState pointer.
 src/renderer/State.zig	crates/ghostty-renderer/src/state.rs + damage.rs	Preedit / damage state	partial-rust-ported	cargo test -p ghostty-renderer	Preedit range + DamageState/rect tracking; terminal mutex and GPU backends deferred.
 src/terminal/color.zig	crates/ghostty-renderer/src/color.rs	Rgb / shader_rgba / Display P3	partial-rust-ported	cargo test -p ghostty-renderer	sRGB→Display P3 matrix from shaders.metal; full palette/OSC/LAB deferred in terminal crate.
-src/renderer/generic.zig	crates/ghostty-renderer/src/generic.rs	GraphicsApi / GenericRenderer trait skeleton	partial-rust-ported	cargo test -p ghostty-renderer	draw_frame/rebuild_cells return NotImplemented; GTK must_draw_from_app_thread documented.
+src/renderer/generic.zig	crates/ghostty-renderer/src/cells.rs + generic.rs	CellSnapshot / rebuild_cells / trait skeleton	partial-rust-ported	cargo test -p ghostty-renderer; ghostty-core surface_session test	SurfaceSession cell_snapshot + rebuild_cells on PTY drain; draw_frame still NotImplemented.
 src/renderer/Metal.zig	—	Metal backend	not-started	—	Deferred Phase 5 GPU work.
 src/renderer/OpenGL.zig	—	OpenGL backend	not-started	—	Deferred Phase 5 GPU work.
 src/renderer/WebGL.zig	—	WebGL backend	not-started	—	Deferred Phase 5 GPU work.

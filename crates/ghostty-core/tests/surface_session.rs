@@ -132,3 +132,29 @@ fn termio_set_title_emits_session_event() {
     }
     panic!("expected TitleChanged event from SetTitle");
 }
+
+#[test]
+fn cell_snapshot_captures_output() {
+    let mut session = SurfaceSession::spawn(
+        AppConfig::default(),
+        SurfaceSessionOptions {
+            command: Some(echo_cat_command()),
+            ..Default::default()
+        },
+    )
+    .expect("spawn");
+
+    session.write(b"Z\n").expect("write");
+    let deadline = Instant::now() + Duration::from_secs(3);
+    session
+        .run_until(deadline, |s| s.contains_text("Z"))
+        .expect("run");
+
+    let snap = session.cell_snapshot();
+    assert!(snap
+        .codepoints
+        .iter()
+        .flatten()
+        .any(|cp| *cp == b'Z' as u32));
+    assert!(session.damage().is_dirty());
+}

@@ -40,7 +40,12 @@ pub fn build(b: *std.Build) !void {
         lib_version,
     );
 
-    if (b.option(bool, "rust-core-pilot", "Build ghostty-ffi staticlib via Cargo (Phase 7 pilot)") orelse false) {
+    const want_rust_core = (b.option(
+        bool,
+        "rust-core-pilot",
+        "Build ghostty-ffi staticlib via Cargo (Phase 7 pilot)",
+    ) orelse false) or config.terminal_rust_owned_app;
+    if (want_rust_core) {
         const GhosttyRust = @import("src/build/GhosttyRust.zig");
         const rust_core_build = GhosttyRust.coreStaticLibBuild(b, &config);
         const rust_core_step = b.step("rust-core", "Build Rust core staticlib (libghostty_ffi.a)");

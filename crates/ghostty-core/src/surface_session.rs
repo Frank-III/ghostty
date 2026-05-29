@@ -20,6 +20,10 @@ use ghostty_config::DerivedFontConfig;
 #[cfg(feature = "rust-vt")]
 use ghostty_font::metrics::{calc, FaceMetrics};
 #[cfg(feature = "rust-vt")]
+use ghostty_font::{descriptor_from_font_family, select_primary, DiscoveryError};
+#[cfg(feature = "rust-vt")]
+use ghostty_renderer::cells::{rebuild_cells, CellSnapshot};
+#[cfg(feature = "rust-vt")]
 use ghostty_renderer::damage::{DamageRect, DamageState};
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::size::GridSize;
@@ -185,8 +189,49 @@ impl SurfaceSession {
                 rows: ws.rows,
             };
             self.damage.mark_rect(DamageRect::full_screen(size));
+            self.rebuild_render_cells();
         }
         Ok(drain.pty_bytes)
+    }
+
+    /// Read the visible VT grid into a renderer cell snapshot.
+    #[cfg(feature = "rust-vt")]
+    pub fn cell_snapshot(&self) -> CellSnapshot {
+        let ws = self.winsize();
+        let grid = GridSize {
+            columns: ws.cols,
+            rows: ws.rows,
+        };
+        let mut snap = CellSnapshot::empty(grid);
+        for y in 0..ws.rows {
+            for x in 0..ws.cols {
+                if let Some(cp) = self.cell_codepoint(x, y) {
+                    snap.set(x, y, cp);
+                }
+            }
+        }
+        snap
+    }
+
+    /// Snapshot plus damage merge for the renderer draw path.
+    #[cfg(feature = "rust-vt")]
+    pub fn snapshot_for_render(&self) -> CellSnapshot {
+        self.cell_snapshot()
+    }
+
+    /// Apply the current grid snapshot to renderer damage state.
+    #[cfg(feature = "rust-vt")]
+    pub fn rebuild_render_cells(&mut self) {
+        let snap = self.cell_snapshot();
+        rebuild_cells(&snap, &mut self.damage);
+    }
+
+    /// Resolve a primary font from config (discovery path or metadata-only fallback).
+    #[cfg(feature = "rust-vt")]
+    pub fn discover_font(&self) -> Result<ghostty_font::DiscoveredFont, DiscoveryError> {
+        let font = DerivedFontConfig::from(self.config.config());
+        let desc = descriptor_from_font_family(font.font_family.as_deref(), font.font_size);
+        select_primary(&desc)
     }
 
     /// Take pending surface events produced by the last termio drain(s).

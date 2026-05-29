@@ -20,7 +20,8 @@ pub mod types;
 pub use cli::CliArgs;
 pub use config::{Config, OptionalFileAction};
 pub use derived_config::{
-    DerivedCoreConfig, DerivedFontConfig, DerivedRendererConfig, DerivedTermioConfig,
+    DerivedAppConfig, DerivedCoreConfig, DerivedFontConfig, DerivedRendererConfig,
+    DerivedTermioConfig,
 };
 pub use error::{ConfigError, Diagnostic, DiagnosticList, LoadError, SourceLocation};
 #[cfg(target_os = "macos")]
@@ -32,4 +33,7 @@ pub use ghostty_foundation::{FoundationError, FoundationResult};
 pub use parse::{strip_utf8_bom, ConfigLine, LineIter};
 pub use path::{expand_path, expand_tilde, resolve_relative};
 pub use string_literal::parse as parse_string_literal;
-pub use types::{ConfigPath, CursorStyle, MouseShiftCapture, ReadableIo, RgbColor, WindowPadding};
+pub use types::{
+    ConfigPath, CursorStyle, MouseShiftCapture, ReadableIo, RgbColor, ShellIntegration,
+    WindowPadding,
+};

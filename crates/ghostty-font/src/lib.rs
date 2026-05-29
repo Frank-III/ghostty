@@ -19,7 +19,10 @@ pub mod style;
 
 pub use backend::Backend;
 pub use descriptor::Descriptor;
-pub use discovery::{discover_for_backend, Discover, DiscoveredFont, DiscoveryError};
+pub use discovery::{
+    descriptor_from_font_family, discover_for_backend, select_primary, Discover, DiscoveredFont,
+    DiscoveryError,
+};
 pub use face::{
     default_dpi, DesiredSize, GlyphSize, Options, RenderOptions, Variation, VariationId,
 };

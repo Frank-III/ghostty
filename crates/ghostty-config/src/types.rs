@@ -322,6 +322,30 @@ impl BackgroundBlur {
     }
 }
 
+/// Shell integration auto-injection (`Config.ShellIntegration` in Zig).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ShellIntegration {
+    #[default]
+    Detect,
+    None,
+    Bash,
+    Zsh,
+    Fish,
+}
+
+impl ShellIntegration {
+    pub fn parse_cli(input: &str) -> Result<Self, ConfigError> {
+        match input.trim().to_ascii_lowercase().as_str() {
+            "detect" => Ok(Self::Detect),
+            "none" => Ok(Self::None),
+            "bash" => Ok(Self::Bash),
+            "zsh" => Ok(Self::Zsh),
+            "fish" => Ok(Self::Fish),
+            _ => Err(ConfigError::InvalidValue),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -376,5 +400,21 @@ mod tests {
     fn config_path_optional() {
         let p = ConfigPath::parse(Some("?/tmp/x")).unwrap().unwrap();
         assert_eq!(p, ConfigPath::Optional("/tmp/x".into()));
+    }
+
+    #[test]
+    fn shell_integration_parse_cli() {
+        assert_eq!(
+            ShellIntegration::parse_cli("detect").unwrap(),
+            ShellIntegration::Detect
+        );
+        assert_eq!(
+            ShellIntegration::parse_cli("none").unwrap(),
+            ShellIntegration::None
+        );
+        assert_eq!(
+            ShellIntegration::parse_cli("zsh").unwrap(),
+            ShellIntegration::Zsh
+        );
     }
 }

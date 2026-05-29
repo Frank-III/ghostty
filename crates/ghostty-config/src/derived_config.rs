@@ -2,8 +2,15 @@
 //!
 //! Port target: `DerivedConfig` helpers in `src/config/Config.zig`.
 
-use crate::types::{CursorStyle, RgbColor};
+use crate::types::{CursorStyle, RgbColor, ShellIntegration};
 use crate::Config;
+
+/// App-level fields (shell integration, theme path).
+#[derive(Debug, Clone, PartialEq)]
+pub struct DerivedAppConfig {
+    pub shell_integration: ShellIntegration,
+    pub theme: Option<std::path::PathBuf>,
+}
 
 /// Surface/core session fields.
 #[derive(Debug, Clone, PartialEq)]
@@ -84,6 +91,16 @@ impl From<&Config> for DerivedFontConfig {
     }
 }
 
+impl From<&Config> for DerivedAppConfig {
+    fn from(cfg: &Config) -> Self {
+        let theme = cfg.theme.as_deref().map(crate::expand_path);
+        Self {
+            shell_integration: cfg.shell_integration,
+            theme,
+        }
+    }
+}
+
 impl From<&Config> for DerivedRendererConfig {
     fn from(cfg: &Config) -> Self {
         Self {
@@ -113,5 +130,7 @@ mod tests {
         assert_eq!(font.font_size, cfg.font_size);
         let renderer: DerivedRendererConfig = (&cfg).into();
         assert_eq!(renderer.background, cfg.background);
+        let app: DerivedAppConfig = (&cfg).into();
+        assert_eq!(app.shell_integration, cfg.shell_integration);
     }
 }

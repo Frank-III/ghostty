@@ -12,6 +12,8 @@ use ghostty_foundation::FoundationResult;
 
 #[cfg(all(unix, feature = "rust-vt"))]
 use crate::surface_session::SurfaceSession;
+#[cfg(all(unix, feature = "rust-vt"))]
+use ghostty_renderer::cells::CellSnapshot;
 
 /// A single terminal surface (widget) owned by an [`App`](crate::App).
 #[derive(Debug)]
@@ -146,6 +148,18 @@ impl Surface {
             .as_mut()
             .map(|s| s.drain_session_events())
             .unwrap_or_default()
+    }
+
+    /// Visible grid snapshot for renderer rebuild (empty when no session).
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn snapshot_for_render(&self) -> Option<CellSnapshot> {
+        self.session.as_ref().map(|s| s.snapshot_for_render())
+    }
+
+    /// Renderer damage state when a session is attached.
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn render_damage(&self) -> Option<&ghostty_renderer::damage::DamageState> {
+        self.session.as_ref().map(|s| s.damage())
     }
 }
 

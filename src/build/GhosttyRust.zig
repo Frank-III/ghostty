@@ -424,13 +424,15 @@ pub fn coreStaticLibBuild(
 
     const run = b.addSystemCommand(&.{
         "cargo",
-        "build",
+        "rustc",
         "-p",
         "ghostty-ffi",
         "--features",
         "rust-vt",
         "--target",
         triple,
+        "--crate-type",
+        "staticlib",
     });
     run.setCwd(b.path("."));
     run.setEnvironmentVariable("RUSTFLAGS", "--cfg ghostty_vt_terminal_owned");
