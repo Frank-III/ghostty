@@ -1,0 +1,51 @@
+crates/ghostty-core/src/app.rs
+  s_6cee157524a3f1::t_d777682948eb20 30-31
+  s_6cee157524a3f1::t_22bb09e23575db 28-29,32-35
+  s_6cee157524a3f1::t_ff4600ef2d2a7c 65-76
+crates/ghostty-core/src/surface_session.rs
+  s_6cee157524a3f1::t_4422725c57925d 252,255
+  s_6cee157524a3f1::t_b838aa5be0c7be 29-30
+  s_6cee157524a3f1::t_2a84d24604e4e9 133-134
+  s_6cee157524a3f1::t_18f5422539603f 100-101
+  s_6cee157524a3f1::t_f52a45f11cc7ef 25
+  s_6cee157524a3f1::t_a47ceed2dd63c5 205-224
+crates/ghostty-config/src/cli.rs
+  s_6cee157524a3f1::t_53013b4467f30e 41,48
+docs/PORTING_STATUS.tsv
+  s_6cee157524a3f1::t_800b8a83ec4891 54
+crates/ghostty-config/src/lib.rs
+  s_6cee157524a3f1::t_b9b6652a07b0e6 18
+  s_6cee157524a3f1::t_a06b89fc5dead3 37
+crates/ghostty-config/src/config.rs
+  s_6cee157524a3f1::t_d328d5dfd7265d 137,142-143,147-148,164-165
+  s_6cee157524a3f1::t_3f2924810126e8 144-146
+  s_6cee157524a3f1::t_bdf836e1d81bc4 813
+  s_6cee157524a3f1::t_b36fb8c3f99b22 141
+crates/ghostty-ffi/src/lib.rs
+  s_6cee157524a3f1::t_93c5e241e1a412 103-158
+  s_6cee157524a3f1::t_66100140ead81e 43
+crates/ghostty-config/src/file_load.rs
+  s_6cee157524a3f1::t_2e27daf181ec91 69-70
+crates/ghostty-config/src/theme.rs
+  s_6cee157524a3f1::t_7369e82b6cc656 1-10,15-77,82-108,112,114,116-119
+  s_6cee157524a3f1::t_d777682948eb20 11-14,78-81
+  s_6cee157524a3f1::t_becb8a8696e348 109-111,113,115
+crates/ghostty-core/src/surface.rs
+  s_6cee157524a3f1::t_82917960e0fe51 164-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e5f2a771595c5f51e731f17b7a59368398e265a",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
