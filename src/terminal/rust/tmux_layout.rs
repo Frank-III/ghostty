@@ -440,3 +440,509 @@ pub fn layout_walk_panes(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_layout_eq(layout: &Layout, width: usize, height: usize, x: usize, y: usize) {
+        assert_eq!(layout.width, width);
+        assert_eq!(layout.height, height);
+        assert_eq!(layout.x, x);
+        assert_eq!(layout.y, y);
+    }
+
+    // -- Checksum tests --
+
+    #[test]
+    fn checksum_empty_string() {
+        let cs = Checksum::calculate(b"");
+        assert_eq!(cs.value(), 0);
+        assert_eq!(&cs.as_string(), b"0000");
+    }
+
+    #[test]
+    fn checksum_single_character() {
+        let cs = Checksum::calculate(b"A");
+        assert_eq!(cs.value(), 65);
+        assert_eq!(&cs.as_string(), b"0041");
+    }
+
+    #[test]
+    fn checksum_two_characters() {
+        let cs = Checksum::calculate(b"AB");
+        assert_eq!(cs.value(), 32866);
+        assert_eq!(&cs.as_string(), b"8062");
+    }
+
+    #[test]
+    fn checksum_simple_layout() {
+        let cs = Checksum::calculate(b"80x24,0,0,42");
+        assert_eq!(&cs.as_string(), b"d962");
+    }
+
+    #[test]
+    fn checksum_horizontal_split_layout() {
+        let cs = Checksum::calculate(b"80x24,0,0{40x24,0,0,1,40x24,40,0,2}");
+        assert_eq!(&cs.as_string(), b"f8f9");
+    }
+
+    #[test]
+    fn checksum_as_string_zero_padding() {
+        let cs = Checksum(0x000f);
+        assert_eq!(&cs.as_string(), b"000f");
+    }
+
+    #[test]
+    fn checksum_as_string_all_digits() {
+        let cs = Checksum(0x1234);
+        assert_eq!(&cs.as_string(), b"1234");
+    }
+
+    #[test]
+    fn checksum_as_string_with_letters() {
+        let cs = Checksum(0xabcd);
+        assert_eq!(&cs.as_string(), b"abcd");
+    }
+
+    #[test]
+    fn checksum_as_string_max_value() {
+        let cs = Checksum(0xffff);
+        assert_eq!(&cs.as_string(), b"ffff");
+    }
+
+    #[test]
+    fn checksum_wraparound() {
+        let cs = Checksum::calculate(b"\xff\xff\xff\xff\xff\xff\xff\xff");
+        assert_eq!(&cs.as_string(), b"03fc");
+    }
+
+    #[test]
+    fn checksum_deterministic() {
+        let s = b"159x48,0,0{79x48,0,0,79x48,80,0}";
+        let cs1 = Checksum::calculate(s);
+        let cs2 = Checksum::calculate(s);
+        assert_eq!(cs1.value(), cs2.value());
+    }
+
+    #[test]
+    fn checksum_different_inputs_different_outputs() {
+        let cs1 = Checksum::calculate(b"80x24,0,0,1");
+        let cs2 = Checksum::calculate(b"80x24,0,0,2");
+        assert_ne!(cs1.value(), cs2.value());
+    }
+
+    #[test]
+    fn checksum_known_tmux_layout_bb62() {
+        let cs = Checksum::calculate(b"159x48,0,0{79x48,0,0,79x48,80,0}");
+        assert_eq!(&cs.as_string(), b"bb62");
+    }
+
+    // -- Layout parse tests (pure computation, no allocator needed for syntax error checks) --
+
+    #[test]
+    fn syntax_error_empty_string() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn syntax_error_missing_width() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"x24,0,0,1", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn syntax_error_missing_height() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"80x,0,0,1", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn syntax_error_missing_x() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"80x24,,0,1", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn syntax_error_missing_y() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"80x24,0,,1", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn syntax_error_missing_pane_id() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"80x24,0,0,", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn syntax_error_non_numeric_width() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"abcx24,0,0,1", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn syntax_error_non_numeric_pane_id() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"80x24,0,0,abc", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn syntax_error_trailing_data() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"80x24,0,0,1extra", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn syntax_error_no_x_separator() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"8024,0,0,1", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn syntax_error_no_content_delimiter() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse(ptr::null(), b"80x24,0,0", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn layout_parse_with_checksum_too_short() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse_with_checksum(ptr::null(), b"bb62", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+        let r2 = layout_parse_with_checksum(ptr::null(), b"", out.as_mut_ptr());
+        assert_eq!(r2, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn layout_parse_with_checksum_missing_comma() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse_with_checksum(ptr::null(), b"bb62x159x48,0,0", out.as_mut_ptr());
+        assert_eq!(r, LAYOUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn layout_parse_with_checksum_mismatch() {
+        let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+        let r = layout_parse_with_checksum(
+            ptr::null(),
+            b"0000,80x24,0,0{40x24,0,0,1,40x24,40,0,2}",
+            out.as_mut_ptr(),
+        );
+        assert_eq!(r, LAYOUT_CHECKSUM_MISMATCH);
+    }
+
+    #[test]
+    fn layout_is_pane_and_pane_id() {
+        let layout = Layout {
+            width: 80,
+            height: 24,
+            x: 0,
+            y: 0,
+            content: LayoutContent::Pane(42),
+        };
+        assert!(layout.is_pane());
+        assert_eq!(layout.pane_id(), Some(42));
+        let (children, len) = layout.children();
+        assert!(children.is_null());
+        assert_eq!(len, 0);
+    }
+
+    #[test]
+    fn layout_children_returns_ptr_and_len() {
+        let children_arr: [Layout; 2] = [
+            Layout { width: 40, height: 24, x: 0, y: 0, content: LayoutContent::Pane(1) },
+            Layout { width: 40, height: 24, x: 40, y: 0, content: LayoutContent::Pane(2) },
+        ];
+        let layout = Layout {
+            width: 80,
+            height: 24,
+            x: 0,
+            y: 0,
+            content: LayoutContent::Horizontal {
+                ptr: children_arr.as_ptr(),
+                len: 2,
+            },
+        };
+        assert!(!layout.is_pane());
+        assert_eq!(layout.pane_id(), None);
+        let (ptr, len) = layout.children();
+        assert!(!ptr.is_null());
+        assert_eq!(len, 2);
+    }
+
+    #[cfg(all(test, feature = "std"))]
+    mod alloc_tests {
+        use super::*;
+
+        unsafe extern "C" fn test_alloc(
+            _ctx: *mut core::ffi::c_void,
+            len: usize,
+            _align: u8,
+            _ra: usize,
+        ) -> *mut u8 {
+            if len == 0 {
+                return core::ptr::NonNull::<u8>::dangling().as_ptr();
+            }
+            let layout = std::alloc::Layout::from_size_align(len, 1).unwrap();
+            std::alloc::alloc(layout)
+        }
+
+        unsafe extern "C" fn test_resize(
+            _ctx: *mut core::ffi::c_void,
+            _ptr: *mut u8,
+            _old_len: usize,
+            _align: u8,
+            _new_len: usize,
+            _ra: usize,
+        ) -> bool {
+            false
+        }
+
+        unsafe extern "C" fn test_remap(
+            _ctx: *mut core::ffi::c_void,
+            ptr: *mut u8,
+            old_len: usize,
+            _align: u8,
+            new_len: usize,
+            _ra: usize,
+        ) -> *mut u8 {
+            if ptr.is_null() || old_len == 0 {
+                let layout = std::alloc::Layout::from_size_align(new_len, 1).unwrap();
+                return std::alloc::alloc(layout);
+            }
+            if new_len == 0 {
+                let layout = std::alloc::Layout::from_size_align(old_len, 1).unwrap();
+                std::alloc::dealloc(ptr, layout);
+                return core::ptr::NonNull::<u8>::dangling().as_ptr();
+            }
+            let layout = std::alloc::Layout::from_size_align(old_len, 1).unwrap();
+            std::alloc::realloc(ptr, layout, new_len)
+        }
+
+        unsafe extern "C" fn test_free(
+            _ctx: *mut core::ffi::c_void,
+            ptr: *mut u8,
+            len: usize,
+            _align: u8,
+            _ra: usize,
+        ) {
+            if !ptr.is_null() && len > 0 {
+                let layout = std::alloc::Layout::from_size_align(len, 1).unwrap();
+                std::alloc::dealloc(ptr, layout);
+            }
+        }
+
+        static TEST_VTABLE: GhosttyAllocatorVtable = GhosttyAllocatorVtable {
+            alloc: test_alloc,
+            resize: test_resize,
+            remap: test_remap,
+            free: test_free,
+        };
+
+        fn test_allocator() -> GhosttyAllocator {
+            GhosttyAllocator {
+                ctx: ptr::null_mut(),
+                vtable: &TEST_VTABLE,
+            }
+        }
+
+        #[test]
+        fn single_pane() {
+            let alloc = test_allocator();
+            let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+            let r = layout_parse(&alloc, b"80x24,0,0,42", out.as_mut_ptr());
+            assert_eq!(r, 0);
+            let layout = unsafe { out.assume_init() };
+            assert_layout_eq(&layout, 80, 24, 0, 0);
+            assert_eq!(layout.pane_id(), Some(42));
+        }
+
+        #[test]
+        fn horizontal_split() {
+            let alloc = test_allocator();
+            let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+            let r = layout_parse(
+                &alloc,
+                b"80x24,0,0{40x24,0,0,1,40x24,40,0,2}",
+                out.as_mut_ptr(),
+            );
+            assert_eq!(r, 0);
+            let mut layout = unsafe { out.assume_init() };
+            assert_layout_eq(&layout, 80, 24, 0, 0);
+            let (ptr, len) = layout.children();
+            assert_eq!(len, 2);
+            unsafe {
+                assert_eq!((*ptr.add(0)).pane_id(), Some(1));
+                assert_eq!((*ptr.add(1)).pane_id(), Some(2));
+            }
+            layout_deinit(&mut layout as *mut _, &alloc);
+        }
+
+        #[test]
+        fn vertical_split() {
+            let alloc = test_allocator();
+            let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+            let r = layout_parse(
+                &alloc,
+                b"80x24,0,0[80x12,0,0,1,80x12,0,12,2]",
+                out.as_mut_ptr(),
+            );
+            assert_eq!(r, 0);
+            let mut layout = unsafe { out.assume_init() };
+            assert_layout_eq(&layout, 80, 24, 0, 0);
+            let (ptr, len) = layout.children();
+            assert_eq!(len, 2);
+            unsafe {
+                assert_eq!((*ptr.add(0)).pane_id(), Some(1));
+                assert_eq!((*ptr.add(1)).pane_id(), Some(2));
+            }
+            layout_deinit(&mut layout as *mut _, &alloc);
+        }
+
+        #[test]
+        fn mixed_horizontal_and_vertical() {
+            let alloc = test_allocator();
+            let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+            let r = layout_parse(
+                &alloc,
+                b"80x24,0,0{40x24,0,0[40x12,0,0,1,40x12,0,12,2],40x24,40,0,3}",
+                out.as_mut_ptr(),
+            );
+            assert_eq!(r, 0);
+            let mut layout = unsafe { out.assume_init() };
+            assert_layout_eq(&layout, 80, 24, 0, 0);
+            let (hptr, hlen) = layout.children();
+            assert_eq!(hlen, 2);
+            unsafe {
+                let first = *hptr.add(0);
+                let (vptr, vlen) = first.children();
+                assert_eq!(vlen, 2);
+                assert_eq!((*vptr.add(0)).pane_id(), Some(1));
+                assert_eq!((*vptr.add(1)).pane_id(), Some(2));
+                assert_eq!((*hptr.add(1)).pane_id(), Some(3));
+            }
+            layout_deinit(&mut layout as *mut _, &alloc);
+        }
+
+        #[test]
+        fn deeply_nested_layout() {
+            let alloc = test_allocator();
+            let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+            let r = layout_parse(
+                &alloc,
+                b"80x24,0,0{40x24,0,0[40x12,0,0,1,40x12,0,12,2],40x24,40,0,3}",
+                out.as_mut_ptr(),
+            );
+            assert_eq!(r, 0);
+            let mut layout = unsafe { out.assume_init() };
+            let (hptr, hlen) = layout.children();
+            assert_eq!(hlen, 2);
+            unsafe {
+                let vert_child = *hptr.add(0);
+                let (vptr, vlen) = vert_child.children();
+                assert_eq!(vlen, 2);
+                assert_eq!((*vptr.add(0)).pane_id(), Some(1));
+                assert_eq!((*vptr.add(1)).pane_id(), Some(2));
+                assert_eq!((*hptr.add(1)).pane_id(), Some(3));
+            }
+            layout_deinit(&mut layout as *mut _, &alloc);
+        }
+
+        #[test]
+        fn syntax_error_unclosed_horizontal_bracket() {
+            let alloc = test_allocator();
+            let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+            let r = layout_parse(
+                &alloc,
+                b"80x24,0,0{40x24,0,0,1",
+                out.as_mut_ptr(),
+            );
+            assert_eq!(r, LAYOUT_PARSE_ERROR);
+        }
+
+        #[test]
+        fn syntax_error_unclosed_vertical_bracket() {
+            let alloc = test_allocator();
+            let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+            let r = layout_parse(
+                &alloc,
+                b"80x24,0,0[40x24,0,0,1",
+                out.as_mut_ptr(),
+            );
+            assert_eq!(r, LAYOUT_PARSE_ERROR);
+        }
+
+        #[test]
+        fn syntax_error_mismatched_brackets() {
+            let alloc = test_allocator();
+            let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+            let r = layout_parse(
+                &alloc,
+                b"80x24,0,0{40x24,0,0,1]",
+                out.as_mut_ptr(),
+            );
+            assert_eq!(r, LAYOUT_PARSE_ERROR);
+            let r2 = layout_parse(
+                &alloc,
+                b"80x24,0,0[40x24,0,0,1}",
+                out.as_mut_ptr(),
+            );
+            assert_eq!(r2, LAYOUT_PARSE_ERROR);
+        }
+
+        #[test]
+        fn parse_with_checksum_valid() {
+            let alloc = test_allocator();
+            let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+            let r = layout_parse_with_checksum(
+                &alloc,
+                b"f8f9,80x24,0,0{40x24,0,0,1,40x24,40,0,2}",
+                out.as_mut_ptr(),
+            );
+            assert_eq!(r, 0);
+            let mut layout = unsafe { out.assume_init() };
+            assert_layout_eq(&layout, 80, 24, 0, 0);
+            layout_deinit(&mut layout as *mut _, &alloc);
+        }
+
+        extern "C" fn walk_panes_cb(id: usize, ctx: *mut core::ffi::c_void) {
+            unsafe {
+                let ids = &mut *(ctx as *mut Vec<usize>);
+                ids.push(id);
+            }
+        }
+
+        #[test]
+        fn layout_walk_panes_collects_ids() {
+            let alloc = test_allocator();
+            let mut out = core::mem::MaybeUninit::<Layout>::uninit();
+            let r = layout_parse(
+                &alloc,
+                b"80x24,0,0{40x24,0,0,1,40x24,40,0,2}",
+                out.as_mut_ptr(),
+            );
+            assert_eq!(r, 0);
+            let mut layout = unsafe { out.assume_init() };
+            let mut ids: Vec<usize> = Vec::new();
+            let ids_ptr = &mut ids as *mut Vec<usize> as *mut core::ffi::c_void;
+            unsafe {
+                layout_walk_panes(&layout, ids_ptr, walk_panes_cb);
+            }
+            assert_eq!(ids, vec![1, 2]);
+            layout_deinit(&mut layout as *mut _, &alloc);
+        }
+    }
+}

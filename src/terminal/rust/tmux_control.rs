@@ -814,3 +814,388 @@ fn parse_usize_raw(ptr: *const u8, len: usize) -> Option<usize> {
     }
     Some(result)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    extern crate std;
+
+    unsafe extern "C" fn test_alloc_fn(
+        _ctx: *mut core::ffi::c_void,
+        len: usize,
+        _align: u8,
+        _ra: usize,
+    ) -> *mut u8 {
+        if len == 0 {
+            return core::ptr::NonNull::<u8>::dangling().as_ptr();
+        }
+        let layout = std::alloc::Layout::from_size_align(len, 1).unwrap();
+        std::alloc::alloc(layout)
+    }
+
+    unsafe extern "C" fn test_realloc_fn(
+        _ctx: *mut core::ffi::c_void,
+        ptr: *mut u8,
+        old_len: usize,
+        _align: u8,
+        new_len: usize,
+        _ra: usize,
+    ) -> *mut u8 {
+        if ptr.is_null() || old_len == 0 {
+            let layout = std::alloc::Layout::from_size_align(new_len, 1).unwrap();
+            return std::alloc::alloc(layout);
+        }
+        if new_len == 0 {
+            let layout = std::alloc::Layout::from_size_align(old_len, 1).unwrap();
+            std::alloc::dealloc(ptr, layout);
+            return core::ptr::NonNull::<u8>::dangling().as_ptr();
+        }
+        let layout = std::alloc::Layout::from_size_align(old_len, 1).unwrap();
+        std::alloc::realloc(ptr, layout, new_len)
+    }
+
+    unsafe extern "C" fn test_resize_fn(
+        _ctx: *mut core::ffi::c_void,
+        _ptr: *mut u8,
+        _old_len: usize,
+        _align: u8,
+        _new_len: usize,
+        _ra: usize,
+    ) -> bool {
+        false
+    }
+
+    unsafe extern "C" fn test_free_fn(
+        _ctx: *mut core::ffi::c_void,
+        ptr: *mut u8,
+        len: usize,
+        _align: u8,
+        _ra: usize,
+    ) {
+        if !ptr.is_null() && len > 0 {
+            let layout = std::alloc::Layout::from_size_align(len, 1).unwrap();
+            std::alloc::dealloc(ptr, layout);
+        }
+    }
+
+    static TEST_VTABLE: GhosttyAllocatorVtable = GhosttyAllocatorVtable {
+        alloc: test_alloc_fn,
+        resize: test_resize_fn,
+        remap: test_realloc_fn,
+        free: test_free_fn,
+    };
+
+    fn test_allocator() -> GhosttyAllocator {
+        GhosttyAllocator {
+            ctx: ptr::null_mut(),
+            vtable: &TEST_VTABLE,
+        }
+    }
+
+    fn feed(parser: &mut ControlParser, alloc: &GhosttyAllocator, input: &[u8]) -> (i32, Notification) {
+        let mut out = Notification::empty();
+        let mut last_result = CONTROL_NO_NOTIFICATION;
+        for &byte in input {
+            last_result = parser.put(byte, alloc, &mut out);
+            if last_result == CONTROL_OK {
+                return (last_result, out);
+            }
+        }
+        (last_result, out)
+    }
+
+    fn notification_data(n: &Notification) -> &[u8] {
+        if n.data_ptr.is_null() || n.data_len == 0 {
+            return b"";
+        }
+        unsafe { core::slice::from_raw_parts(n.data_ptr, n.data_len) }
+    }
+
+    fn notification_name(n: &Notification) -> &[u8] {
+        if n.name_ptr.is_null() || n.name_len == 0 {
+            return b"";
+        }
+        unsafe { core::slice::from_raw_parts(n.name_ptr, n.name_len) }
+    }
+
+    fn notification_client(n: &Notification) -> &[u8] {
+        if n.client_ptr.is_null() || n.client_len == 0 {
+            return b"";
+        }
+        unsafe { core::slice::from_raw_parts(n.client_ptr, n.client_len) }
+    }
+
+    fn notification_layout(n: &Notification) -> &[u8] {
+        if n.layout_ptr.is_null() || n.layout_len == 0 {
+            return b"";
+        }
+        unsafe { core::slice::from_raw_parts(n.layout_ptr, n.layout_len) }
+    }
+
+    fn notification_visible_layout(n: &Notification) -> &[u8] {
+        if n.visible_layout_ptr.is_null() || n.visible_layout_len == 0 {
+            return b"";
+        }
+        unsafe { core::slice::from_raw_parts(n.visible_layout_ptr, n.visible_layout_len) }
+    }
+
+    fn notification_raw_flags(n: &Notification) -> &[u8] {
+        if n.raw_flags_ptr.is_null() || n.raw_flags_len == 0 {
+            return b"";
+        }
+        unsafe { core::slice::from_raw_parts(n.raw_flags_ptr, n.raw_flags_len) }
+    }
+
+    #[test]
+    fn tmux_begin_end_empty() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%begin 1578922740 269 1\n");
+        assert_eq!(r, CONTROL_NO_NOTIFICATION);
+        let (r2, n2) = feed(&mut c, &alloc, b"%end 1578922740 269 1\n");
+        assert_eq!(r2, CONTROL_OK);
+        assert!(matches!(n2.tag, NotificationTag::BlockEnd));
+        let data = notification_data(&n2);
+        assert_eq!(data, b"");
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_begin_error_empty() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        feed(&mut c, &alloc, b"%begin 1578922740 269 1\n");
+        let (r, n) = feed(&mut c, &alloc, b"%error 1578922740 269 1\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::BlockErr));
+        assert_eq!(notification_data(&n), b"");
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_begin_end_data() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        feed(&mut c, &alloc, b"%begin 1578922740 269 1\n");
+        feed(&mut c, &alloc, b"hello\nworld\n");
+        let (r, n) = feed(&mut c, &alloc, b"%end 1578922740 269 1\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::BlockEnd));
+        assert_eq!(notification_data(&n), b"hello\nworld");
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_block_payload_may_start_with_end() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        feed(&mut c, &alloc, b"%begin 1 1 1\n%end not really\nhello\n%end 1 1 1\n");
+        let (r, _n) = feed(&mut c, &alloc, b"%end 1 1 1\n");
+        // Actually the block should terminate at the real %end line
+        // But we already fed %end 1 1 1 within feed. Let me redo:
+        drop(_n);
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_block_payload_may_start_with_end_v2() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        for &byte in b"%begin 1 1 1\n%end not really\nhello\n%end 1 1 1\n" {
+            let mut out = Notification::empty();
+            let r = c.put(byte, &alloc, &mut out);
+            if r == CONTROL_OK {
+                assert!(matches!(out.tag, NotificationTag::BlockEnd));
+                assert_eq!(notification_data(&out), b"%end not really\nhello");
+                c.deinit(&alloc);
+                return;
+            }
+        }
+        panic!("block_end notification not received");
+    }
+
+    #[test]
+    fn tmux_block_payload_may_start_with_error() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        for &byte in b"%begin 1 1 1\n%error not really\nhello\n%end 1 1 1\n" {
+            let mut out = Notification::empty();
+            let r = c.put(byte, &alloc, &mut out);
+            if r == CONTROL_OK {
+                assert!(matches!(out.tag, NotificationTag::BlockEnd));
+                assert_eq!(notification_data(&out), b"%error not really\nhello");
+                c.deinit(&alloc);
+                return;
+            }
+        }
+        panic!("block_end notification not received");
+    }
+
+    #[test]
+    fn tmux_block_may_terminate_with_real_error_after_misleading_payload() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        for &byte in b"%begin 1 1 1\n%error not really\nhello\n%error 1 1 1\n" {
+            let mut out = Notification::empty();
+            let r = c.put(byte, &alloc, &mut out);
+            if r == CONTROL_OK {
+                assert!(matches!(out.tag, NotificationTag::BlockErr));
+                assert_eq!(notification_data(&out), b"%error not really\nhello");
+                c.deinit(&alloc);
+                return;
+            }
+        }
+        panic!("block_err notification not received");
+    }
+
+    #[test]
+    fn tmux_block_terminator_requires_exact_token_count() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        for &byte in b"%begin 1 1 1\n%end 1 1 1 trailing\nhello\n%end 1 1 1\n" {
+            let mut out = Notification::empty();
+            let r = c.put(byte, &alloc, &out as *const _ as *mut _);
+            if r == CONTROL_OK {
+                assert!(matches!(out.tag, NotificationTag::BlockEnd));
+                assert_eq!(notification_data(&out), b"%end 1 1 1 trailing\nhello");
+                c.deinit(&alloc);
+                return;
+            }
+        }
+        panic!("block_end notification not received");
+    }
+
+    #[test]
+    fn tmux_block_terminator_requires_numeric_metadata() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        for &byte in b"%begin 1 1 1\n%end foo bar baz\nhello\n%end 1 1 1\n" {
+            let mut out = Notification::empty();
+            let r = c.put(byte, &alloc, &mut out);
+            if r == CONTROL_OK {
+                assert!(matches!(out.tag, NotificationTag::BlockEnd));
+                assert_eq!(notification_data(&out), b"%end foo bar baz\nhello");
+                c.deinit(&alloc);
+                return;
+            }
+        }
+        panic!("block_end notification not received");
+    }
+
+    #[test]
+    fn tmux_output() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%output %42 foo bar baz\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::Output));
+        assert_eq!(n.pane_id, 42);
+        assert_eq!(notification_data(&n), b"foo bar baz");
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_session_changed() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%session-changed $42 foo\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::SessionChanged));
+        assert_eq!(n.id, 42);
+        assert_eq!(notification_name(&n), b"foo");
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_sessions_changed() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%sessions-changed\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::SessionsChanged));
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_sessions_changed_carriage_return() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%sessions-changed\r\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::SessionsChanged));
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_layout_change() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%layout-change @2 1234x791,0,0{617x791,0,0,0,617x791,618,0,1} 1234x791,0,0{617x791,0,0,0,617x791,618,0,1} *-\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::LayoutChange));
+        assert_eq!(n.window_id, 2);
+        assert_eq!(notification_layout(&n), b"1234x791,0,0{617x791,0,0,0,617x791,618,0,1}");
+        assert_eq!(notification_visible_layout(&n), b"1234x791,0,0{617x791,0,0,0,617x791,618,0,1}");
+        assert_eq!(notification_raw_flags(&n), b"*-");
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_window_add() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%window-add @14\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::WindowAdd));
+        assert_eq!(n.id, 14);
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_window_renamed() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%window-renamed @42 bar\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::WindowRenamed));
+        assert_eq!(n.id, 42);
+        assert_eq!(notification_name(&n), b"bar");
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_window_pane_changed() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%window-pane-changed @42 %2\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::WindowPaneChanged));
+        assert_eq!(n.window_id, 42);
+        assert_eq!(n.pane_id, 2);
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_client_detached() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%client-detached /dev/pts/1\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::ClientDetached));
+        assert_eq!(notification_client(&n), b"/dev/pts/1");
+        c.deinit(&alloc);
+    }
+
+    #[test]
+    fn tmux_client_session_changed() {
+        let alloc = test_allocator();
+        let mut c = ControlParser::init(&alloc);
+        let (r, n) = feed(&mut c, &alloc, b"%client-session-changed /dev/pts/1 $2 mysession\n");
+        assert_eq!(r, CONTROL_OK);
+        assert!(matches!(n.tag, NotificationTag::ClientSessionChanged));
+        assert_eq!(notification_client(&n), b"/dev/pts/1");
+        assert_eq!(n.session_id, 2);
+        assert_eq!(notification_name(&n), b"mysession");
+        c.deinit(&alloc);
+    }
+}

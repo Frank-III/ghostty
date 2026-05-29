@@ -597,10 +597,8 @@ fn trim_whitespace(s: &[u8]) -> &[u8] {
 mod tests {
     use super::*;
 
-    #[test]
-    fn parse_pane_state_line_two_pane_fixture() {
-        let line = b"%0;42;0;1;;;;0;4294967295;4294967295;0;1;0;0;0;0;0;0;0;0;0;;;0;39;8,16,24,32,40,48,56,64,72,80,88,96,104,112,120,128,136,144,152,160";
-        let mut state = ParsedPaneState {
+    fn default_pane_state() -> ParsedPaneState {
+        ParsedPaneState {
             pane_id: 0,
             cursor_x: 0,
             cursor_y: 0,
@@ -630,7 +628,239 @@ mod tests {
             scroll_region_lower: 0,
             pane_tabs_ptr: core::ptr::null(),
             pane_tabs_len: 0,
-        };
+        }
+    }
+
+    // -- Variable name tests --
+
+    #[test]
+    fn variable_name_alternate_on() {
+        assert_eq!(variable_name(Variable::AlternateOn), b"alternate_on");
+    }
+
+    #[test]
+    fn variable_name_session_id() {
+        assert_eq!(variable_name(Variable::SessionId), b"session_id");
+    }
+
+    #[test]
+    fn variable_name_pane_id() {
+        assert_eq!(variable_name(Variable::PaneId), b"pane_id");
+    }
+
+    #[test]
+    fn variable_name_window_id() {
+        assert_eq!(variable_name(Variable::WindowId), b"window_id");
+    }
+
+    #[test]
+    fn variable_name_window_layout() {
+        assert_eq!(variable_name(Variable::WindowLayout), b"window_layout");
+    }
+
+    #[test]
+    fn variable_name_cursor_colour() {
+        assert_eq!(variable_name(Variable::CursorColour), b"cursor_colour");
+    }
+
+    #[test]
+    fn variable_name_wrap_flag() {
+        assert_eq!(variable_name(Variable::WrapFlag), b"wrap_flag");
+    }
+
+    // -- Variable type classification tests --
+
+    #[test]
+    fn variable_is_bool_classification() {
+        assert!(variable_is_bool(Variable::AlternateOn));
+        assert!(variable_is_bool(Variable::BracketedPaste));
+        assert!(variable_is_bool(Variable::CursorBlinking));
+        assert!(variable_is_bool(Variable::CursorFlag));
+        assert!(variable_is_bool(Variable::WrapFlag));
+        assert!(!variable_is_bool(Variable::PaneId));
+        assert!(!variable_is_bool(Variable::Version));
+    }
+
+    #[test]
+    fn variable_is_usize_classification() {
+        assert!(variable_is_usize(Variable::CursorX));
+        assert!(variable_is_usize(Variable::CursorY));
+        assert!(variable_is_usize(Variable::SessionId));
+        assert!(variable_is_usize(Variable::WindowId));
+        assert!(variable_is_usize(Variable::PaneId));
+        assert!(!variable_is_usize(Variable::AlternateOn));
+        assert!(!variable_is_usize(Variable::Version));
+    }
+
+    #[test]
+    fn variable_is_string_classification() {
+        assert!(variable_is_string(Variable::CursorColour));
+        assert!(variable_is_string(Variable::CursorShape));
+        assert!(variable_is_string(Variable::PaneTabs));
+        assert!(variable_is_string(Variable::Version));
+        assert!(variable_is_string(Variable::WindowLayout));
+        assert!(!variable_is_string(Variable::PaneId));
+        assert!(!variable_is_string(Variable::AlternateOn));
+    }
+
+    // -- parse_variable_bool tests --
+
+    #[test]
+    fn parse_variable_bool_one() {
+        assert!(parse_variable_bool(b"1"));
+    }
+
+    #[test]
+    fn parse_variable_bool_zero() {
+        assert!(!parse_variable_bool(b"0"));
+    }
+
+    #[test]
+    fn parse_variable_bool_empty() {
+        assert!(!parse_variable_bool(b""));
+    }
+
+    #[test]
+    fn parse_variable_bool_multiple_chars() {
+        assert!(!parse_variable_bool(b"11"));
+    }
+
+    // -- parse_variable_usize tests --
+
+    #[test]
+    fn parse_variable_usize_cursor_x() {
+        assert_eq!(parse_variable_usize(Variable::CursorX, b"42").unwrap(), 42);
+    }
+
+    #[test]
+    fn parse_variable_usize_cursor_y() {
+        assert_eq!(parse_variable_usize(Variable::CursorY, b"10").unwrap(), 10);
+    }
+
+    #[test]
+    fn parse_variable_usize_scroll_region() {
+        assert_eq!(parse_variable_usize(Variable::ScrollRegionUpper, b"0").unwrap(), 0);
+        assert_eq!(parse_variable_usize(Variable::ScrollRegionLower, b"39").unwrap(), 39);
+    }
+
+    #[test]
+    fn parse_variable_usize_session_id_with_dollar() {
+        assert_eq!(parse_variable_usize(Variable::SessionId, b"$42").unwrap(), 42);
+    }
+
+    #[test]
+    fn parse_variable_usize_session_id_missing_dollar() {
+        assert!(parse_variable_usize(Variable::SessionId, b"42").is_err());
+    }
+
+    #[test]
+    fn parse_variable_usize_window_id_with_at() {
+        assert_eq!(parse_variable_usize(Variable::WindowId, b"@14").unwrap(), 14);
+    }
+
+    #[test]
+    fn parse_variable_usize_window_id_missing_at() {
+        assert!(parse_variable_usize(Variable::WindowId, b"14").is_err());
+    }
+
+    #[test]
+    fn parse_variable_usize_pane_id_with_percent() {
+        assert_eq!(parse_variable_usize(Variable::PaneId, b"%2").unwrap(), 2);
+    }
+
+    #[test]
+    fn parse_variable_usize_pane_id_missing_percent() {
+        assert!(parse_variable_usize(Variable::PaneId, b"2").is_err());
+    }
+
+    #[test]
+    fn parse_variable_usize_invalid_type() {
+        assert!(parse_variable_usize(Variable::AlternateOn, b"42").is_err());
+    }
+
+    #[test]
+    fn parse_variable_usize_non_numeric() {
+        assert!(parse_variable_usize(Variable::CursorX, b"abc").is_err());
+    }
+
+    #[test]
+    fn parse_variable_usize_empty() {
+        assert!(parse_variable_usize(Variable::CursorX, b"").is_err());
+    }
+
+    // -- parse_variable_string tests --
+
+    #[test]
+    fn parse_variable_string_cursor_colour() {
+        let result = parse_variable_string(Variable::CursorColour, b"#ff0000").unwrap();
+        assert_eq!(result, b"#ff0000");
+    }
+
+    #[test]
+    fn parse_variable_string_version() {
+        let result = parse_variable_string(Variable::Version, b"3.4").unwrap();
+        assert_eq!(result, b"3.4");
+    }
+
+    #[test]
+    fn parse_variable_string_invalid_type() {
+        assert!(parse_variable_string(Variable::PaneId, b"42").is_err());
+    }
+
+    // -- format_variable_name tests --
+
+    #[test]
+    fn format_variable_name_produces_tmux_format() {
+        let mut buf = [0u8; 64];
+        let mut written: usize = 0;
+        let r = format_variable_name(
+            Variable::PaneId,
+            buf.as_mut_ptr(),
+            buf.len(),
+            &mut written,
+        );
+        assert_eq!(r, 0);
+        assert_eq!(&buf[..written], b"#{pane_id}");
+    }
+
+    #[test]
+    fn format_variable_name_buffer_too_small() {
+        let mut buf = [0u8; 4];
+        let mut written: usize = 0;
+        let r = format_variable_name(
+            Variable::WindowLayout,
+            buf.as_mut_ptr(),
+            buf.len(),
+            &mut written,
+        );
+        assert_eq!(r, OUTPUT_PARSE_ERROR);
+    }
+
+    // -- format_variables tests --
+
+    #[test]
+    fn format_variables_with_delimiter() {
+        let vars = [Variable::PaneId, Variable::CursorX, Variable::CursorY];
+        let mut buf = [0u8; 128];
+        let mut written: usize = 0;
+        let r = format_variables(
+            vars.as_ptr(),
+            3,
+            b';',
+            buf.as_mut_ptr(),
+            buf.len(),
+            &mut written,
+        );
+        assert_eq!(r, 0);
+        assert_eq!(&buf[..written], b"#{pane_id};#{cursor_x};#{cursor_y}");
+    }
+
+    // -- parse_pane_state_line tests --
+
+    #[test]
+    fn parse_pane_state_line_two_pane_fixture() {
+        let line = b"%0;42;0;1;;;;0;4294967295;4294967295;0;1;0;0;0;0;0;0;0;0;0;;;0;39;8,16,24,32,40,48,56,64,72,80,88,96,104,112,120,128,136,144,152,160";
+        let mut state = default_pane_state();
         assert_eq!(parse_pane_state_line(line, &mut state as *mut _), 0);
         assert_eq!(state.pane_id, 0);
         assert_eq!(state.cursor_x, 42);
@@ -643,6 +873,51 @@ mod tests {
     }
 
     #[test]
+    fn parse_pane_state_line_second_pane() {
+        let line = b"%1;0;1;0;block;#00ff00;1;1;4294967295;4294967295;1;0;1;1;1;1;1;1;1;1;1;1;1;0;39;8,16,24,32,40;3.4";
+        let mut state = default_pane_state();
+        assert_eq!(parse_pane_state_line(line, &mut state as *mut _), 0);
+        assert_eq!(state.pane_id, 1);
+        assert_eq!(state.cursor_x, 0);
+        assert_eq!(state.cursor_y, 1);
+        assert!(!state.cursor_flag);
+        assert!(state.alternate_on);
+        assert!(state.insert_flag);
+        assert!(state.keypad_flag);
+        assert!(state.keypad_cursor_flag);
+        assert!(state.origin_flag);
+        assert!(state.mouse_all_flag);
+        assert!(state.mouse_any_flag);
+        assert!(state.mouse_button_flag);
+        assert!(state.mouse_standard_flag);
+        assert!(state.mouse_utf8_flag);
+        assert!(state.mouse_sgr_flag);
+        assert!(state.focus_flag);
+        assert!(state.bracketed_paste);
+        assert_eq!(state.scroll_region_upper, 0);
+        assert_eq!(state.scroll_region_lower, 39);
+    }
+
+    #[test]
+    fn parse_window_info_line_two_pane_layout() {
+        let line = b"$0 @0 165 79 ca97,165x79,0,0[165x40,0,0,0,165x38,0,41,4]";
+        let mut info = ParsedWindowInfo {
+            session_id: 0,
+            window_id: 0,
+            window_width: 0,
+            window_height: 0,
+            window_layout_ptr: core::ptr::null(),
+            window_layout_len: 0,
+        };
+        assert_eq!(parse_window_info_line(line, &mut info as *mut _), 0);
+        assert_eq!(info.window_id, 0);
+        assert_eq!(info.window_width, 165);
+        assert_eq!(info.window_height, 79);
+        assert!(!info.window_layout_ptr.is_null());
+        assert!(info.window_layout_len > 0);
+    }
+
+    #[test]
     fn parse_pane_state_line_rejects_short_line() {
         let line = b"%0;42;0";
         let mut state = core::mem::MaybeUninit::<ParsedPaneState>::uninit();
@@ -650,5 +925,126 @@ mod tests {
             parse_pane_state_line(line, state.as_mut_ptr()),
             OUTPUT_MISSING_ENTRY
         );
+    }
+
+    #[test]
+    fn parse_pane_state_line_null_out() {
+        let line = b"%0;42;0;1;;;;0;4294967295;4294967295;0;1;0;0;0;0;0;0;0;0;0;;;0;39;8,16;3.4";
+        assert_eq!(parse_pane_state_line(line, core::ptr::null_mut()), OUTPUT_PARSE_ERROR);
+    }
+
+    #[test]
+    fn parse_pane_state_line_format_error() {
+        // 27 fields but pane_id is not valid format
+        let line = b"invalid;42;0;1;;;;0;0;0;0;1;0;0;0;0;0;0;0;0;0;0;0;0;39;8,16;3.4";
+        let mut state = default_pane_state();
+        assert_eq!(
+            parse_pane_state_line(line, &mut state as *mut _),
+            OUTPUT_FORMAT_ERROR
+        );
+    }
+
+    // -- parse_window_info_line tests --
+
+    #[test]
+    fn parse_window_info_line_basic() {
+        let line = b"$1 @2 80 24 1234x791,0,0{617x791,0,0,0,617x791,618,0,1}";
+        let mut info = core::mem::MaybeUninit::<ParsedWindowInfo>::uninit();
+        let r = parse_window_info_line(line, info.as_mut_ptr());
+        assert_eq!(r, 0);
+        let info = unsafe { info.assume_init() };
+        assert_eq!(info.session_id, 1);
+        assert_eq!(info.window_id, 2);
+        assert_eq!(info.window_width, 80);
+        assert_eq!(info.window_height, 24);
+        let layout = unsafe {
+            core::slice::from_raw_parts(info.window_layout_ptr, info.window_layout_len)
+        };
+        assert_eq!(layout, b"1234x791,0,0{617x791,0,0,0,617x791,618,0,1}");
+    }
+
+    #[test]
+    fn parse_window_info_line_rejects_short() {
+        let line = b"$1 @2 80";
+        let mut info = core::mem::MaybeUninit::<ParsedWindowInfo>::uninit();
+        assert_eq!(
+            parse_window_info_line(line, info.as_mut_ptr()),
+            OUTPUT_MISSING_ENTRY
+        );
+    }
+
+    #[test]
+    fn parse_window_info_line_null_out() {
+        let line = b"$1 @2 80 24 layout";
+        assert_eq!(
+            parse_window_info_line(line, core::ptr::null_mut()),
+            OUTPUT_PARSE_ERROR
+        );
+    }
+
+    // -- parse_version_line tests --
+
+    #[test]
+    fn parse_version_line_basic() {
+        let mut out_ptr: *const u8 = core::ptr::null();
+        let mut out_len: usize = 0;
+        let r = parse_version_line(b"3.4", &mut out_ptr, &mut out_len);
+        assert_eq!(r, 0);
+        let version = unsafe { core::slice::from_raw_parts(out_ptr, out_len) };
+        assert_eq!(version, b"3.4");
+    }
+
+    #[test]
+    fn parse_version_line_trims_whitespace() {
+        let mut out_ptr: *const u8 = core::ptr::null();
+        let mut out_len: usize = 0;
+        let r = parse_version_line(b"  next-3.4  \n", &mut out_ptr, &mut out_len);
+        assert_eq!(r, 0);
+        let version = unsafe { core::slice::from_raw_parts(out_ptr, out_len) };
+        assert_eq!(version, b"next-3.4");
+    }
+
+    #[test]
+    fn parse_version_line_empty_after_trim() {
+        let mut out_ptr: *const u8 = core::ptr::null();
+        let mut out_len: usize = 0;
+        let r = parse_version_line(b"   \n", &mut out_ptr, &mut out_len);
+        assert_eq!(r, OUTPUT_FORMAT_ERROR);
+    }
+
+    #[test]
+    fn parse_version_line_null_out() {
+        let mut out_len: usize = 0;
+        let r = parse_version_line(b"3.4", core::ptr::null_mut(), &mut out_len);
+        assert_eq!(r, OUTPUT_PARSE_ERROR);
+    }
+
+    // -- LIST_PANES_VARS tests --
+
+    #[test]
+    fn list_panes_vars_has_27_entries() {
+        assert_eq!(LIST_PANES_VARS.len(), 27);
+    }
+
+    #[test]
+    fn list_panes_vars_starts_with_pane_id() {
+        assert!(matches!(LIST_PANES_VARS[0], Variable::PaneId));
+    }
+
+    // -- LIST_WINDOWS_VARS tests --
+
+    #[test]
+    fn list_windows_vars_has_5_entries() {
+        assert_eq!(LIST_WINDOWS_VARS.len(), 5);
+    }
+
+    #[test]
+    fn list_windows_delim_is_space() {
+        assert_eq!(LIST_WINDOWS_DELIM, b' ');
+    }
+
+    #[test]
+    fn list_panes_delim_is_semicolon() {
+        assert_eq!(LIST_PANES_DELIM, b';');
     }
 }
