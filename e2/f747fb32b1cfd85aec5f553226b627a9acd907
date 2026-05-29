@@ -1,0 +1,48 @@
+crates/ghostty-core/src/lib.rs
+  s_6cee157524a3f1::t_7c9b3e546f2a54 12-13,16-17,25-26
+crates/ghostty-ffi/src/lib.rs
+  s_6cee157524a3f1::t_9d7460f6b59911 94,97-214
+  s_6cee157524a3f1::t_4b0d29cf3cfcc6 277,286,288,292,295-301
+  s_6cee157524a3f1::t_676d7f4b1333ef 234-276,278-285,287,289-291,293-294,302-304
+crates/ghostty-core/src/session_command.rs
+  s_6cee157524a3f1::t_ccd63a1078360e 1-47
+docs/PORTING_STATUS.tsv
+  s_6cee157524a3f1::t_7d91f8a2cd1bea 71
+  s_6cee157524a3f1::t_38ab0d7b6df028 68
+crates/ghostty-vt/Cargo.toml
+  s_6cee157524a3f1::t_710abc6a812932 19-20
+crates/ghostty-termio/src/lib.rs
+  s_6cee157524a3f1::t_0a54f3b2b50a26 33-34
+docs/CI_RUST.md
+  s_6cee157524a3f1::t_de03aac937aa41 27-30
+crates/ghostty-ffi/Cargo.toml
+  s_6cee157524a3f1::t_7ffc3b48427575 21-23
+  s_6cee157524a3f1::t_eaf045bdea0063 15-18
+crates/ghostty-termio/src/harness.rs
+  s_6cee157524a3f1::t_a0961fe52fbe29 109-113
+crates/ghostty-core/Cargo.toml
+  s_6cee157524a3f1::t_e5ee42e94ef2b6 9-13,16-20
+crates/ghostty-termio/src/vt_sink.rs
+  s_6cee157524a3f1::t_6affb0cd8c90f6 218,241
+  s_6cee157524a3f1::t_9832e64bada69b 87,90
+crates/ghostty-core/src/surface_session.rs
+  s_6cee157524a3f1::t_8677279dbcc475 90
+  s_6cee157524a3f1::t_ccd60ea10f2a13 1-4,6-89,91-294
+  s_6cee157524a3f1::t_5c831933b3b210 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e2f747fb32b1cfd85aec5f553226b627a9acd907",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
