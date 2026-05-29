@@ -30,6 +30,11 @@ pub enum AppEvent {
     Quit,
     CloseSurface { id: crate::SurfaceId },
     NewWindow,
+    /// Surface-scoped event surfaced on the app thread during tick.
+    Surface {
+        id: crate::SurfaceId,
+        event: SurfaceEvent,
+    },
 }
 
 /// Messages delivered to a single surface (`apprt/surface.zig` `Message`).

@@ -1,10 +1,17 @@
-//! Terminal surface skeleton (`Surface.zig`, `apprt/embedded.zig` `Surface`).
+//! Terminal surface (`Surface.zig`, `apprt/embedded.zig` `Surface`).
 //!
-//! No renderer, termio, or input loop — only identity and embedder-facing state.
+//! With feature `rust-vt`, each surface owns a headless [`SurfaceSession`] (config +
+//! termio + Rust VT). Renderer and input remain unported.
 
 use core::ffi::c_void;
 
 use crate::SurfaceId;
+
+#[cfg(all(unix, feature = "rust-vt"))]
+use ghostty_foundation::FoundationResult;
+
+#[cfg(all(unix, feature = "rust-vt"))]
+use crate::surface_session::SurfaceSession;
 
 /// A single terminal surface (widget) owned by an [`App`](crate::App).
 #[derive(Debug)]
@@ -13,6 +20,8 @@ pub struct Surface {
     title: Option<String>,
     userdata: *mut c_void,
     focused: bool,
+    #[cfg(all(unix, feature = "rust-vt"))]
+    session: Option<SurfaceSession>,
 }
 
 impl Surface {
@@ -22,6 +31,20 @@ impl Surface {
             title: None,
             userdata: core::ptr::null_mut(),
             focused: false,
+            #[cfg(all(unix, feature = "rust-vt"))]
+            session: None,
+        }
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub(crate) fn with_session(id: SurfaceId, session: SurfaceSession) -> Self {
+        debug_assert_eq!(session.id(), id);
+        Self {
+            id,
+            title: None,
+            userdata: core::ptr::null_mut(),
+            focused: false,
+            session: Some(session),
         }
     }
 
@@ -51,6 +74,60 @@ impl Surface {
 
     pub fn set_focused(&mut self, focused: bool) {
         self.focused = focused;
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn session(&self) -> Option<&SurfaceSession> {
+        self.session.as_ref()
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn session_mut(&mut self) -> Option<&mut SurfaceSession> {
+        self.session.as_mut()
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn has_session(&self) -> bool {
+        self.session.is_some()
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn write(&mut self, bytes: &[u8]) -> FoundationResult<()> {
+        match self.session.as_mut() {
+            Some(session) => session.write(bytes),
+            None => Err(ghostty_foundation::FoundationError::Unsupported),
+        }
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn resize(&mut self, cols: u16, rows: u16) -> FoundationResult<()> {
+        match self.session.as_mut() {
+            Some(session) => session.resize(cols, rows),
+            None => Err(ghostty_foundation::FoundationError::Unsupported),
+        }
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn contains_text(&self, needle: &str) -> bool {
+        self.session
+            .as_ref()
+            .map(|s| s.contains_text(needle))
+            .unwrap_or(false)
+    }
+
+    /// Pump termio + PTY for this surface; returns PTY bytes read.
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn tick(&mut self) -> FoundationResult<usize> {
+        match self.session.as_mut() {
+            Some(session) => session.tick(),
+            None => Ok(0),
+        }
+    }
+
+    /// Non-blocking child exit check (emits at most once per session).
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn poll_child_exit(&mut self) -> Option<u32> {
+        self.session.as_mut()?.poll_child_exit()
     }
 }
 

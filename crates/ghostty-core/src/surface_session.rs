@@ -73,6 +73,7 @@ pub struct SurfaceSession {
     config: AppConfig,
     harness: TermioHarness,
     terminal: RustOwnedTerminalSink,
+    child_exit_emitted: bool,
 }
 
 impl SurfaceSession {
@@ -95,6 +96,7 @@ impl SurfaceSession {
             config,
             harness,
             terminal,
+            child_exit_emitted: false,
         })
     }
 
@@ -181,8 +183,48 @@ impl SurfaceSession {
         self.terminal.cell_codepoint(x, y)
     }
 
+    pub fn poll_child_exit(&mut self) -> Option<u32> {
+        if self.child_exit_emitted {
+            return None;
+        }
+        let pid = self.harness.pid();
+        if pid <= 0 {
+            return None;
+        }
+        let mut status: i32 = 0;
+        let result = unsafe { libc::waitpid(pid, &mut status, libc::WNOHANG) };
+        if result == 0 {
+            return None;
+        }
+        if result < 0 {
+            return None;
+        }
+        self.child_exit_emitted = true;
+        use ghostty_termio::{process_exit_from_wait_status, ProcessExit};
+        Some(match process_exit_from_wait_status(status) {
+            ProcessExit::Exited(code) => u32::from(code),
+            ProcessExit::Signaled(sig) => sig,
+            ProcessExit::Stopped(sig) => sig,
+            ProcessExit::Unknown(raw) => raw,
+        })
+    }
+
+    pub fn is_shutdown(&self) -> bool {
+        self.harness.is_shutdown()
+    }
+
     pub fn contains_text(&self, needle: &str) -> bool {
         self.terminal.contains_text(needle)
+    }
+}
+
+impl std::fmt::Debug for SurfaceSession {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SurfaceSession")
+            .field("id", &self.id)
+            .field("pid", &self.pid())
+            .field("winsize", &self.winsize())
+            .finish_non_exhaustive()
     }
 }
 
