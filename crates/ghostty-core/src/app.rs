@@ -223,6 +223,12 @@ impl App {
         }
 
         self.tick_events = events.clone();
+        if !events.is_empty() {
+            if let Some(wakeup) = self.runtime.wakeup_cb {
+                // SAFETY: embedder-provided callback; userdata valid for app lifetime.
+                unsafe { wakeup(self.runtime.userdata) };
+            }
+        }
         events
     }
 

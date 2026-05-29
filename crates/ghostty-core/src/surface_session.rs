@@ -6,8 +6,8 @@ use std::time::Instant;
 
 use ghostty_foundation::{FoundationError, FoundationResult};
 use ghostty_termio::{
-    CommandBuildError, CommandSpec, RustOwnedTerminalSink, SpawnPtyError, TermioLoop,
-    TermioMessage, Winsize,
+    CommandBuildError, CommandSpec, RustOwnedTerminalSink, SpawnPtyError, SurfaceMessage,
+    TermioLoop, TermioMessage, Winsize,
 };
 
 use crate::app_config::AppConfig;
@@ -288,6 +288,21 @@ impl SurfaceSession {
         if self.pending_redraw {
             self.pending_redraw = false;
             events.push(SurfaceEvent::RedrawRequested);
+        }
+        for msg in self.termio.drain_surface_mailbox() {
+            match msg {
+                SurfaceMessage::SetTitle(title) => {
+                    events.push(SurfaceEvent::TitleChanged { title });
+                }
+                SurfaceMessage::RedrawRequested => {
+                    events.push(SurfaceEvent::RedrawRequested);
+                }
+                SurfaceMessage::Close => events.push(SurfaceEvent::Close),
+                SurfaceMessage::ChildExited { exit_code } => {
+                    events.push(SurfaceEvent::ChildExited { exit_code });
+                }
+                SurfaceMessage::ReportTitle => events.push(SurfaceEvent::SetTitle),
+            }
         }
         events
     }

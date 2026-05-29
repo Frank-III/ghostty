@@ -6,6 +6,7 @@ use ghostty_foundation::FoundationResult;
 use crate::command::CommandSpec;
 use crate::spawn::SpawnPtyError;
 use crate::stream_handler::StreamHandler;
+use crate::surface_mailbox::SurfaceMessage;
 use crate::termio::TermioMessage;
 use crate::thread::{TermioThreadEvent, TermioThreadHandle};
 use crate::winsize::Winsize;
@@ -92,7 +93,11 @@ impl TermioLoop {
                     drain.redraw_requested = true;
                     let _ = self.stream.on_redraw_requested();
                 }
-                TermioThreadEvent::ChildExit(_) => {}
+                TermioThreadEvent::ChildExit(exit_code) => {
+                    let _ = self
+                        .stream
+                        .send_surface(SurfaceMessage::ChildExited { exit_code });
+                }
             }
         }
         Ok(drain)
@@ -104,5 +109,14 @@ impl TermioLoop {
 
     pub fn shutdown(&mut self) -> FoundationResult<()> {
         self.push(TermioMessage::Shutdown)
+    }
+
+    /// Drain surface-thread messages queued by the stream handler.
+    pub fn drain_surface_mailbox(&mut self) -> Vec<SurfaceMessage> {
+        let mut out = Vec::new();
+        while let Some(msg) = self.stream.surface_mailbox().pop() {
+            out.push(msg);
+        }
+        out
     }
 }
