@@ -67,6 +67,12 @@ mod terminal;
 mod panic_stubs;
 #[cfg(ghostty_vt_terminal_owned)]
 mod page_list_bootstrap;
+#[cfg(all(feature = "std", ghostty_vt_terminal_owned))]
+mod page_list_pool_stub;
+#[cfg(all(feature = "std", ghostty_vt_terminal_owned))]
+mod cargo_link_stubs;
+#[cfg(feature = "std")]
+pub mod test_support;
 #[cfg(ghostty_vt_terminal_owned)]
 mod terminal_byte_list;
 #[cfg(ghostty_vt_terminal_owned)]
@@ -468,6 +474,15 @@ pub(crate) use formatter_screen::*;
 pub(crate) use formatter_page::*;
 pub(crate) use allocator::*;
 pub(crate) use build_info::*;
+
+#[cfg(feature = "std")]
+pub use point::{Coordinate, PointC, PointTag};
+#[cfg(feature = "std")]
+pub use selection::GhosttyGridRef;
+#[cfg(feature = "std")]
+pub use allocator::{GhosttyAllocator, GhosttyAllocatorVtable, test_support_allocator};
+#[cfg(feature = "std")]
+pub use test_support::{test_allocator, terminal_cell_codepoint};
 
 #[cfg(all(not(test), not(feature = "std")))]
 #[panic_handler]

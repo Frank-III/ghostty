@@ -12,6 +12,7 @@ pub mod mode;
 pub mod pty;
 pub mod shell;
 pub mod termio;
+pub mod vt_sink;
 pub mod winsize;
 
 #[cfg(unix)]
@@ -19,6 +20,7 @@ pub mod spawn;
 
 pub use command::{process_exit_from_wait_status, CommandBuildError, CommandBuilder, CommandSpec, ProcessExit};
 pub use harness::{TermioHarness, TermioSink};
+pub use vt_sink::{VtResizeFn, VtSink, VtWriteFn};
 pub use mode::PtyMode;
 pub use shell::{shell_escape, ShellCommandBuilder};
 pub use termio::{TermioMailbox, TermioMessage};

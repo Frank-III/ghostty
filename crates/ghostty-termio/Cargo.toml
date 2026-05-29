@@ -8,6 +8,11 @@ repository.workspace = true
 
 [dependencies]
 ghostty-foundation = { path = "../ghostty-foundation" }
+ghostty-vt = { path = "../ghostty-vt", features = ["std", "terminal-owned"], optional = true }
+
+[features]
+default = []
+rust-vt = ["dep:ghostty-vt"]
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
