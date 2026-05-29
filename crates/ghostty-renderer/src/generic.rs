@@ -49,12 +49,14 @@ pub trait GenericRenderer: Sized {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GraphicsError {
     NotImplemented(&'static str),
+    DrawLockPoisoned,
 }
 
 impl std::fmt::Display for GraphicsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             GraphicsError::NotImplemented(name) => write!(f, "renderer not implemented: {name}"),
+            GraphicsError::DrawLockPoisoned => write!(f, "renderer draw mutex poisoned"),
         }
     }
 }

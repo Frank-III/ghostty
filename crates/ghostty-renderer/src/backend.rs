@@ -21,6 +21,11 @@ impl Backend {
             Backend::OpenGl
         }
     }
+
+    /// Default backend for the compilation target.
+    pub fn default_for_host() -> Self {
+        Self::default_for_os(cfg!(target_os = "macos"), cfg!(target_arch = "wasm32"))
+    }
 }
 
 #[cfg(test)]

@@ -22,7 +22,7 @@ RUSTDOC=$HOME/.rustup/toolchains/1.95.0-aarch64-apple-darwin/bin/rustdoc \
   cargo test --workspace --exclude ghostty-vt
 
 # PTY bytes → Rust-owned terminal (requires ghostty-vt std pool stubs)
-cargo test -p ghostty-termio --features rust-vt
+RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-termio --features rust-vt
 
 # Headless SurfaceSession (config + termio + Rust VT)
 RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-core --features rust-vt
@@ -63,7 +63,9 @@ zig build -Drust-core-pilot=true -Demit-macos-app=false
 ```
 
 The `rust-core` step runs `cargo build -p ghostty-ffi --features rust-vt` with
-`RUSTFLAGS='--cfg ghostty_vt_terminal_owned'`. Artifact path: `coreStaticLibPath` in
+`RUSTFLAGS='--cfg ghostty_vt_terminal_owned'`. Cargo-only builds link `ghostty-vt`
+`cargo_link_stubs` (render-owned + wrapper symbols); no Zig VT object required for
+workspace `cargo build -p ghostty-ffi`. Artifact path: `coreStaticLibPath` in
 `GhosttyRust.zig` (`target/<triple>/{debug,release}/libghostty_ffi.a`).
 
 ## Phase 8 flip criteria (not yet)
@@ -71,6 +73,7 @@ The `rust-core` step runs `cargo build -p ghostty-ffi --features rust-vt` with
 - [x] `coreStaticLibBuild` / `coreStaticLibPath` in `GhosttyRust.zig`
 - [x] `zig build -Drust-core-pilot=true` → `rust-core` step (Cargo `ghostty-ffi` staticlib)
 - [x] `-Dterminal-rust-owned-app=true` → auto `rust-core` + link `libghostty_ffi.a` in app exe
+- [x] Cargo-only `ghostty-ffi` link via `cargo_link_stubs` (no Zig VT object for workspace builds)
 - [ ] All `crates/*` tests green on Linux + macOS CI
 - [ ] `ghostty-vt` object built via Cargo artifact, not direct `rustc` invoke
 - [ ] Zig build reduced to packaging, codegen, and platform shells only

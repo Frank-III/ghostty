@@ -39,9 +39,9 @@ pub fn resolve_theme_path(
 /// Directories searched for named themes, in priority order.
 pub fn theme_search_dirs(resources_dir: Option<&Path>) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
-    if let Some(user) = user_themes_dir() {
-        if user.is_dir() {
-            dirs.push(user);
+    for dir in user_theme_dirs() {
+        if dir.is_dir() {
+            dirs.push(dir);
         }
     }
     if let Some(resources) = resources_dir {
@@ -58,7 +58,26 @@ pub fn theme_search_dirs(resources_dir: Option<&Path>) -> Vec<PathBuf> {
     dirs
 }
 
-/// `$XDG_CONFIG_HOME/ghostty/themes` or `~/.config/ghostty/themes`.
+/// User theme directories (XDG config, then macOS Application Support).
+pub fn user_theme_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    dirs.push(file_load::xdg_config_dir().join("ghostty").join("themes"));
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(home) = std::env::var_os("HOME") {
+            dirs.push(
+                PathBuf::from(home)
+                    .join("Library")
+                    .join("Application Support")
+                    .join("com.mitchellh.ghostty")
+                    .join("themes"),
+            );
+        }
+    }
+    dirs
+}
+
+/// `$XDG_CONFIG_HOME/ghostty/themes` (legacy helper).
 pub fn user_themes_dir() -> Option<PathBuf> {
     Some(file_load::xdg_config_dir().join("ghostty").join("themes"))
 }

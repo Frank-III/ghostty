@@ -14,6 +14,7 @@ pub enum IntegratedShell {
     Bash,
     Zsh,
     Fish,
+    Nushell,
 }
 
 /// Context for applying shell integration to a spawn spec.
@@ -53,6 +54,9 @@ pub fn detect_shell(path: &OsStr, args: &[OsString]) -> Option<IntegratedShell> 
     }
     if exe == "fish" {
         return Some(IntegratedShell::Fish);
+    }
+    if exe == "nu" {
+        return Some(IntegratedShell::Nushell);
     }
     None
 }
@@ -119,17 +123,118 @@ fn apply_zsh(env: &mut BTreeMap<OsString, OsString>, resources_dir: &Path) -> bo
     true
 }
 
-fn apply_bash(env: &mut BTreeMap<OsString, OsString>, resources_dir: &Path) -> bool {
+fn setup_bash(spec: &mut CommandSpec, resources_dir: &Path) -> bool {
     let script = resources_dir.join("shell-integration/bash/ghostty.bash");
     if !script.is_file() {
-        env.insert(OsString::from("GHOSTTY_BASH_INJECT"), OsString::from("1"));
-        return resources_dir.join("shell-integration").is_dir();
+        return false;
     }
+
+    if spec.args.is_empty() {
+        return false;
+    }
+
+    let mut new_args = Vec::new();
+    new_args.push(spec.args[0].clone());
+    new_args.push(OsString::from("--posix"));
+
+    let mut inject = String::from("1");
+    let mut rcfile: Option<OsString> = None;
+    let mut i = 1usize;
+    while i < spec.args.len() {
+        let arg = spec.args[i].to_string_lossy();
+        if arg == "--posix" {
+            return false;
+        } else if arg == "--norc" {
+            inject.push_str(" --norc");
+        } else if arg == "--noprofile" {
+            inject.push_str(" --noprofile");
+        } else if arg == "--rcfile" || arg == "--init-file" {
+            i += 1;
+            if i < spec.args.len() {
+                rcfile = Some(spec.args[i].clone());
+            }
+        } else if arg == "-" || arg == "--" {
+            new_args.push(spec.args[i].clone());
+            i += 1;
+            while i < spec.args.len() {
+                new_args.push(spec.args[i].clone());
+                i += 1;
+            }
+            break;
+        } else if arg.starts_with('-') && arg.len() > 1 && !arg.starts_with("--") {
+            if arg.contains('c') {
+                return false;
+            }
+            new_args.push(spec.args[i].clone());
+        } else {
+            new_args.push(spec.args[i].clone());
+        }
+        i += 1;
+    }
+
+    spec.args = new_args;
+
+    let env = env_map(spec);
     if let Some(old) = env.get(OsStr::new("ENV")).cloned() {
         env.insert(OsString::from("GHOSTTY_BASH_ENV"), old);
     }
     env.insert(OsString::from("ENV"), script.as_os_str().to_os_string());
-    env.insert(OsString::from("GHOSTTY_BASH_INJECT"), OsString::from("1"));
+    env.insert(
+        OsString::from("GHOSTTY_BASH_INJECT"),
+        OsString::from(inject.as_str()),
+    );
+    if let Some(rc) = rcfile {
+        env.insert(OsString::from("GHOSTTY_BASH_RCFILE"), rc);
+    }
+
+    if env.get(OsStr::new("HISTFILE")).is_none() {
+        if let Some(home) = std::env::var_os("HOME") {
+            let hist = Path::new(&home).join(".bash_history");
+            env.insert(OsString::from("HISTFILE"), hist.as_os_str().to_os_string());
+            env.insert(
+                OsString::from("GHOSTTY_BASH_UNEXPORT_HISTFILE"),
+                OsString::from("1"),
+            );
+        }
+    }
+
+    true
+}
+
+fn setup_nushell(spec: &mut CommandSpec, resources_dir: &Path) -> bool {
+    if !setup_xdg_data_dirs(env_map(spec), resources_dir) {
+        return false;
+    }
+    if spec.args.is_empty() {
+        return false;
+    }
+
+    let mut new_args = vec![spec.args[0].clone()];
+    new_args.push(OsString::from("--execute 'use ghostty *'"));
+
+    let mut i = 1usize;
+    while i < spec.args.len() {
+        let arg = spec.args[i].to_string_lossy();
+        if arg == "--command" || arg == "--lsp" {
+            return false;
+        }
+        if arg.starts_with('-') && arg.len() > 1 && !arg.starts_with("--") && arg.contains('c') {
+            return false;
+        }
+        if arg == "-" || arg == "--" {
+            new_args.push(spec.args[i].clone());
+            i += 1;
+            while i < spec.args.len() {
+                new_args.push(spec.args[i].clone());
+                i += 1;
+            }
+            break;
+        }
+        new_args.push(spec.args[i].clone());
+        i += 1;
+    }
+
+    spec.args = new_args;
     true
 }
 
@@ -142,16 +247,20 @@ pub fn apply_shell_integration(spec: &mut CommandSpec, ctx: &ShellIntegrationCon
         return;
     };
 
-    let env = env_map(spec);
     match shell {
         IntegratedShell::Zsh => {
-            let _ = apply_zsh(env, &resources_dir);
+            let _ = apply_zsh(env_map(spec), &resources_dir);
         }
         IntegratedShell::Bash => {
-            let _ = apply_bash(env, &resources_dir);
+            if !setup_bash(spec, &resources_dir) {
+                let _ = setup_xdg_data_dirs(env_map(spec), &resources_dir);
+            }
         }
         IntegratedShell::Fish => {
-            let _ = setup_xdg_data_dirs(env, &resources_dir);
+            let _ = setup_xdg_data_dirs(env_map(spec), &resources_dir);
+        }
+        IntegratedShell::Nushell => {
+            let _ = setup_nushell(spec, &resources_dir);
         }
     }
 }
@@ -166,6 +275,7 @@ fn effective_resources(ctx: &ShellIntegrationContext<'_>) -> Option<std::path::P
 mod tests {
     use super::*;
     use std::ffi::{OsStr, OsString};
+    use std::path::PathBuf;
 
     fn spec(path: &str, args: &[&str]) -> CommandSpec {
         CommandSpec {
@@ -174,6 +284,13 @@ mod tests {
             env: Some(BTreeMap::new()),
             cwd: None,
         }
+    }
+
+    fn write_bash_script(tmp: &Path) -> PathBuf {
+        let script = tmp.join("shell-integration/bash/ghostty.bash");
+        std::fs::create_dir_all(script.parent().unwrap()).unwrap();
+        std::fs::write(&script, "# bash integration\n").unwrap();
+        script
     }
 
     #[test]
@@ -198,6 +315,29 @@ mod tests {
             &ShellIntegrationContext::new(ShellIntegration::Zsh, Some(&tmp)),
         );
         assert!(s.env.as_ref().unwrap().contains_key(OsStr::new("ZDOTDIR")));
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn bash_posix_and_env_script() {
+        let mut s = spec("/usr/bin/bash", &["bash", "--norc"]);
+        let tmp = std::env::temp_dir().join(format!("ghostty-bash-{}", std::process::id()));
+        write_bash_script(&tmp);
+        apply_shell_integration(
+            &mut s,
+            &ShellIntegrationContext::new(ShellIntegration::Detect, Some(&tmp)),
+        );
+        assert_eq!(s.args[1], OsString::from("--posix"));
+        let env = s.env.as_ref().unwrap();
+        assert_eq!(
+            env.get(OsStr::new("GHOSTTY_BASH_INJECT")).unwrap(),
+            "1 --norc"
+        );
+        assert!(env
+            .get(OsStr::new("ENV"))
+            .unwrap()
+            .to_string_lossy()
+            .ends_with("shell-integration/bash/ghostty.bash"));
         let _ = std::fs::remove_dir_all(&tmp);
     }
 

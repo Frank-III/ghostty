@@ -29,6 +29,8 @@ use ghostty_renderer::damage::{DamageRect, DamageState};
 use ghostty_renderer::frame::{finish_draw_frame, prepare_draw_frame, FramePrep};
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::size::GridSize;
+#[cfg(feature = "rust-vt")]
+use ghostty_renderer::{CellSize, HostRenderer, Padding, ScreenSize, Size};
 
 const DEFAULT_COLS: u16 = 80;
 const DEFAULT_ROWS: u16 = 24;
@@ -99,6 +101,8 @@ pub struct SurfaceSession {
     damage: DamageState,
     #[cfg(feature = "rust-vt")]
     last_frame: Option<FramePrep>,
+    #[cfg(feature = "rust-vt")]
+    host_renderer: Option<HostRenderer>,
     pending_title: Option<String>,
     pending_redraw: bool,
 }
@@ -122,6 +126,8 @@ impl SurfaceSession {
         let mut terminal = RustOwnedTerminalSink::new(winsize.cols, winsize.rows, scrollback)
             .ok_or(SurfaceSessionError::Terminal)?;
         termio.tick(&mut terminal)?;
+        let host_renderer =
+            HostRenderer::for_host(renderer_size(winsize, cell_width_px, cell_height_px)).ok();
         Ok(Self {
             id,
             config,
@@ -132,6 +138,8 @@ impl SurfaceSession {
             damage: DamageState::default(),
             #[cfg(feature = "rust-vt")]
             last_frame: None,
+            #[cfg(feature = "rust-vt")]
+            host_renderer,
             pending_title: None,
             pending_redraw: false,
         })
@@ -206,6 +214,13 @@ impl SurfaceSession {
     #[cfg(feature = "rust-vt")]
     pub fn prepare_draw(&mut self) -> FramePrep {
         let snap = self.cell_snapshot();
+        if let Some(renderer) = &mut self.host_renderer {
+            if let Ok(prep) = renderer.draw_snapshot(&snap, &mut self.damage) {
+                let prep = prep.clone();
+                self.last_frame = Some(prep.clone());
+                return prep;
+            }
+        }
         let prep = prepare_draw_frame(&snap, &mut self.damage);
         self.last_frame = Some(prep.clone());
         prep
@@ -318,6 +333,21 @@ impl SurfaceSession {
 
     pub fn contains_text(&self, needle: &str) -> bool {
         self.terminal.contains_text(needle)
+    }
+}
+
+#[cfg(feature = "rust-vt")]
+fn renderer_size(winsize: Winsize, cell_width_px: u32, cell_height_px: u32) -> Size {
+    Size {
+        screen: ScreenSize {
+            width: u32::from(winsize.cols).saturating_mul(cell_width_px),
+            height: u32::from(winsize.rows).saturating_mul(cell_height_px),
+        },
+        cell: CellSize {
+            width: cell_width_px,
+            height: cell_height_px,
+        },
+        padding: Padding::default(),
     }
 }
 

@@ -8,8 +8,8 @@
 //! renderer thread. Any future Rust renderer integration must keep redraws on the
 //! UI thread for GTK.
 //!
-//! Deferred: Metal/OpenGL/WebGL backends, shader pipelines, `cell.Contents` GPU
-//! buffers, font atlas upload, and full `drawFrame` / `rebuildCells`.
+//! Deferred: shader pipelines, `cell.Contents` GPU buffers, font atlas upload, and full
+//! `drawFrame` / `rebuildCells` GPU passes.
 
 pub mod backend;
 pub mod cell;
@@ -17,10 +17,15 @@ pub mod cells;
 pub mod color;
 pub mod cursor;
 pub mod damage;
+pub mod draw_backend;
 pub mod frame;
 pub mod generic;
+pub mod host;
+pub mod metal;
+pub mod opengl;
 pub mod size;
 pub mod state;
+pub mod webgl;
 
 pub use backend::Backend;
 pub use cell::{
@@ -35,12 +40,17 @@ pub use cursor::{
     resolve_style, CursorStyle, CursorStyleOptions, RenderCursorState, TerminalCursorStyle,
 };
 pub use damage::{DamageRect, DamageState};
+pub use draw_backend::BackendRenderer;
 pub use frame::{finish_draw_frame, prepare_draw_frame, FramePrep};
 pub use generic::{
     GenericRenderer, GenericRendererStub, GraphicsApi, GraphicsError, StubGraphicsApi,
 };
+pub use host::HostRenderer;
+pub use metal::{MetalGraphicsApi, MetalRenderer};
+pub use opengl::{OpenGlGraphicsApi, OpenGlRenderer};
 pub use size::{
     CellCount, CellSize, Coordinate, CoordinateSpace, GridSize, Padding, PaddingBalance,
     ScreenSize, Size,
 };
 pub use state::{GridPoint, Preedit, PreeditCodepoint, PreeditRange, RendererMouse, RendererState};
+pub use webgl::{WebGlGraphicsApi, WebGlRenderer};
