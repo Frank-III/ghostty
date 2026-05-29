@@ -1,0 +1,386 @@
+src/terminal/rust/search.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 7-8,11-12,17,19
+src/terminal/rust/mouse_cell.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 20-23
+crates/ghostty-core/src/surface_session.rs
+  s_8be0e2aa42db2e::t_b6eb204be82698 154
+  s_8be0e2aa42db2e::t_1cb056fe7f9f30 9
+  s_8be0e2aa42db2e::t_8da87481593dcc 17-19,21-23,25,79,83,85-90,106-107,110,114,116-118,139-149,161-164,167,169-171,173,176-179,186-187,195,201-202,210,214,222-224,226,231,233,235
+  s_8be0e2aa42db2e::t_fc32dcc85f0b0b 234
+  s_8be0e2aa42db2e::t_cc1335d3fc78f8 20
+  s_8be0e2aa42db2e::t_df3575b60872a4 24
+  s_8be0e2aa42db2e::t_978f7d20781455 98-100,160
+  s_8be0e2aa42db2e::t_2f79a58e7559f5 172,174-175
+  s_8be0e2aa42db2e::t_860893e710a4b6 135
+  s_8be0e2aa42db2e::t_7fbba549b39a90 225,227-230,232
+  s_8be0e2aa42db2e::t_617ab65b9a0290 156
+src/terminal/rust/sgr_unknown.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 39-45
+src/terminal/rust/string_map.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2-3,23-25,28-34
+crates/ghostty-config/src/cli.rs
+  s_8be0e2aa42db2e::t_678b5e09b30c60 37-38,40-41,45
+  s_8be0e2aa42db2e::t_e7c410a90a9022 1-36,39,42-44,46-66
+src/terminal/rust/formatter_screen.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 7,18,167,172,304,307-308,511-516,525,603-607,630-634,711-714,734-737
+crates/ghostty-termio/src/termio.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 11-14,16-19,68-69
+  s_8be0e2aa42db2e::t_0de7cc212e3c77 15
+src/terminal/rust/search_active.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 5-6,13,27,61-65
+src/terminal/rust/mouse_shape.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2
+src/terminal/rust/screen_selection.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 7,137,181,192,216,237,245,279,431,491-493,495,508
+src/terminal/rust/ref_counted_set.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 719,884
+src/terminal/rust/key_setopt_bool.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 14
+crates/ghostty-font/src/discovery.rs
+  s_8be0e2aa42db2e::t_d6cb9a6798f825 71-105
+  s_8be0e2aa42db2e::t_1f4a4fb4461102 152,154
+  s_8be0e2aa42db2e::t_978f7d20781455 26-27,49-52,62-65
+  s_8be0e2aa42db2e::t_0bfdb97903c35c 118,120
+src/terminal/rust/sgr.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 1-2,4,8-9,11,19-23,93-97
+src/terminal/rust/size_report_write_2048.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 3
+.claude/skills/rust-best-practice/SKILL.md
+  ai_agent 1-12
+src/terminal/rust/constants.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 5-6,9-11
+.claude/skills/find-crate-source/SKILL.md
+  ai_agent 1-10
+crates/ghostty-renderer/src/lib.rs
+  s_8be0e2aa42db2e::t_76894f4e6da432 16
+  s_8be0e2aa42db2e::t_978f7d20781455 29-32,44
+crates/ghostty-foundation/src/comparison.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 64
+crates/ghostty-core/src/events.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 31-33
+crates/ghostty-foundation/src/split_tree.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 423-426,643-645,698
+src/terminal/rust/paste_bytes.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 47-52
+src/terminal/rust/stream_core.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,4,6-7,11,80-83,85-88,92-93,199-201
+src/terminal/rust/early.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 5-6,9-11
+src/terminal/rust/stream_csi_dispatch.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 3,5,8-9,11-14,138-141,149-152,227-230,241-244,255-258,270-273,312-319,353-361,383-386,447-449,506-509,556-559,596-598,605-611,618-621,651-657,716-727,748-761,815-817,819-823,853-855,860-863,868-872,882-884,886-890,913-917
+src/terminal/rust/paste_write.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 5
+src/terminal/rust/device_attributes.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2
+crates/ghostty-config/src/types.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 25-114
+crates/ghostty-termio/src/spawn.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 154,165-170
+crates/ghostty-termio/src/vt_sink.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 53,153
+src/terminal/rust/csi.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2
+crates/ghostty-config/src/error.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 92
+crates/ghostty-config/src/file_load.rs
+  s_8be0e2aa42db2e::t_983e996a17bd92 121-123,128
+  s_8be0e2aa42db2e::t_978f7d20781455 142
+  s_8be0e2aa42db2e::t_1a4f4843722aea 127
+src/terminal/rust/tmux_output.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 168,176,185,194,211-216,264-266,272,279-281,377-379,467-476,490-499,546-547,745-752,757-760,770-773,831,943-946,973-974
+src/terminal/rust/event_key.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 16-23,26-29,31-38
+src/terminal/rust/hash_map.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,14-20,134,148,151,169-171,271-275,341,389,430,471-474,533-535
+src/terminal/rust/input.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 1
+src/terminal/rust/formatter_page.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2-3,8-9,56-79,99-102,109-112,116-119,135-138,142-145,163-172,174-176,178-183,205-208,290-293,326-329,358,443-465,468,480-482,575-578,587-590,593-596,655-658,665-668,670-673,685-687,699-701,757-759,763-766,769-771,840-845,847-852,854-859,886-891,893-898,900-905
+src/terminal/rust/mouse_encoder_state.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 3,14
+crates/ghostty-renderer/src/state.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 28
+crates/ghostty-input/src/kitty_table.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 12-497
+src/terminal/rust/terminal_byte_list.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 51
+src/terminal/rust/test_support.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 10,24
+src/terminal/rust/osc_parser_kitty.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 5-6,286-289,318-319,411-414,529-536,695-696
+crates/ghostty-foundation/src/unicode/symbols_table.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 3-270,274-329,332
+crates/ghostty-foundation/src/unicode/props_table.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 21-565,569-1642,1646-1826
+crates/ghostty-input/src/lib.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 10-12
+crates/ghostty-termio/Cargo.toml
+  s_8be0e2aa42db2e::t_6c9041eb4f29e6 23-25
+  s_8be0e2aa42db2e::t_5b99c1d6a0d3e5 10
+crates/ghostty-foundation/src/os/string_encoding.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 111,131,214
+src/terminal/rust/color.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,6-7,10-12
+crates/ghostty-termio/src/exec_config.rs
+  s_8be0e2aa42db2e::t_cd36d4b0041445 1-67,70-73
+  s_8be0e2aa42db2e::t_978f7d20781455 68-69
+crates/ghostty-ffi/src/lib.rs
+  s_8be0e2aa42db2e::t_ff6d9a1e8a1ffd 291-306
+  s_8be0e2aa42db2e::t_5fa8c67f7cd3ee 396,411,424
+  s_8be0e2aa42db2e::t_14c3f674203906 6
+  s_8be0e2aa42db2e::t_978f7d20781455 161-164,175-178,190,275,439,491-492
+  s_8be0e2aa42db2e::t_e43406db78ca4e 54-63,66-67,71,73
+crates/ghostty-foundation/src/intrusive_list.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 49-52,69-72
+src/terminal/rust/osc_encoding.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 39
+src/terminal/rust/page_methods.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,5-6,8,10,828-832,911-912,916,923-925,958-959
+crates/ghostty-renderer/src/cells.rs
+  s_8be0e2aa42db2e::t_7f17243a432b2e 1-54
+crates/ghostty-core/src/app.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 168,275
+  s_8be0e2aa42db2e::t_4e6ba36bf686b8 405
+src/terminal/rust/charsets.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2
+src/terminal/rust/page_list_pool_stub.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 12,103-106,142
+src/terminal/rust/render_state.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 6
+src/terminal/rust/search_sliding_window.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 4,6,448-462,583,865,946-949,1023-1025,1059-1063
+src/terminal/rust/sgr_8color.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 7
+src/terminal/rust/style_copy.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 6
+src/terminal/rust/terminal_get_payload.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 1
+src/terminal/rust/vt_parser.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,232-235,505-508,511-514
+.claude/skills/.symposium.toml
+  ai_agent 1-4
+src/terminal/rust/bitmap_allocator.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 84,102,200
+src/terminal/rust/kitty_graphics.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,6,9-11
+crates/ghostty-termio/src/lib.rs
+  s_8be0e2aa42db2e::t_56b91e3a9a1337 49-50,52-55
+  s_8be0e2aa42db2e::t_9413c3316dde95 21-22,29-33
+  s_8be0e2aa42db2e::t_978f7d20781455 35-38,43
+crates/ghostty-core/src/session_command.rs
+  s_8be0e2aa42db2e::t_2cf7ce485d80b9 3-4,8
+  s_8be0e2aa42db2e::t_e3facd022794e3 19
+src/terminal/rust/key_option_as_alt.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 14
+src/terminal/rust/osc_parser_misc.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 221-224
+src/terminal/rust/reflow_cursor.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 3,239-242,244-251,253,255,257-264,266,268-271,275-279,288-296,327-328,360-361,513-514,616
+src/terminal/rust/sgr_color.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 24-26
+src/terminal/rust/sgr_attribute.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 234-236,263-265
+crates/ghostty-termio/src/stream.rs
+  s_8be0e2aa42db2e::t_208416d26f0eb6 1-108
+src/terminal/rust/tmux.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 16-20
+src/terminal/rust/tmux_viewer.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 1-3,11-12,152-154,177-179,218-220,226-230,237-239,255-257,271-273,277-279,319-321,325,332-334,346-348,392,401-403,406-408,418-419,461-463,467-469,519,524-526,531-533,548-552,559-561,565,576-578,590,619-622,768,775-777,826-827,863-865,940,1004-1005,1007,1030-1134,1141-1142,1169-1180,1212,1264,1282,1307-1308,1316,1439,1447-1449,1462-1464,1469-1471,1479-1481,1529-1531
+crates/ghostty-foundation/src/cache_table.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 24-25,32-35,63-64,79-80
+src/terminal/rust/allocator.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 1,3,7-8,11-13,53,80
+src/terminal/rust/stream_types.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,4,8,10
+src/terminal/rust/osc_parser_color.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 278-287,372-386,448-452,597-672
+crates/ghostty-input/src/key.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 961-1017
+crates/ghostty-renderer/src/size.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 300
+crates/ghostty-termio/tests/termio_loop.rs
+  s_8be0e2aa42db2e::t_0c5b963380200b 1-4,6-35,38-64,69-74
+  s_8be0e2aa42db2e::t_978f7d20781455 5,36-37,65-68
+src/terminal/rust/mode_def.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,25-28,70-356,373-376
+src/terminal/rust/size_types.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2
+crates/ghostty-config/src/lib.rs
+  s_8be0e2aa42db2e::t_1bafde16c6b575 10
+  s_8be0e2aa42db2e::t_b6e66e747ee015 20
+  s_8be0e2aa42db2e::t_978f7d20781455 16,25,28-31,33
+crates/ghostty-foundation/src/os/mod.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 10
+crates/ghostty-foundation/src/lib.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 31,35-38,44-45
+src/terminal/rust/tabstops.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2-3,10,103-105,111,115,129-130
+src/terminal/rust/terminal_set_scalar.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 15
+src/terminal/rust/search_pagelist.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 3,5-6,45-53
+src/terminal/rust/tmux_layout.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,46,50-52,150,160-162,166,255-257,262-264,271-273,284-286,294-296,301,316-318,326-328,334-336,342-344,348-350,356-358,380-383,385-388,421,450,684-697,898,906,914,916
+docs/PORTING_STATUS.tsv
+  s_8be0e2aa42db2e::t_e3c502402247a6 52
+  s_8be0e2aa42db2e::t_f3b5f4c46809d2 56
+  s_8be0e2aa42db2e::t_34f7cb0e1082a9 47-49
+crates/ghostty-termio/src/pty/unix.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 32-40,106-107,125-126
+src/terminal/rust/selection.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,6,10-12,73
+src/terminal/rust/selection_codepoints.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 7-8
+src/terminal/rust/mouse_pixels.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 3-6
+src/terminal/rust/screen_set.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 3,6-8
+src/terminal/rust/selection_methods.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 9,12,115-119,222,233,432
+crates/ghostty-termio/src/command.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 130,149-153
+build.zig
+  s_8be0e2aa42db2e::t_e2cb8d7f055544 42-48
+crates/ghostty-foundation/src/os/path.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 79-83
+crates/ghostty-input/src/kitty_sequence.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 66,171
+src/terminal/rust/event_key_codepoint.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 17
+src/terminal/rust/mouse_encode.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,12,19-20,23-25
+src/terminal/rust/device_status.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2
+src/terminal/rust/terminal_point.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 48
+crates/ghostty-vt-tmux-tests/tests/viewer.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 1,96-99,111,129-132,167,171,180-183
+crates/ghostty-renderer/src/color.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 118
+crates/ghostty-foundation/src/unicode/mod.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 6
+crates/ghostty-core/Cargo.toml
+  s_8be0e2aa42db2e::t_cb14f9649507f3 12-18,23-24
+src/terminal/rust/point.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,94
+crates/ghostty-config/src/path.rs
+  s_8be0e2aa42db2e::t_f32b6d29b5b511 1-65
+crates/ghostty-font/src/backend.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 65-70
+src/terminal/rust/hyperlink.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,4,95-100
+src/terminal/rust/ansi.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2
+src/terminal/rust/mouse_button.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 8
+crates/ghostty-core/src/app_config.rs
+  s_8be0e2aa42db2e::t_bfa2f99a8e919f 6
+  s_8be0e2aa42db2e::t_61c2e4905a9ad9 25-37
+src/terminal/rust/search_screen.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 4-5,10,247,346-350,359-366,368,392-396,405-412,414
+crates/ghostty-font/src/lib.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 23-25
+src/terminal/rust/highlight.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,4-5,155
+src/terminal/rust/kitty_graphics_unicode.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 9-33,102-113,228-232,313-316,318-319,323-327,329,331,335-340,342,344,349-352,354
+src/terminal/rust/page_list_types.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 9
+src/terminal/rust/size_report_write_14.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 3
+src/terminal/rust/stream_handler.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 4-5,8,10,46-48
+src/terminal/rust/stream_osc_parse.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 229-235,459-460
+crates/ghostty-termio/src/thread.rs
+  s_8be0e2aa42db2e::t_e0956854538357 11
+  s_8be0e2aa42db2e::t_72637a1e6b01bd 58
+  s_8be0e2aa42db2e::t_cde20dfb37f01d 1-10,12-29,31-57,62-75,77-82,87-145,147-150,157,159-172,174-287
+  s_8be0e2aa42db2e::t_44d3d55274b80c 158
+  s_8be0e2aa42db2e::t_978f7d20781455 59-61,151-156,173
+  s_8be0e2aa42db2e::t_21e9178ce16d9f 76,83-86
+  s_8be0e2aa42db2e::t_3532d21246316d 30
+  s_8be0e2aa42db2e::t_1fb08a206a6796 146
+src/terminal/rust/mouse_viewport_report.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 30
+src/terminal/rust/formatter_types.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 88-90,204-207,210-213,229-232,238-241,260-263,266-269,273-276
+src/terminal/rust/osc_parser_semantic.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 3
+src/terminal/rust/terminal_get_kitty_image.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 7
+src/terminal/rust/terminal_owned_grid_ref.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 193
+crates/ghostty-font/src/metrics.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 102-103
+src/terminal/rust/search_viewport.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 4,6-7,68
+src/terminal/rust/utf8_decoder.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,5-13,17-21
+src/terminal/rust/tmux_control.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,112-114,122-126,151-153,171,550-554,625-629,907-911,1008-1012,1157-1164,1219-1223
+src/terminal/rust/render.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 1,6-7,10-12
+src/terminal/rust/kitty_key.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2
+src/terminal/rust/dcs.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,4-5,221-224,226-227,229-235,237-249,268,295-298
+crates/ghostty-config/src/config.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 9-12,149-150,271,291,299,308-312,316,325,351,360,364-365,499-514,616-619,637,639-654
+crates/ghostty-termio/src/loop.rs
+  s_8be0e2aa42db2e::t_1137881213a4c2 71
+  s_8be0e2aa42db2e::t_ce19495da4c0f0 29
+  s_8be0e2aa42db2e::t_e03a42feec0dba 1,8,10,12,14-15,20-21,24-25,33,37-45,48,50-64,68,72
+crates/ghostty-font/src/descriptor.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 46-51
+crates/ghostty-input/src/key_mods.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 234,263-270,276-279,287,297,307
+src/terminal/rust/sgr_write.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 11,22
+crates/ghostty-core/tests/app_session.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 5
+src/terminal/rust/stream_esc_dispatch.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 5-6,8-13,15-18,37-42,45,86-92,97-103,119-121,131-137,142-148,153-159,164-170,175-181
+src/terminal/rust/event_mouse_position.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 18
+crates/ghostty-config/src/string_literal.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 33-35
+crates/ghostty-termio/src/harness.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 37-40
+  s_8be0e2aa42db2e::t_83704ed3713fc9 1,3,9-10,28,30-32,42-44,46,73,77,82-86,88,93-94,97-98,110
+crates/ghostty-core/tests/surface_session.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 75-76
+src/terminal/rust/screen_types.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 5-7,10,13-18,313
+src/terminal/rust/apc.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2-3,168-176,180-183
+crates/ghostty-config/src/parse.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 109,114
+docs/CI_RUST.md
+  s_8be0e2aa42db2e::t_342d0fc6545a9f 67
+  s_8be0e2aa42db2e::t_7747c75f8453cb 55-57,60-62
+src/terminal/rust/search_thread.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 4,298-307
+src/terminal/rust/selection_types.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,5-6
+src/terminal/rust/style.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 2,6-7,11-13,73
+src/terminal/rust/lib.rs
+  s_8be0e2aa42db2e::t_978f7d20781455 10,12-18,20-22,24-25,28-48,51,53-62,67,71-87,92-94,96,98,102,105-106,113,116,121-195,207-216,226,230-237,239-270,272,274-277,279-281,283-284,287-306,309,311-315,320,324-335,340-342,347,350-351,356,358,363-418,429-436,446,450-453,455-475,477-478,483-484,486,488
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "55e2ed075c58c06836b24132cd6a9004da3e52b4",
+  "prompts": {},
+  "sessions": {
+    "s_8be0e2aa42db2e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dc73eb2a-cb2c-4c9b-a829-b4685b77add6",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
