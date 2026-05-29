@@ -7,8 +7,8 @@ pub mod key_mods;
 pub mod kitty_sequence;
 pub mod kitty_table;
 
-pub use key::{Action, CsiUMods, Key, KeyEvent, ctrl_seq};
-pub use key_mods::{Mod, ModKeys, ModSide, ModSides, Mods, OptionAsAlt, ctrl_or_super};
+pub use ghostty_foundation::{FoundationError, FoundationResult};
+pub use key::{ctrl_seq, Action, CsiUMods, Key, KeyEvent};
+pub use key_mods::{ctrl_or_super, Mod, ModKeys, ModSide, ModSides, Mods, OptionAsAlt};
 pub use kitty_sequence::{KittyEvent, KittyMods, KittySequence};
 pub use kitty_table::KittyTableEntry;
-pub use ghostty_foundation::{FoundationError, FoundationResult};

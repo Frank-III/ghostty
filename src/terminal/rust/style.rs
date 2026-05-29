@@ -1,16 +1,16 @@
-use core::ffi::c_int;
-use core::{mem, ptr};
-use crate::early::*;
 use crate::constants::*;
-use crate::terminal::*;
-use crate::render::*;
+use crate::early::*;
 use crate::input::*;
-use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
+use crate::render::*;
+use crate::selection::*;
 use crate::style_color_none::*;
 use crate::style_default::*;
 use crate::style_is_default::*;
+use crate::terminal::*;
+use core::ffi::c_int;
+use core::{mem, ptr};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -70,7 +70,5 @@ pub unsafe extern "C" fn ghostty_rust_style_is_default(style: *const GhosttyStyl
 }
 
 pub(crate) unsafe fn style_is_default_impl(style: *const GhosttyStyle) -> bool {
-    unsafe {
-        style_is_default(style)
-    }
+    unsafe { style_is_default(style) }
 }

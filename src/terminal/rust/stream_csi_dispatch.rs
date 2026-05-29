@@ -1,17 +1,17 @@
 #![allow(unused)]
 
+use crate::ansi::{CursorStyle, ModifyKeyFormat, ProtectedMode, StatusDisplay};
 use crate::bytes_util::{get_u16, get_u16_bounded, subslice_len, subslice_u16};
-use crate::vt_parser::ParserCsi;
-use crate::stream_types::*;
-use crate::stream_handler::StreamHandler;
-use crate::stream_core::Stream;
-use crate::ansi::{CursorStyle, StatusDisplay, ModifyKeyFormat, ProtectedMode};
-use crate::csi::{EraseDisplay, EraseLine, TabClear, SizeReportStyle};
-use crate::mode_def::{ModeTag, mode_find_index, mode_tag_from_index};
-use crate::kitty_key::KittyKeyFlags;
+use crate::csi::{EraseDisplay, EraseLine, SizeReportStyle, TabClear};
 use crate::device_attributes::DeviceAttributeReq;
 use crate::device_status::DeviceStatusRequest;
+use crate::kitty_key::KittyKeyFlags;
+use crate::mode_def::{mode_find_index, mode_tag_from_index, ModeTag};
 use crate::mouse_shape::MouseShape;
+use crate::stream_core::Stream;
+use crate::stream_handler::StreamHandler;
+use crate::stream_types::*;
+use crate::vt_parser::ParserCsi;
 
 // ============================================================================
 // Param helpers
@@ -135,7 +135,10 @@ fn dispatch_sgr<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
             _ => {}
         }
 
-        emit(stream, StreamAction::SetAttribute(SgrAttribute { tag, value }));
+        emit(
+            stream,
+            StreamAction::SetAttribute(SgrAttribute { tag, value }),
+        );
         i += skip;
     }
 }
@@ -143,7 +146,10 @@ fn dispatch_sgr<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
 fn dispatch_modify_key_format<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
     let plen = csi.params_len as usize;
     if plen == 0 {
-        emit(stream, StreamAction::ModifyKeyFormat(ModifyKeyFormat::LEGACY));
+        emit(
+            stream,
+            StreamAction::ModifyKeyFormat(ModifyKeyFormat::LEGACY),
+        );
         return;
     }
 
@@ -218,7 +224,10 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                 return;
             }
             match single_param(csi, 1) {
-                Some(v) => emit(stream, StreamAction::CursorDown(CursorMovement { value: v })),
+                Some(v) => emit(
+                    stream,
+                    StreamAction::CursorDown(CursorMovement { value: v }),
+                ),
                 None => {}
             }
         }
@@ -229,7 +238,10 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                 return;
             }
             match single_param(csi, 1) {
-                Some(v) => emit(stream, StreamAction::CursorRight(CursorMovement { value: v })),
+                Some(v) => emit(
+                    stream,
+                    StreamAction::CursorRight(CursorMovement { value: v }),
+                ),
                 None => {}
             }
         }
@@ -240,7 +252,10 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                 return;
             }
             match single_param(csi, 1) {
-                Some(v) => emit(stream, StreamAction::CursorLeft(CursorMovement { value: v })),
+                Some(v) => emit(
+                    stream,
+                    StreamAction::CursorLeft(CursorMovement { value: v }),
+                ),
                 None => {}
             }
         }
@@ -252,7 +267,10 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
             }
             match single_param(csi, 1) {
                 Some(v) => {
-                    emit(stream, StreamAction::CursorDown(CursorMovement { value: v }));
+                    emit(
+                        stream,
+                        StreamAction::CursorDown(CursorMovement { value: v }),
+                    );
                     emit(stream, StreamAction::CarriageReturn);
                 }
                 None => {}
@@ -291,8 +309,14 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
             }
             let pos = match csi.params_len {
                 0 => CursorPos { row: 1, col: 1 },
-                1 => CursorPos { row: csi_param(csi, 0), col: 1 },
-                2 => CursorPos { row: csi_param(csi, 0), col: csi_param(csi, 1) },
+                1 => CursorPos {
+                    row: csi_param(csi, 0),
+                    col: 1,
+                },
+                2 => CursorPos {
+                    row: csi_param(csi, 0),
+                    col: csi_param(csi, 1),
+                },
                 _ => return,
             };
             emit(stream, StreamAction::CursorPos(pos));
@@ -326,9 +350,15 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
             match mode {
                 EraseDisplay::Below => emit(stream, StreamAction::EraseDisplayBelow(protected)),
                 EraseDisplay::Above => emit(stream, StreamAction::EraseDisplayAbove(protected)),
-                EraseDisplay::Complete => emit(stream, StreamAction::EraseDisplayComplete(protected)),
-                EraseDisplay::Scrollback => emit(stream, StreamAction::EraseDisplayScrollback(protected)),
-                EraseDisplay::ScrollComplete => emit(stream, StreamAction::EraseDisplayScrollComplete(protected)),
+                EraseDisplay::Complete => {
+                    emit(stream, StreamAction::EraseDisplayComplete(protected))
+                }
+                EraseDisplay::Scrollback => {
+                    emit(stream, StreamAction::EraseDisplayScrollback(protected))
+                }
+                EraseDisplay::ScrollComplete => {
+                    emit(stream, StreamAction::EraseDisplayScrollComplete(protected))
+                }
             }
         }
 
@@ -350,9 +380,10 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                 EraseLine::Right => emit(stream, StreamAction::EraseLineRight(protected)),
                 EraseLine::Left => emit(stream, StreamAction::EraseLineLeft(protected)),
                 EraseLine::Complete => emit(stream, StreamAction::EraseLineComplete(protected)),
-                EraseLine::RightUnlessPendingWrap => {
-                    emit(stream, StreamAction::EraseLineRightUnlessPendingWrap(protected))
-                }
+                EraseLine::RightUnlessPendingWrap => emit(
+                    stream,
+                    StreamAction::EraseLineRightUnlessPendingWrap(protected),
+                ),
             }
         }
 
@@ -413,7 +444,9 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
 
         // Cursor Tabulation Control
         b'W' => {
-            if !no_intermediates(csi) && !(csi.intermediates_len == 1 && intermediate_at(csi, 0) == b'?') {
+            if !no_intermediates(csi)
+                && !(csi.intermediates_len == 1 && intermediate_at(csi, 0) == b'?')
+            {
                 return;
             }
             if no_intermediates(csi) {
@@ -470,7 +503,10 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                 return;
             }
             match single_param(csi, 1) {
-                Some(v) => emit(stream, StreamAction::CursorColRelative(CursorMovement { value: v })),
+                Some(v) => emit(
+                    stream,
+                    StreamAction::CursorColRelative(CursorMovement { value: v }),
+                ),
                 None => {}
             }
         }
@@ -517,7 +553,10 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                 return;
             }
             match single_param(csi, 1) {
-                Some(v) => emit(stream, StreamAction::CursorRowRelative(CursorMovement { value: v })),
+                Some(v) => emit(
+                    stream,
+                    StreamAction::CursorRowRelative(CursorMovement { value: v }),
+                ),
                 None => {}
             }
         }
@@ -554,24 +593,32 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
 
         // DSR - Device Status Report
         b'n' => {
-            if no_intermediates(csi) || (csi.intermediates_len == 1 && intermediate_at(csi, 0) == b'?') {
+            if no_intermediates(csi)
+                || (csi.intermediates_len == 1 && intermediate_at(csi, 0) == b'?')
+            {
                 if csi.params_len != 1 {
                     return;
                 }
                 let question = csi.intermediates_len == 1;
                 match DeviceStatusRequest::from_int(csi_param(csi, 0), question) {
                     Some(req) => {
-                        emit(stream, StreamAction::DeviceStatus(DeviceStatus {
-                            request: csi_param(csi, 0),
-                            question,
-                        }));
+                        emit(
+                            stream,
+                            StreamAction::DeviceStatus(DeviceStatus {
+                                request: csi_param(csi, 0),
+                                question,
+                            }),
+                        );
                     }
                     None => {}
                 }
                 return;
             }
             if csi.intermediates_len == 1 && intermediate_at(csi, 0) == b'>' {
-                emit(stream, StreamAction::ModifyKeyFormat(ModifyKeyFormat::OTHER_KEYS_NUMERIC_EXCEPT));
+                emit(
+                    stream,
+                    StreamAction::ModifyKeyFormat(ModifyKeyFormat::OTHER_KEYS_NUMERIC_EXCEPT),
+                );
             }
         }
 
@@ -601,10 +648,13 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                     emit(stream, StreamAction::RequestMode(Mode { mode }));
                 }
                 None => {
-                    emit(stream, StreamAction::RequestModeUnknown(RawMode {
-                        mode: mode_raw,
-                        ansi,
-                    }));
+                    emit(
+                        stream,
+                        StreamAction::RequestModeUnknown(RawMode {
+                            mode: mode_raw,
+                            ansi,
+                        }),
+                    );
                 }
             }
         }
@@ -663,9 +713,18 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
         b'r' => {
             if no_intermediates(csi) {
                 let margin = match csi.params_len {
-                    0 => Margin { top_left: 0, bottom_right: 0 },
-                    1 => Margin { top_left: csi_param(csi, 0), bottom_right: 0 },
-                    2 => Margin { top_left: csi_param(csi, 0), bottom_right: csi_param(csi, 1) },
+                    0 => Margin {
+                        top_left: 0,
+                        bottom_right: 0,
+                    },
+                    1 => Margin {
+                        top_left: csi_param(csi, 0),
+                        bottom_right: 0,
+                    },
+                    2 => Margin {
+                        top_left: csi_param(csi, 0),
+                        bottom_right: csi_param(csi, 1),
+                    },
                     _ => return,
                 };
                 emit(stream, StreamAction::TopAndBottomMargin(margin));
@@ -686,14 +745,20 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
             if no_intermediates(csi) {
                 match csi.params_len {
                     0 => emit(stream, StreamAction::LeftAndRightMarginAmbiguous),
-                    1 => emit(stream, StreamAction::LeftAndRightMargin(Margin {
-                        top_left: csi_param(csi, 0),
-                        bottom_right: 0,
-                    })),
-                    2 => emit(stream, StreamAction::LeftAndRightMargin(Margin {
-                        top_left: csi_param(csi, 0),
-                        bottom_right: csi_param(csi, 1),
-                    })),
+                    1 => emit(
+                        stream,
+                        StreamAction::LeftAndRightMargin(Margin {
+                            top_left: csi_param(csi, 0),
+                            bottom_right: 0,
+                        }),
+                    ),
+                    2 => emit(
+                        stream,
+                        StreamAction::LeftAndRightMargin(Margin {
+                            top_left: csi_param(csi, 0),
+                            bottom_right: csi_param(csi, 1),
+                        }),
+                    ),
                     _ => {}
                 }
                 return;
@@ -747,10 +812,15 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                 21 if csi.params_len == 1 => {
                     emit(stream, StreamAction::SizeReport(SizeReportStyle::Csi21t));
                 }
-                22 | 23 if (csi.params_len == 2 || csi.params_len == 3)
-                    && (csi_param(csi, 1) == 0 || csi_param(csi, 1) == 2) =>
+                22 | 23
+                    if (csi.params_len == 2 || csi.params_len == 3)
+                        && (csi_param(csi, 1) == 0 || csi_param(csi, 1) == 2) =>
                 {
-                    let index = if csi.params_len == 3 { csi_param(csi, 2) } else { 0 };
+                    let index = if csi.params_len == 3 {
+                        csi_param(csi, 2)
+                    } else {
+                        0
+                    };
                     if csi_param(csi, 0) == 22 {
                         emit(stream, StreamAction::TitlePush(index));
                     } else {
@@ -780,17 +850,26 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                 b'>' => {
                     let flags = if csi.params_len == 1 {
                         let raw = csi_param(csi, 0);
-                        if raw > 31 { return; }
+                        if raw > 31 {
+                            return;
+                        }
                         raw as u8
                     } else {
                         0
                     };
-                    emit(stream, StreamAction::KittyKeyboardPush(KittyKeyboardFlags { flags }));
+                    emit(
+                        stream,
+                        StreamAction::KittyKeyboardPush(KittyKeyboardFlags { flags }),
+                    );
                 }
 
                 // Pop
                 b'<' => {
-                    let number = if csi.params_len == 1 { csi_param(csi, 0) } else { 1 };
+                    let number = if csi.params_len == 1 {
+                        csi_param(csi, 0)
+                    } else {
+                        1
+                    };
                     emit(stream, StreamAction::KittyKeyboardPop(number));
                 }
 
@@ -800,9 +879,15 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                         return;
                     }
                     let raw = csi_param(csi, 0);
-                    if raw > 31 { return; }
+                    if raw > 31 {
+                        return;
+                    }
                     let flags = raw as u8;
-                    let number: u16 = if csi.params_len >= 2 { csi_param(csi, 1) } else { 1 };
+                    let number: u16 = if csi.params_len >= 2 {
+                        csi_param(csi, 1)
+                    } else {
+                        1
+                    };
                     let kbf = KittyKeyboardFlags { flags };
                     match number {
                         1 => emit(stream, StreamAction::KittyKeyboardSet(kbf)),
@@ -825,7 +910,11 @@ pub fn csi_dispatch<H: StreamHandler>(stream: &mut Stream<H>, csi: &ParserCsi) {
                 0 => 1usize,
                 1 => {
                     let v = csi_param(csi, 0) as usize;
-                    if v < 1 { 1 } else { v }
+                    if v < 1 {
+                        1
+                    } else {
+                        v
+                    }
                 }
                 _ => return,
             };

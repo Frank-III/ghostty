@@ -63,11 +63,7 @@ impl KittyMods {
     }
 
     pub fn prevents_text(self, alt_prevents_text: bool) -> bool {
-        (self.alt && alt_prevents_text)
-            || self.ctrl
-            || self.super_key
-            || self.hyper
-            || self.meta
+        (self.alt && alt_prevents_text) || self.ctrl || self.super_key || self.hyper || self.meta
     }
 
     /// Spec modifier parameter (`bitmask + 1`).
@@ -172,12 +168,7 @@ impl KittySequence {
     fn encode_special<W: Write>(&self, writer: &mut W) -> fmt::Result {
         let mods = self.mods.seq_int();
         if !matches!(self.event, KittyEvent::None) {
-            write!(
-                writer,
-                "\x1b[1;{}:{}",
-                mods,
-                self.event.as_u2(),
-            )?;
+            write!(writer, "\x1b[1;{}:{}", mods, self.event.as_u2(),)?;
             write!(writer, "{}", self.final_byte as char)?;
             return Ok(());
         }

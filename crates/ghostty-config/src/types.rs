@@ -22,24 +22,96 @@ impl RgbColor {
         }
         match input.to_ascii_lowercase().as_str() {
             "black" => Ok(Self { r: 0, g: 0, b: 0 }),
-            "white" => Ok(Self { r: 0xff, g: 0xff, b: 0xff }),
-            "red" => Ok(Self { r: 0xff, g: 0, b: 0 }),
-            "green" => Ok(Self { r: 0, g: 0x80, b: 0 }),
-            "blue" => Ok(Self { r: 0, g: 0, b: 0xff }),
-            "yellow" => Ok(Self { r: 0xff, g: 0xff, b: 0 }),
-            "cyan" | "aqua" => Ok(Self { r: 0, g: 0xff, b: 0xff }),
-            "magenta" | "fuchsia" => Ok(Self { r: 0xff, g: 0, b: 0xff }),
-            "gray" | "grey" => Ok(Self { r: 0x80, g: 0x80, b: 0x80 }),
-            "silver" => Ok(Self { r: 0xc0, g: 0xc0, b: 0xc0 }),
-            "maroon" => Ok(Self { r: 0x80, g: 0, b: 0 }),
-            "olive" => Ok(Self { r: 0x80, g: 0x80, b: 0 }),
-            "navy" => Ok(Self { r: 0, g: 0, b: 0x80 }),
-            "purple" => Ok(Self { r: 0x80, g: 0, b: 0x80 }),
-            "teal" => Ok(Self { r: 0, g: 0x80, b: 0x80 }),
-            "orange" => Ok(Self { r: 0xff, g: 0xa5, b: 0 }),
-            "pink" => Ok(Self { r: 0xff, g: 0xc0, b: 0xcb }),
-            "brown" => Ok(Self { r: 0xa5, g: 0x2a, b: 0x2a }),
-            "lime" => Ok(Self { r: 0, g: 0xff, b: 0 }),
+            "white" => Ok(Self {
+                r: 0xff,
+                g: 0xff,
+                b: 0xff,
+            }),
+            "red" => Ok(Self {
+                r: 0xff,
+                g: 0,
+                b: 0,
+            }),
+            "green" => Ok(Self {
+                r: 0,
+                g: 0x80,
+                b: 0,
+            }),
+            "blue" => Ok(Self {
+                r: 0,
+                g: 0,
+                b: 0xff,
+            }),
+            "yellow" => Ok(Self {
+                r: 0xff,
+                g: 0xff,
+                b: 0,
+            }),
+            "cyan" | "aqua" => Ok(Self {
+                r: 0,
+                g: 0xff,
+                b: 0xff,
+            }),
+            "magenta" | "fuchsia" => Ok(Self {
+                r: 0xff,
+                g: 0,
+                b: 0xff,
+            }),
+            "gray" | "grey" => Ok(Self {
+                r: 0x80,
+                g: 0x80,
+                b: 0x80,
+            }),
+            "silver" => Ok(Self {
+                r: 0xc0,
+                g: 0xc0,
+                b: 0xc0,
+            }),
+            "maroon" => Ok(Self {
+                r: 0x80,
+                g: 0,
+                b: 0,
+            }),
+            "olive" => Ok(Self {
+                r: 0x80,
+                g: 0x80,
+                b: 0,
+            }),
+            "navy" => Ok(Self {
+                r: 0,
+                g: 0,
+                b: 0x80,
+            }),
+            "purple" => Ok(Self {
+                r: 0x80,
+                g: 0,
+                b: 0x80,
+            }),
+            "teal" => Ok(Self {
+                r: 0,
+                g: 0x80,
+                b: 0x80,
+            }),
+            "orange" => Ok(Self {
+                r: 0xff,
+                g: 0xa5,
+                b: 0,
+            }),
+            "pink" => Ok(Self {
+                r: 0xff,
+                g: 0xc0,
+                b: 0xcb,
+            }),
+            "brown" => Ok(Self {
+                r: 0xa5,
+                g: 0x2a,
+                b: 0x2a,
+            }),
+            "lime" => Ok(Self {
+                r: 0,
+                g: 0xff,
+                b: 0,
+            }),
             _ => Err(ConfigError::InvalidValue),
         }
     }

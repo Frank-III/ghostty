@@ -13,6 +13,8 @@ pub mod output;
 pub mod viewer;
 
 pub use control::{ControlParser, Notification, NotificationTag, ParserState};
-pub use layout::{Layout, LayoutContent, Checksum};
-pub use output::{Variable, ParsedPaneState, ParsedWindowInfo};
-pub use viewer::{Viewer, ViewerState, Action, ActionTag, ViewerWindow, ViewerPane, Command, CommandTag};
+pub use layout::{Checksum, Layout, LayoutContent};
+pub use output::{ParsedPaneState, ParsedWindowInfo, Variable};
+pub use viewer::{
+    Action, ActionTag, Command, CommandTag, Viewer, ViewerPane, ViewerState, ViewerWindow,
+};

@@ -25,11 +25,7 @@ impl Preedit {
     }
 
     /// Start/end grid columns and codepoint offset when clipped to `max` (inclusive).
-    pub fn range(
-        &self,
-        start: CellCount,
-        max: CellCount,
-    ) -> PreeditRange {
+    pub fn range(&self, start: CellCount, max: CellCount) -> PreeditRange {
         let max_width = max.saturating_sub(start) + 1;
         let mut w: CellCount = 0;
         let mut cp_offset = 0usize;

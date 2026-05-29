@@ -13,6 +13,7 @@
 
 pub mod backend;
 pub mod cell;
+pub mod cells;
 pub mod color;
 pub mod cursor;
 pub mod damage;
@@ -25,7 +26,10 @@ pub use cell::{
     constraint_width, is_covering, no_min_contrast, CellAtlas, CellBg, CellKey, CellText,
     CellTextBools, CellView,
 };
-pub use color::{linear_srgb_to_display_p3, shader_rgba, srgb_bytes_to_display_p3_bytes, Rgb, ShaderRgba};
+pub use cells::{rebuild_cells, CellSnapshot};
+pub use color::{
+    linear_srgb_to_display_p3, shader_rgba, srgb_bytes_to_display_p3_bytes, Rgb, ShaderRgba,
+};
 pub use cursor::{
     resolve_style, CursorStyle, CursorStyleOptions, RenderCursorState, TerminalCursorStyle,
 };
@@ -37,6 +41,4 @@ pub use size::{
     CellCount, CellSize, Coordinate, CoordinateSpace, GridSize, Padding, PaddingBalance,
     ScreenSize, Size,
 };
-pub use state::{
-    GridPoint, Preedit, PreeditCodepoint, PreeditRange, RendererMouse, RendererState,
-};
+pub use state::{GridPoint, Preedit, PreeditCodepoint, PreeditRange, RendererMouse, RendererState};

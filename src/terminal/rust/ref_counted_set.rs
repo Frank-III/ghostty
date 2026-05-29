@@ -716,10 +716,7 @@ impl RefCountedSet {
         }
     }
 
-    unsafe fn trim_dead_trailing_ctx<T, C: RefCountedSetContext<T>>(
-        &mut self,
-        base: *mut u8,
-    ) {
+    unsafe fn trim_dead_trailing_ctx<T, C: RefCountedSetContext<T>>(&mut self, base: *mut u8) {
         if self.layout.cap == 0 {
             return;
         }
@@ -884,9 +881,7 @@ impl RefCountedSet {
                         (*hm).ref_count
                     };
 
-                    if entry_psl < held_psl
-                        || (entry_psl == held_psl && entry_ref < hm_ref)
-                    {
+                    if entry_psl < held_psl || (entry_psl == held_psl && entry_ref < hm_ref) {
                         ptr::write(table.add(p), held_id);
                         let hm = self.meta_ptr_mut(base, held_id);
                         (*hm).bucket = p as Id;

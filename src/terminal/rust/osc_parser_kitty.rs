@@ -1,9 +1,9 @@
 #![allow(unused)]
 
-use crate::stream_types::OscTerminator;
-use crate::style_types::RGB;
 use crate::kitty_color;
 use crate::osc_encoding::is_safe_utf8;
+use crate::stream_types::OscTerminator;
+use crate::style_types::RGB;
 
 // ─── Kitty Clipboard Protocol (OSC 5522) ───────────────────────────────────
 
@@ -283,7 +283,10 @@ pub struct KittyClipboardOsc<'a> {
     pub terminator: OscTerminator,
 }
 
-pub fn parse_kitty_clipboard<'a>(data: &'a [u8], terminator: OscTerminator) -> KittyClipboardOsc<'a> {
+pub fn parse_kitty_clipboard<'a>(
+    data: &'a [u8],
+    terminator: OscTerminator,
+) -> KittyClipboardOsc<'a> {
     let semi = find_byte_kitty(data, b';', 0);
     match semi {
         Some(pos) => KittyClipboardOsc {
@@ -312,7 +315,8 @@ pub struct KittyColorOscResult {
 impl KittyColorOscResult {
     pub fn new(terminator: OscTerminator) -> Self {
         Self {
-            requests: [kitty_color::Request::Reset(kitty_color::Kind::Palette(0)); KITTY_COLOR_MAX_REQUESTS],
+            requests: [kitty_color::Request::Reset(kitty_color::Kind::Palette(0));
+                KITTY_COLOR_MAX_REQUESTS],
             len: 0,
             terminator,
         }
@@ -404,7 +408,10 @@ pub fn parse_kitty_color(data: &[u8], terminator: OscTerminator) -> KittyColorOs
                 Some(c) => c,
                 None => continue,
             };
-            if !result.push(kitty_color::Request::Set { key: kind, color: rgb }) {
+            if !result.push(kitty_color::Request::Set {
+                key: kind,
+                color: rgb,
+            }) {
                 break;
             }
         }
@@ -519,18 +526,14 @@ impl<'a> KittyTextSizingOsc<'a> {
                 }
                 self.denominator = v;
             }
-            b'v' => {
-                match KittyTextVAlign::from_u8(v) {
-                    Some(a) => self.valign = a,
-                    None => return false,
-                }
-            }
-            b'h' => {
-                match KittyTextHAlign::from_u8(v) {
-                    Some(a) => self.halign = a,
-                    None => return false,
-                }
-            }
+            b'v' => match KittyTextVAlign::from_u8(v) {
+                Some(a) => self.valign = a,
+                None => return false,
+            },
+            b'h' => match KittyTextHAlign::from_u8(v) {
+                Some(a) => self.halign = a,
+                None => return false,
+            },
             _ => return false,
         }
         true
@@ -689,10 +692,8 @@ mod tests {
 
     #[test]
     fn kitty_clipboard_password() {
-        let osc = parse_kitty_clipboard(
-            b"pw=R2hvc3R0eQ==:name=Qk9CUiBLVVJXQQ==",
-            OscTerminator::St,
-        );
+        let osc =
+            parse_kitty_clipboard(b"pw=R2hvc3R0eQ==:name=Qk9CUiBLVVJXQQ==", OscTerminator::St);
         let pw = kitty_clipboard_read_pw(osc.metadata).unwrap();
         assert!(bytes_eq_kitty(pw, b"R2hvc3R0eQ=="));
         let name = kitty_clipboard_read_name(osc.metadata).unwrap();

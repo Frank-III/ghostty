@@ -72,11 +72,8 @@ fn child_output_reaches_terminal() {
 fn config_command_used() {
     let mut cfg = Config::with_defaults();
     cfg.command = Some("printf cfg-cmd".to_string());
-    let mut session = SurfaceSession::spawn(
-        AppConfig::new(cfg),
-        SurfaceSessionOptions::default(),
-    )
-    .expect("spawn");
+    let mut session = SurfaceSession::spawn(AppConfig::new(cfg), SurfaceSessionOptions::default())
+        .expect("spawn");
 
     let deadline = Instant::now() + Duration::from_secs(3);
     session

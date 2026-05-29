@@ -957,14 +957,64 @@ mod tests {
     #[test]
     fn csi_u_mods_sequence_values() {
         assert_eq!(CsiUMods::default().seq_int(), 1);
-        assert_eq!(CsiUMods { shift: true, ..Default::default() }.seq_int(), 2);
-        assert_eq!(CsiUMods { alt: true, ..Default::default() }.seq_int(), 3);
-        assert_eq!(CsiUMods { shift: true, alt: true, ..Default::default() }.seq_int(), 4);
-        assert_eq!(CsiUMods { ctrl: true, ..Default::default() }.seq_int(), 5);
-        assert_eq!(CsiUMods { shift: true, ctrl: true, ..Default::default() }.seq_int(), 6);
-        assert_eq!(CsiUMods { alt: true, ctrl: true, ..Default::default() }.seq_int(), 7);
         assert_eq!(
-            CsiUMods { shift: true, alt: true, ctrl: true }.seq_int(),
+            CsiUMods {
+                shift: true,
+                ..Default::default()
+            }
+            .seq_int(),
+            2
+        );
+        assert_eq!(
+            CsiUMods {
+                alt: true,
+                ..Default::default()
+            }
+            .seq_int(),
+            3
+        );
+        assert_eq!(
+            CsiUMods {
+                shift: true,
+                alt: true,
+                ..Default::default()
+            }
+            .seq_int(),
+            4
+        );
+        assert_eq!(
+            CsiUMods {
+                ctrl: true,
+                ..Default::default()
+            }
+            .seq_int(),
+            5
+        );
+        assert_eq!(
+            CsiUMods {
+                shift: true,
+                ctrl: true,
+                ..Default::default()
+            }
+            .seq_int(),
+            6
+        );
+        assert_eq!(
+            CsiUMods {
+                alt: true,
+                ctrl: true,
+                ..Default::default()
+            }
+            .seq_int(),
+            7
+        );
+        assert_eq!(
+            CsiUMods {
+                shift: true,
+                alt: true,
+                ctrl: true
+            }
+            .seq_int(),
             8
         );
     }

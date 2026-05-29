@@ -21,14 +21,18 @@ pub struct CacheTable<K, V, C, const BUCKET_COUNT: usize, const BUCKET_SIZE: usi
     context: C,
 }
 
-impl<K, V, C, const BUCKET_COUNT: usize, const BUCKET_SIZE: usize> CacheTable<K, V, C, BUCKET_COUNT, BUCKET_SIZE>
+impl<K, V, C, const BUCKET_COUNT: usize, const BUCKET_SIZE: usize>
+    CacheTable<K, V, C, BUCKET_COUNT, BUCKET_SIZE>
 where
     K: Clone,
     V: Clone,
     C: CacheContext<K, V>,
 {
     pub fn new(context: C) -> Self {
-        assert!(BUCKET_COUNT.is_power_of_two(), "bucket_count must be a power of two");
+        assert!(
+            BUCKET_COUNT.is_power_of_two(),
+            "bucket_count must be a power of two"
+        );
         assert!(BUCKET_SIZE > 0, "bucket_size must be non-zero");
         Self {
             buckets: core::array::from_fn(|_| core::array::from_fn(|_| None)),
@@ -56,7 +60,8 @@ where
         for (slot, entry) in self.buckets[idx].iter_mut().zip(entries) {
             *slot = Some(entry);
         }
-        self.context.evicted(evicted.key.clone(), evicted.value.clone());
+        self.context
+            .evicted(evicted.key.clone(), evicted.value.clone());
         Some(evicted)
     }
 
@@ -71,10 +76,8 @@ where
             };
             if self.context.eql(key, slot_key) {
                 let value = value.clone();
-                let mut slice: Vec<Option<(K, V)>> = self.buckets[idx][i..len]
-                    .iter()
-                    .cloned()
-                    .collect();
+                let mut slice: Vec<Option<(K, V)>> =
+                    self.buckets[idx][i..len].iter().cloned().collect();
                 rotate_once(&mut slice);
                 for (slot, entry) in self.buckets[idx][i..len].iter_mut().zip(slice) {
                     *slot = entry;

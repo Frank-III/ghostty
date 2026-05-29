@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::stream_types::{SemanticPromptAction, SemanticPrompt};
+use crate::stream_types::{SemanticPrompt, SemanticPromptAction};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq)]

@@ -4,8 +4,8 @@ use crate::constants::*;
 
 pub(crate) use crate::mouse_button_base::*;
 pub(crate) use crate::mouse_button_default::*;
-pub(crate) use crate::mouse_button_motion::*;
 pub(crate) use crate::mouse_button_mods::*;
+pub(crate) use crate::mouse_button_motion::*;
 pub(crate) use crate::mouse_report::*;
 
 pub(crate) fn mouse_button_code(

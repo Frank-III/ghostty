@@ -1,19 +1,14 @@
-use core::ffi::{c_int, c_void};
-use core::{mem, ptr};
-use crate::early::*;
+use crate::allocator::*;
+use crate::color::*;
 use crate::constants::*;
-use crate::terminal::*;
-use crate::render::*;
+use crate::early::*;
 use crate::input::*;
-use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
-use crate::simple::*;
-use crate::style::*;
-use crate::color::*;
-use crate::allocator::*;
-use crate::sgr_attr::*;
+use crate::render::*;
+use crate::selection::*;
 use crate::sgr_8color::*;
+use crate::sgr_attr::*;
 use crate::sgr_basic_write::*;
 use crate::sgr_color::*;
 use crate::sgr_constants::*;
@@ -21,6 +16,11 @@ use crate::sgr_parse::*;
 use crate::sgr_underline::*;
 use crate::sgr_unknown::*;
 use crate::sgr_write::*;
+use crate::simple::*;
+use crate::style::*;
+use crate::terminal::*;
+use core::ffi::{c_int, c_void};
+use core::{mem, ptr};
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_sgr_next(
@@ -90,7 +90,11 @@ pub(crate) unsafe fn sgr_next_impl(
     }
 
     if first == 38 || first == 48 || first == 58 {
-        if unsafe { write_sgr_color(params, params_len, sep_mask, start, first, colon, idx, result) } {
+        if unsafe {
+            write_sgr_color(
+                params, params_len, sep_mask, start, first, colon, idx, result,
+            )
+        } {
             return true;
         }
     }

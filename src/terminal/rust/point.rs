@@ -1,5 +1,5 @@
-use crate::early::*;
 use crate::constants::*;
+use crate::early::*;
 use crate::size_types::*;
 
 /// Matches `GhosttyPointTag` / Zig `point.Point.C` tag (`c_int` for C ABI).
@@ -91,9 +91,7 @@ impl Point {
         let coord = self.coord();
         let mut out = PointC {
             tag: PointTag::ACTIVE,
-            value: PointCValue {
-                _padding: [0; 2],
-            },
+            value: PointCValue { _padding: [0; 2] },
         };
         match self {
             Self::Active(_) => {

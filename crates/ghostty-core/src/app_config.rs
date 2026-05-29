@@ -3,7 +3,7 @@
 //! Full config FFI and field getters remain in Zig for now; Rust holds an owned
 //! [`ghostty_config::Config`] subset used when bootstrapping `App`.
 
-use ghostty_config::Config;
+use ghostty_config::{CliArgs, Config};
 
 /// Owned application configuration (mirrors embedded `App.config`).
 #[derive(Debug, Clone)]
@@ -20,6 +20,19 @@ impl AppConfig {
         Self {
             inner: Config::with_defaults(),
         }
+    }
+
+    /// Load from CLI args (`src/cli/args.zig` subset).
+    pub fn from_cli(args: &CliArgs) -> Result<Self, ghostty_config::LoadError> {
+        Ok(Self::new(args.load_config()?))
+    }
+
+    /// Load a single config file (tilde-expanded).
+    pub fn from_config_file(path: &std::path::Path) -> Result<Self, ghostty_config::LoadError> {
+        let mut cfg = Config::with_defaults();
+        let expanded = ghostty_config::expand_path(path.to_string_lossy().as_ref());
+        cfg.load_file(&expanded)?;
+        Ok(Self::new(cfg))
     }
 
     pub fn config(&self) -> &Config {

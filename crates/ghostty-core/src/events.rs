@@ -28,7 +28,9 @@ pub enum ActionTag {
 pub enum AppEvent {
     OpenConfig,
     Quit,
-    CloseSurface { id: crate::SurfaceId },
+    CloseSurface {
+        id: crate::SurfaceId,
+    },
     NewWindow,
     /// Surface-scoped event surfaced on the app thread during tick.
     Surface {

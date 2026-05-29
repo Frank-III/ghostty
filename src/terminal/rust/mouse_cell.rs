@@ -17,7 +17,10 @@ pub(crate) fn mouse_grid_size(size: GhosttyMouseSize) -> GhosttyMouseCell {
     }
 }
 
-pub(crate) fn mouse_pos_to_cell(pos: GhosttyMousePosition, size: GhosttyMouseSize) -> GhosttyMouseCell {
+pub(crate) fn mouse_pos_to_cell(
+    pos: GhosttyMousePosition,
+    size: GhosttyMouseSize,
+) -> GhosttyMouseCell {
     let grid = mouse_grid_size(size);
     let term_x = (pos.x - size.padding_left as f32).max(0.0);
     let term_y = (pos.y - size.padding_top as f32).max(0.0);

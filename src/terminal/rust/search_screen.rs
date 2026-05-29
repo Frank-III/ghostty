@@ -1,13 +1,13 @@
 use core::ffi::c_void;
 use core::ptr;
 
-use crate::allocator::{GhosttyAllocator, alloc_alloc_impl, alloc_free_impl};
+use crate::allocator::{alloc_alloc_impl, alloc_free_impl, GhosttyAllocator};
+use crate::highlight::{HighlightFlattened, HighlightTracked, HighlightUntracked, Pin};
 use crate::page_list_types::{PageList, PageListNode};
-use crate::highlight::{HighlightFlattened, HighlightUntracked, HighlightTracked, Pin};
-use crate::size_types::CellCountInt;
 use crate::search::search_active::ActiveSearch;
 use crate::search::search_pagelist::PageListSearch;
 use crate::search::search_sliding_window::SlidingWindow;
+use crate::size_types::CellCountInt;
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -244,8 +244,7 @@ impl ScreenSearch {
         }
     }
 
-    unsafe fn prune_history(&mut self) {
-    }
+    unsafe fn prune_history(&mut self) {}
 
     unsafe fn tick_active(&mut self) -> TickResult {
         unsafe {
@@ -344,7 +343,11 @@ impl ScreenSearch {
                 0
             } else {
                 let prev_idx = (*self.selected).idx;
-                if prev_idx + 1 >= total { 0 } else { prev_idx + 1 }
+                if prev_idx + 1 >= total {
+                    0
+                } else {
+                    prev_idx + 1
+                }
             };
 
             let sm_size = core::mem::size_of::<SelectedMatch>();
@@ -353,13 +356,16 @@ impl ScreenSearch {
                 return false;
             }
 
-            ptr::write(new_sm, SelectedMatch {
-                idx: next_idx,
-                highlight: HighlightTracked {
-                    start: ptr::null_mut(),
-                    end: ptr::null_mut(),
+            ptr::write(
+                new_sm,
+                SelectedMatch {
+                    idx: next_idx,
+                    highlight: HighlightTracked {
+                        start: ptr::null_mut(),
+                        end: ptr::null_mut(),
+                    },
                 },
-            });
+            );
 
             if !self.selected.is_null() {
                 alloc_free_impl(self.alloc, self.selected as *mut u8, sm_size);
@@ -383,7 +389,11 @@ impl ScreenSearch {
                 total - 1
             } else {
                 let prev_idx = (*self.selected).idx;
-                if prev_idx == 0 { total - 1 } else { prev_idx - 1 }
+                if prev_idx == 0 {
+                    total - 1
+                } else {
+                    prev_idx - 1
+                }
             };
 
             let sm_size = core::mem::size_of::<SelectedMatch>();
@@ -392,13 +402,16 @@ impl ScreenSearch {
                 return false;
             }
 
-            ptr::write(new_sm, SelectedMatch {
-                idx: next_idx,
-                highlight: HighlightTracked {
-                    start: ptr::null_mut(),
-                    end: ptr::null_mut(),
+            ptr::write(
+                new_sm,
+                SelectedMatch {
+                    idx: next_idx,
+                    highlight: HighlightTracked {
+                        start: ptr::null_mut(),
+                        end: ptr::null_mut(),
+                    },
                 },
-            });
+            );
 
             if !self.selected.is_null() {
                 alloc_free_impl(self.alloc, self.selected as *mut u8, sm_size);

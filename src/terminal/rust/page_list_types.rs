@@ -3,10 +3,10 @@
 //! Contains the structural types that make up Ghostty's terminal PageList:
 //! a doubly-linked list of pages representing the screen and scrollback.
 
-use core::ffi::c_void;
 use crate::highlight::Pin;
 use crate::page_core::Page;
 use crate::size_types::CellCountInt;
+use core::ffi::c_void;
 
 /// A single node within the PageList linked list.
 ///

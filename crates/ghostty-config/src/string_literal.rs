@@ -30,7 +30,9 @@ pub fn parse(out: &mut String, bytes: &str) -> Result<(), ConfigError> {
                 let cp = parse_unicode_escape(data, &mut src)?;
                 let mut buf = [0u8; 4];
                 let n = char::encode_utf8(cp, &mut buf).len();
-                out.push_str(std::str::from_utf8(&buf[..n]).map_err(|_| ConfigError::InvalidValue)?);
+                out.push_str(
+                    std::str::from_utf8(&buf[..n]).map_err(|_| ConfigError::InvalidValue)?,
+                );
             }
             _ => return Err(ConfigError::InvalidValue),
         }

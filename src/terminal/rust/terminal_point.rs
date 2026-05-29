@@ -45,10 +45,7 @@ pub extern "C" fn ghostty_rust_terminal_point_from_grid_ref_input(
     terminal_point_from_grid_ref_input_impl(has_terminal, has_ref)
 }
 
-pub(crate) fn terminal_point_from_grid_ref_input_impl(
-    has_terminal: bool,
-    has_ref: bool,
-) -> c_int {
+pub(crate) fn terminal_point_from_grid_ref_input_impl(has_terminal: bool, has_ref: bool) -> c_int {
     if !has_terminal || !has_ref {
         return GHOSTTY_INVALID_VALUE;
     }

@@ -1,5 +1,5 @@
-use crate::early::*;
 use crate::constants::*;
+use crate::early::*;
 
 pub const MAX_PAGE_SIZE: u32 = u32::MAX;
 

@@ -68,7 +68,6 @@ fn parse_u8_clamped(s: &[u8]) -> Option<u8> {
     }
 }
 
-
 pub fn parse_conemu_osc9<'a>(data: &'a [u8]) -> ConemuOsc9Result<'a> {
     if data.is_empty() {
         return ConemuOsc9Result::DesktopNotification {

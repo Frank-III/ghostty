@@ -3,7 +3,7 @@
 //! Shipping symbols remain Zig-owned; these entry points are for the Rust port and
 //! generate `ghostty_rust.h` via cbindgen in `build.rs`.
 
-use core::ffi::c_void;
+use core::ffi::{c_char, c_void, CStr};
 use core::ptr;
 
 use ghostty_core::{App, AppConfig, AppEvent, RuntimeConfig, SurfaceEvent};
@@ -51,15 +51,26 @@ fn app_from_ptr(ptr: *mut GhosttyApp) -> Option<&'static mut App> {
     Some(unsafe { &mut *(ptr as *mut App) })
 }
 
+fn app_config_from_c(config_path: *const c_char) -> AppConfig {
+    if config_path.is_null() {
+        return AppConfig::default();
+    }
+    let Ok(path) = unsafe { CStr::from_ptr(config_path) }.to_str() else {
+        return AppConfig::default();
+    };
+    AppConfig::from_config_file(std::path::Path::new(path)).unwrap_or_default()
+}
+
 /// Create an application instance (`ghostty_app_new` bootstrap).
 ///
-/// `config` is ignored for now (Zig `ghostty_config_t`); defaults are used.
+/// When `config_path` is non-null, it must be a UTF-8 path to a config file
+/// (tilde expansion supported). Null uses built-in defaults.
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_app_new(
     runtime: *const GhosttyRuntimeConfig,
-    _config: *mut c_void,
+    config_path: *const c_char,
 ) -> *mut GhosttyApp {
-    let app = App::new(AppConfig::default(), runtime_from_c(runtime));
+    let app = App::new(app_config_from_c(config_path), runtime_from_c(runtime));
     Box::into_raw(Box::new(app)) as *mut GhosttyApp
 }
 
@@ -147,7 +158,10 @@ pub unsafe extern "C" fn ghostty_app_create_surface(app: *mut GhosttyApp) -> Gho
 
 /// Delete a surface by id (`ghostty_app_delete_surface` bootstrap).
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_app_delete_surface(app: *mut GhosttyApp, id: GhosttySurfaceId) -> bool {
+pub unsafe extern "C" fn ghostty_app_delete_surface(
+    app: *mut GhosttyApp,
+    id: GhosttySurfaceId,
+) -> bool {
     let Some(app) = app_from_ptr(app) else {
         return false;
     };
@@ -158,7 +172,10 @@ pub unsafe extern "C" fn ghostty_app_delete_surface(app: *mut GhosttyApp, id: Gh
 
 /// Focus a surface (`ghostty_app_focus_surface` bootstrap).
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_app_focus_surface(app: *mut GhosttyApp, id: GhosttySurfaceId) -> bool {
+pub unsafe extern "C" fn ghostty_app_focus_surface(
+    app: *mut GhosttyApp,
+    id: GhosttySurfaceId,
+) -> bool {
     let Some(app) = app_from_ptr(app) else {
         return false;
     };
@@ -170,9 +187,7 @@ pub unsafe extern "C" fn ghostty_app_focus_surface(app: *mut GhosttyApp, id: Gho
 /// Number of live surfaces.
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_app_surface_count(app: *mut GhosttyApp) -> usize {
-    app_from_ptr(app)
-        .map(|a| a.surface_count())
-        .unwrap_or(0)
+    app_from_ptr(app).map(|a| a.surface_count()).unwrap_or(0)
 }
 
 /// Drain one pending event from the last tick into `out` (returns false when empty).
@@ -257,8 +272,7 @@ mod surface_session_ffi {
 
     /// Spawn a default headless session (config defaults + `/bin/sh`).
     #[no_mangle]
-    pub unsafe extern "C" fn ghostty_surface_session_spawn_default(
-    ) -> *mut GhosttySurfaceSession {
+    pub unsafe extern "C" fn ghostty_surface_session_spawn_default() -> *mut GhosttySurfaceSession {
         match SurfaceSession::from_defaults() {
             Ok(session) => Box::into_raw(Box::new(session)) as *mut GhosttySurfaceSession,
             Err(_) => ptr::null_mut(),
@@ -272,6 +286,22 @@ mod surface_session_ffi {
             return;
         }
         drop(Box::from_raw(session as *mut SurfaceSession));
+    }
+
+    /// Resize the PTY grid (returns 0 on success, -1 on error).
+    #[no_mangle]
+    pub unsafe extern "C" fn ghostty_surface_session_resize(
+        session: *mut GhosttySurfaceSession,
+        cols: u16,
+        rows: u16,
+    ) -> i32 {
+        let Some(session) = session_from_ptr(session) else {
+            return -1;
+        };
+        match session.resize(cols, rows) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
     }
 
     /// Write bytes to the PTY (returns 0 on success, -1 on error).
@@ -363,7 +393,7 @@ mod tests {
     #[test]
     fn app_new_free_round_trip() {
         let cfg = GhosttyRuntimeConfig::default();
-        let app = unsafe { ghostty_app_new(&cfg, ptr::null_mut()) };
+        let app = unsafe { ghostty_app_new(&cfg, ptr::null()) };
         assert!(!app.is_null());
         unsafe { ghostty_app_tick(app) };
         assert!(unsafe { ghostty_app_userdata(app) }.is_null());
@@ -378,7 +408,7 @@ mod tests {
     #[test]
     fn app_create_delete_surface() {
         let cfg = GhosttyRuntimeConfig::default();
-        let app = unsafe { ghostty_app_new(&cfg, ptr::null_mut()) };
+        let app = unsafe { ghostty_app_new(&cfg, ptr::null()) };
         assert!(!app.is_null());
         let id = unsafe { ghostty_app_create_surface(app) };
         assert_ne!(id.raw, 0);
@@ -391,7 +421,7 @@ mod tests {
     #[test]
     fn app_poll_close_surface_event() {
         let cfg = GhosttyRuntimeConfig::default();
-        let app = unsafe { ghostty_app_new(&cfg, ptr::null_mut()) };
+        let app = unsafe { ghostty_app_new(&cfg, ptr::null()) };
         let id = unsafe { ghostty_app_create_surface(app) };
         assert!(unsafe { ghostty_app_delete_surface(app, id) });
         unsafe { ghostty_app_tick(app) };
@@ -405,8 +435,8 @@ mod tests {
     #[cfg(all(unix, feature = "rust-vt"))]
     mod surface_session {
         use super::*;
-        use ghostty_termio::{CommandBuilder, CommandSpec};
         use ghostty_core::{AppConfig, SurfaceSession, SurfaceSessionOptions};
+        use ghostty_termio::{CommandBuilder, CommandSpec};
 
         #[test]
         fn ffi_spawn_tick_contains_text() {
@@ -458,9 +488,8 @@ mod tests {
                 unsafe { ghostty_surface_session_write(raw, b"ffi\n".as_ptr(), 4) },
                 0
             );
-            let found = unsafe {
-                ghostty_surface_session_run_until_text(raw, c"ffi".as_ptr(), 3000)
-            };
+            let found =
+                unsafe { ghostty_surface_session_run_until_text(raw, c"ffi".as_ptr(), 3000) };
             assert_eq!(found, 1);
             unsafe { ghostty_surface_session_free(raw) };
         }

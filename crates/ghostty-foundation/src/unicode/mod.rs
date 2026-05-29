@@ -2,8 +2,8 @@
 
 pub mod grapheme;
 mod props_table;
-mod symbols_table;
 pub mod symbols;
+mod symbols_table;
 pub mod width;
 
 pub use grapheme::{grapheme_break, grapheme_break_no_control, BreakState, GraphemeBreak};

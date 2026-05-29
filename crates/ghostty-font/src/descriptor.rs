@@ -43,7 +43,12 @@ impl Descriptor {
     }
 
     /// Deep copy (allocates strings and variation slice).
-    pub fn clone_into(&self, family: Option<String>, style: Option<String>, variations: Vec<Variation>) -> Self {
+    pub fn clone_into(
+        &self,
+        family: Option<String>,
+        style: Option<String>,
+        variations: Vec<Variation>,
+    ) -> Self {
         Self {
             family,
             style,

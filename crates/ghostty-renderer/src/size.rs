@@ -297,9 +297,6 @@ mod tests {
             padding: Padding::default(),
         };
         let actual = Coordinate::Surface { x: 6.0, y: 10.0 }.convert(CoordinateSpace::Grid, size);
-        assert_eq!(
-            actual,
-            Coordinate::Grid { x: 1, y: 1 }
-        );
+        assert_eq!(actual, Coordinate::Grid { x: 1, y: 1 });
     }
 }

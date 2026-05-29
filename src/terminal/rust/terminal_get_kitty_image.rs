@@ -3,8 +3,8 @@ use core::ffi::{c_int, c_void};
 use crate::constants::*;
 use crate::early::*;
 use crate::simple::*;
-use crate::terminal::*;
 use crate::style_write::*;
+use crate::terminal::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_terminal_get_kitty_image(

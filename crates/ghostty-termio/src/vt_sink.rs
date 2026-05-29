@@ -50,7 +50,7 @@ impl TermioSink for VtSink {
 pub mod rust_owned {
     use core::ffi::c_void;
 
-    use ghostty_vt::test_support::{test_allocator, terminal_cell_codepoint};
+    use ghostty_vt::test_support::{terminal_cell_codepoint, test_allocator};
 
     use super::super::harness::TermioSink;
 
@@ -149,8 +149,8 @@ pub mod rust_owned {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Arc, Mutex};
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, Mutex};
 
     #[derive(Default)]
     struct Captured {

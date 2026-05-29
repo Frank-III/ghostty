@@ -275,8 +275,16 @@ fn bytes_eq_icase(a: &[u8], b: &[u8]) -> bool {
     while i < a.len() {
         let ca = unsafe { *a.get_unchecked(i) };
         let cb = unsafe { *b.get_unchecked(i) };
-        let la = if ca >= b'A' && ca <= b'Z' { ca + 32 } else { ca };
-        let lb = if cb >= b'A' && cb <= b'Z' { cb + 32 } else { cb };
+        let la = if ca >= b'A' && ca <= b'Z' {
+            ca + 32
+        } else {
+            ca
+        };
+        let lb = if cb >= b'A' && cb <= b'Z' {
+            cb + 32
+        } else {
+            cb
+        };
         if la != lb {
             return false;
         }
@@ -361,9 +369,21 @@ pub fn rgb_parse(value: &[u8]) -> Option<RGB> {
 
     let b_slice = unsafe { trimmed.get_unchecked(i..) };
 
-    let r = if use_intensity { from_intensity(r_slice)? } else { from_hex(r_slice)? };
-    let g = if use_intensity { from_intensity(g_slice)? } else { from_hex(g_slice)? };
-    let b = if use_intensity { from_intensity(b_slice)? } else { from_hex(b_slice)? };
+    let r = if use_intensity {
+        from_intensity(r_slice)?
+    } else {
+        from_hex(r_slice)?
+    };
+    let g = if use_intensity {
+        from_intensity(g_slice)?
+    } else {
+        from_hex(g_slice)?
+    };
+    let b = if use_intensity {
+        from_intensity(b_slice)?
+    } else {
+        from_hex(b_slice)?
+    };
 
     Some(RGB::new(r, g, b))
 }
@@ -425,7 +445,11 @@ fn make_ansi_target(op: ColorOscOp, color: u16) -> Option<ColorTarget> {
                 Some(ColorTarget::Palette(color as u8))
             } else {
                 let offset = color - 256;
-                let idx = if offset <= 7 { offset as u8 } else { return None };
+                let idx = if offset <= 7 {
+                    offset as u8
+                } else {
+                    return None;
+                };
                 Some(ColorTarget::Special(SpecialColor::from_u8(idx)?))
             }
         }
@@ -570,26 +594,82 @@ pub fn parse_color_osc(op: ColorOscOp, data: &[u8], terminator: OscTerminator) -
         ColorOscOp::Osc104 | ColorOscOp::Osc105 => {
             parse_reset_ansi_color(op, data, &mut result.requests);
         }
-        ColorOscOp::Osc10 => parse_get_set_dynamic_color(DynamicColor::Foreground, data, &mut result.requests),
-        ColorOscOp::Osc11 => parse_get_set_dynamic_color(DynamicColor::Background, data, &mut result.requests),
-        ColorOscOp::Osc12 => parse_get_set_dynamic_color(DynamicColor::Cursor, data, &mut result.requests),
-        ColorOscOp::Osc13 => parse_get_set_dynamic_color(DynamicColor::PointerForeground, data, &mut result.requests),
-        ColorOscOp::Osc14 => parse_get_set_dynamic_color(DynamicColor::PointerBackground, data, &mut result.requests),
-        ColorOscOp::Osc15 => parse_get_set_dynamic_color(DynamicColor::TektronixForeground, data, &mut result.requests),
-        ColorOscOp::Osc16 => parse_get_set_dynamic_color(DynamicColor::TektronixBackground, data, &mut result.requests),
-        ColorOscOp::Osc17 => parse_get_set_dynamic_color(DynamicColor::HighlightBackground, data, &mut result.requests),
-        ColorOscOp::Osc18 => parse_get_set_dynamic_color(DynamicColor::TektronixCursor, data, &mut result.requests),
-        ColorOscOp::Osc19 => parse_get_set_dynamic_color(DynamicColor::HighlightForeground, data, &mut result.requests),
-        ColorOscOp::Osc110 => parse_reset_dynamic_color(DynamicColor::Foreground, data, &mut result.requests),
-        ColorOscOp::Osc111 => parse_reset_dynamic_color(DynamicColor::Background, data, &mut result.requests),
-        ColorOscOp::Osc112 => parse_reset_dynamic_color(DynamicColor::Cursor, data, &mut result.requests),
-        ColorOscOp::Osc113 => parse_reset_dynamic_color(DynamicColor::PointerForeground, data, &mut result.requests),
-        ColorOscOp::Osc114 => parse_reset_dynamic_color(DynamicColor::PointerBackground, data, &mut result.requests),
-        ColorOscOp::Osc115 => parse_reset_dynamic_color(DynamicColor::TektronixForeground, data, &mut result.requests),
-        ColorOscOp::Osc116 => parse_reset_dynamic_color(DynamicColor::TektronixBackground, data, &mut result.requests),
-        ColorOscOp::Osc117 => parse_reset_dynamic_color(DynamicColor::HighlightBackground, data, &mut result.requests),
-        ColorOscOp::Osc118 => parse_reset_dynamic_color(DynamicColor::TektronixCursor, data, &mut result.requests),
-        ColorOscOp::Osc119 => parse_reset_dynamic_color(DynamicColor::HighlightForeground, data, &mut result.requests),
+        ColorOscOp::Osc10 => {
+            parse_get_set_dynamic_color(DynamicColor::Foreground, data, &mut result.requests)
+        }
+        ColorOscOp::Osc11 => {
+            parse_get_set_dynamic_color(DynamicColor::Background, data, &mut result.requests)
+        }
+        ColorOscOp::Osc12 => {
+            parse_get_set_dynamic_color(DynamicColor::Cursor, data, &mut result.requests)
+        }
+        ColorOscOp::Osc13 => {
+            parse_get_set_dynamic_color(DynamicColor::PointerForeground, data, &mut result.requests)
+        }
+        ColorOscOp::Osc14 => {
+            parse_get_set_dynamic_color(DynamicColor::PointerBackground, data, &mut result.requests)
+        }
+        ColorOscOp::Osc15 => parse_get_set_dynamic_color(
+            DynamicColor::TektronixForeground,
+            data,
+            &mut result.requests,
+        ),
+        ColorOscOp::Osc16 => parse_get_set_dynamic_color(
+            DynamicColor::TektronixBackground,
+            data,
+            &mut result.requests,
+        ),
+        ColorOscOp::Osc17 => parse_get_set_dynamic_color(
+            DynamicColor::HighlightBackground,
+            data,
+            &mut result.requests,
+        ),
+        ColorOscOp::Osc18 => {
+            parse_get_set_dynamic_color(DynamicColor::TektronixCursor, data, &mut result.requests)
+        }
+        ColorOscOp::Osc19 => parse_get_set_dynamic_color(
+            DynamicColor::HighlightForeground,
+            data,
+            &mut result.requests,
+        ),
+        ColorOscOp::Osc110 => {
+            parse_reset_dynamic_color(DynamicColor::Foreground, data, &mut result.requests)
+        }
+        ColorOscOp::Osc111 => {
+            parse_reset_dynamic_color(DynamicColor::Background, data, &mut result.requests)
+        }
+        ColorOscOp::Osc112 => {
+            parse_reset_dynamic_color(DynamicColor::Cursor, data, &mut result.requests)
+        }
+        ColorOscOp::Osc113 => {
+            parse_reset_dynamic_color(DynamicColor::PointerForeground, data, &mut result.requests)
+        }
+        ColorOscOp::Osc114 => {
+            parse_reset_dynamic_color(DynamicColor::PointerBackground, data, &mut result.requests)
+        }
+        ColorOscOp::Osc115 => parse_reset_dynamic_color(
+            DynamicColor::TektronixForeground,
+            data,
+            &mut result.requests,
+        ),
+        ColorOscOp::Osc116 => parse_reset_dynamic_color(
+            DynamicColor::TektronixBackground,
+            data,
+            &mut result.requests,
+        ),
+        ColorOscOp::Osc117 => parse_reset_dynamic_color(
+            DynamicColor::HighlightBackground,
+            data,
+            &mut result.requests,
+        ),
+        ColorOscOp::Osc118 => {
+            parse_reset_dynamic_color(DynamicColor::TektronixCursor, data, &mut result.requests)
+        }
+        ColorOscOp::Osc119 => parse_reset_dynamic_color(
+            DynamicColor::HighlightForeground,
+            data,
+            &mut result.requests,
+        ),
         _ => {}
     }
 

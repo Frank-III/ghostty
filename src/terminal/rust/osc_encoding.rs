@@ -36,9 +36,7 @@ pub fn is_safe_utf8(s: &[u8]) -> bool {
             if b1 & 0xC0 != 0x80 || b2 & 0xC0 != 0x80 {
                 return false;
             }
-            let cp = ((b0 as u32 & 0x0F) << 12)
-                | ((b1 as u32 & 0x3F) << 6)
-                | (b2 as u32 & 0x3F);
+            let cp = ((b0 as u32 & 0x0F) << 12) | ((b1 as u32 & 0x3F) << 6) | (b2 as u32 & 0x3F);
             if cp < 0x800 {
                 return false;
             }

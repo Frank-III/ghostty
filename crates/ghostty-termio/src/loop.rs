@@ -1,68 +1,74 @@
-//! Production termio pump loop (`src/termio/Termio.zig` drain/pump cycle).
-//!
-//! Wraps [`TermioHarness`] for the synchronous path used by [`ghostty_core::SurfaceSession`].
+//! Production termio session (`Termio.zig`) via background thread + event drain.
 
 use ghostty_foundation::FoundationResult;
 
 use crate::command::CommandSpec;
-use crate::harness::{TermioHarness, TermioSink};
 use crate::spawn::SpawnPtyError;
 use crate::termio::TermioMessage;
+use crate::thread::{TermioThreadEvent, TermioThreadHandle};
 use crate::winsize::Winsize;
+use crate::TermioSink;
 
-/// PTY-backed termio session with child exit reporting from [`crate::exec`].
+/// PTY-backed termio with a background I/O thread (production path).
 pub struct TermioLoop {
-    harness: TermioHarness,
+    thread: TermioThreadHandle,
+    winsize: Winsize,
 }
 
 impl TermioLoop {
     pub fn spawn(spec: &CommandSpec, winsize: Winsize) -> Result<Self, SpawnPtyError> {
-        TermioHarness::spawn(spec, winsize).map(|harness| Self { harness })
-    }
-
-    pub fn harness(&self) -> &TermioHarness {
-        &self.harness
-    }
-
-    pub fn harness_mut(&mut self) -> &mut TermioHarness {
-        &mut self.harness
-    }
-
-    pub fn pid(&self) -> libc::pid_t {
-        self.harness.pid()
+        let thread = TermioThreadHandle::spawn(spec, winsize)?;
+        Ok(Self { thread, winsize })
     }
 
     pub fn winsize(&self) -> Winsize {
-        self.harness.winsize()
+        self.winsize
+    }
+
+    pub fn pid(&self) -> libc::pid_t {
+        self.thread.pid()
     }
 
     pub fn is_shutdown(&self) -> bool {
-        self.harness.is_shutdown()
+        self.thread.is_shutdown()
     }
 
     pub fn push(&mut self, msg: TermioMessage) -> FoundationResult<()> {
-        self.harness.mailbox_mut().push(msg)
+        if let TermioMessage::Resize { cols, rows } = &msg {
+            self.winsize = Winsize {
+                cols: *cols,
+                rows: *rows,
+                x_pixels: self.winsize.x_pixels,
+                y_pixels: self.winsize.y_pixels,
+            };
+        }
+        self.thread.push(msg)
     }
 
+    /// Drain thread events into `sink`; returns PTY bytes delivered to the sink.
     pub fn tick(&mut self, sink: &mut dyn TermioSink) -> FoundationResult<usize> {
-        self.harness.drain_mailbox(sink)?;
-        self.harness
-            .pump_pty(sink)
-            .map_err(|_| ghostty_foundation::FoundationError::Unsupported)
+        let mut bytes = 0usize;
+        while let Some(event) = self.thread.try_recv_event() {
+            match event {
+                TermioThreadEvent::PtyOutput(data) => {
+                    bytes += data.len();
+                    sink.write_terminal(&data);
+                }
+                TermioThreadEvent::ResizeAck { cols, rows } => {
+                    sink.resize_terminal(cols, rows);
+                }
+                TermioThreadEvent::SetTitle(_) | TermioThreadEvent::RedrawRequested => {}
+                TermioThreadEvent::ChildExit(_) => {}
+            }
+        }
+        Ok(bytes)
     }
 
     pub fn poll_child_exit(&mut self) -> Option<u32> {
-        self.harness.poll_child_exit()
+        self.thread.poll_child_exit()
     }
 
-    pub fn shutdown(&mut self, sink: &mut dyn TermioSink) -> FoundationResult<()> {
-        self.push(TermioMessage::Shutdown)?;
-        self.harness.drain_mailbox(sink)
-    }
-}
-
-impl Drop for TermioLoop {
-    fn drop(&mut self) {
-        self.harness.terminate_child();
+    pub fn shutdown(&mut self) -> FoundationResult<()> {
+        self.push(TermioMessage::Shutdown)
     }
 }

@@ -165,9 +165,7 @@ pub fn parse_variable_usize(v: Variable, value: &[u8]) -> Result<usize, i32> {
         | Variable::ScrollRegionLower
         | Variable::ScrollRegionUpper
         | Variable::WindowWidth
-        | Variable::WindowHeight => {
-            parse_usize_str(value).ok_or(OUTPUT_FORMAT_ERROR)
-        }
+        | Variable::WindowHeight => parse_usize_str(value).ok_or(OUTPUT_FORMAT_ERROR),
         Variable::SessionId => {
             if value.len() < 2 {
                 return Err(OUTPUT_FORMAT_ERROR);
@@ -175,8 +173,7 @@ pub fn parse_variable_usize(v: Variable, value: &[u8]) -> Result<usize, i32> {
             if unsafe { *value.get_unchecked(0) } != b'$' {
                 return Err(OUTPUT_FORMAT_ERROR);
             }
-            parse_usize_str(unsafe { value.get_unchecked(1..) })
-                .ok_or(OUTPUT_FORMAT_ERROR)
+            parse_usize_str(unsafe { value.get_unchecked(1..) }).ok_or(OUTPUT_FORMAT_ERROR)
         }
         Variable::WindowId => {
             if value.len() < 2 {
@@ -185,8 +182,7 @@ pub fn parse_variable_usize(v: Variable, value: &[u8]) -> Result<usize, i32> {
             if unsafe { *value.get_unchecked(0) } != b'@' {
                 return Err(OUTPUT_FORMAT_ERROR);
             }
-            parse_usize_str(unsafe { value.get_unchecked(1..) })
-                .ok_or(OUTPUT_FORMAT_ERROR)
+            parse_usize_str(unsafe { value.get_unchecked(1..) }).ok_or(OUTPUT_FORMAT_ERROR)
         }
         Variable::PaneId => {
             if value.len() < 2 {
@@ -195,8 +191,7 @@ pub fn parse_variable_usize(v: Variable, value: &[u8]) -> Result<usize, i32> {
             if unsafe { *value.get_unchecked(0) } != b'%' {
                 return Err(OUTPUT_FORMAT_ERROR);
             }
-            parse_usize_str(unsafe { value.get_unchecked(1..) })
-                .ok_or(OUTPUT_FORMAT_ERROR)
+            parse_usize_str(unsafe { value.get_unchecked(1..) }).ok_or(OUTPUT_FORMAT_ERROR)
         }
         _ => Err(OUTPUT_FORMAT_ERROR),
     }
@@ -213,7 +208,12 @@ pub fn parse_variable_string<'a>(v: Variable, value: &'a [u8]) -> Result<&'a [u8
     }
 }
 
-pub fn format_variable_name(v: Variable, out: *mut u8, out_len: usize, out_written: *mut usize) -> i32 {
+pub fn format_variable_name(
+    v: Variable,
+    out: *mut u8,
+    out_len: usize,
+    out_written: *mut usize,
+) -> i32 {
     let name = variable_name(v);
     let prefix = b"#{";
     let suffix = b"}";
@@ -261,25 +261,24 @@ pub fn format_variables(
             if pos >= out_len {
                 return OUTPUT_PARSE_ERROR;
             }
-            unsafe { *out.add(pos) = delimiter; }
+            unsafe {
+                *out.add(pos) = delimiter;
+            }
             pos += 1;
         }
         let v = unsafe { core::ptr::read(vars.add(i)) };
         let mut written: usize = 0;
         let remaining = if pos < out_len { out_len - pos } else { 0 };
-        let result = format_variable_name(
-            v,
-            unsafe { out.add(pos) },
-            remaining,
-            &mut written,
-        );
+        let result = format_variable_name(v, unsafe { out.add(pos) }, remaining, &mut written);
         if result < 0 {
             return result;
         }
         pos += written;
         i += 1;
     }
-    unsafe { *out_written = pos; }
+    unsafe {
+        *out_written = pos;
+    }
     0
 }
 
@@ -375,10 +374,9 @@ fn split_at_delim(s: &[u8], delim: u8) -> (&[u8], &[u8]) {
     let mut i: usize = 0;
     while i < s.len() {
         if unsafe { *s.get_unchecked(i) } == delim {
-            return (
-                unsafe { s.get_unchecked(..i) },
-                unsafe { s.get_unchecked(i + 1..) },
-            );
+            return (unsafe { s.get_unchecked(..i) }, unsafe {
+                s.get_unchecked(i + 1..)
+            });
         }
         i += 1;
     }
@@ -466,14 +464,16 @@ pub fn parse_pane_state_line(line: &[u8], out: *mut ParsedPaneState) -> i32 {
         (*out).cursor_colour_len = cursor_colour_str.len();
         (*out).cursor_blinking = parse_variable_bool(cursor_blinking_str);
         (*out).alternate_on = parse_variable_bool(alternate_on_str);
-        (*out).alternate_saved_x = match parse_variable_usize(Variable::AlternateSavedX, alternate_saved_x_str) {
-            Ok(v) => v,
-            Err(_) => return OUTPUT_FORMAT_ERROR,
-        };
-        (*out).alternate_saved_y = match parse_variable_usize(Variable::AlternateSavedY, alternate_saved_y_str) {
-            Ok(v) => v,
-            Err(_) => return OUTPUT_FORMAT_ERROR,
-        };
+        (*out).alternate_saved_x =
+            match parse_variable_usize(Variable::AlternateSavedX, alternate_saved_x_str) {
+                Ok(v) => v,
+                Err(_) => return OUTPUT_FORMAT_ERROR,
+            };
+        (*out).alternate_saved_y =
+            match parse_variable_usize(Variable::AlternateSavedY, alternate_saved_y_str) {
+                Ok(v) => v,
+                Err(_) => return OUTPUT_FORMAT_ERROR,
+            };
         (*out).insert_flag = parse_variable_bool(insert_flag_str);
         (*out).wrap_flag = parse_variable_bool(wrap_flag_str);
         (*out).keypad_flag = parse_variable_bool(keypad_flag_str);
@@ -487,14 +487,16 @@ pub fn parse_pane_state_line(line: &[u8], out: *mut ParsedPaneState) -> i32 {
         (*out).mouse_sgr_flag = parse_variable_bool(mouse_sgr_flag_str);
         (*out).focus_flag = parse_variable_bool(focus_flag_str);
         (*out).bracketed_paste = parse_variable_bool(bracketed_paste_str);
-        (*out).scroll_region_upper = match parse_variable_usize(Variable::ScrollRegionUpper, scroll_region_upper_str) {
-            Ok(v) => v,
-            Err(_) => return OUTPUT_FORMAT_ERROR,
-        };
-        (*out).scroll_region_lower = match parse_variable_usize(Variable::ScrollRegionLower, scroll_region_lower_str) {
-            Ok(v) => v,
-            Err(_) => return OUTPUT_FORMAT_ERROR,
-        };
+        (*out).scroll_region_upper =
+            match parse_variable_usize(Variable::ScrollRegionUpper, scroll_region_upper_str) {
+                Ok(v) => v,
+                Err(_) => return OUTPUT_FORMAT_ERROR,
+            };
+        (*out).scroll_region_lower =
+            match parse_variable_usize(Variable::ScrollRegionLower, scroll_region_lower_str) {
+                Ok(v) => v,
+                Err(_) => return OUTPUT_FORMAT_ERROR,
+            };
         (*out).pane_tabs_ptr = pane_tabs_str.as_ptr();
         (*out).pane_tabs_len = pane_tabs_str.len();
     }
@@ -541,7 +543,8 @@ pub fn parse_window_info_line(line: &[u8], out: *mut ParsedWindowInfo) -> i32 {
             Ok(v) => v,
             Err(_) => return OUTPUT_FORMAT_ERROR,
         };
-        (*out).window_height = match parse_variable_usize(Variable::WindowHeight, window_height_str) {
+        (*out).window_height = match parse_variable_usize(Variable::WindowHeight, window_height_str)
+        {
             Ok(v) => v,
             Err(_) => return OUTPUT_FORMAT_ERROR,
         };
@@ -739,13 +742,22 @@ mod tests {
 
     #[test]
     fn parse_variable_usize_scroll_region() {
-        assert_eq!(parse_variable_usize(Variable::ScrollRegionUpper, b"0").unwrap(), 0);
-        assert_eq!(parse_variable_usize(Variable::ScrollRegionLower, b"39").unwrap(), 39);
+        assert_eq!(
+            parse_variable_usize(Variable::ScrollRegionUpper, b"0").unwrap(),
+            0
+        );
+        assert_eq!(
+            parse_variable_usize(Variable::ScrollRegionLower, b"39").unwrap(),
+            39
+        );
     }
 
     #[test]
     fn parse_variable_usize_session_id_with_dollar() {
-        assert_eq!(parse_variable_usize(Variable::SessionId, b"$42").unwrap(), 42);
+        assert_eq!(
+            parse_variable_usize(Variable::SessionId, b"$42").unwrap(),
+            42
+        );
     }
 
     #[test]
@@ -755,7 +767,10 @@ mod tests {
 
     #[test]
     fn parse_variable_usize_window_id_with_at() {
-        assert_eq!(parse_variable_usize(Variable::WindowId, b"@14").unwrap(), 14);
+        assert_eq!(
+            parse_variable_usize(Variable::WindowId, b"@14").unwrap(),
+            14
+        );
     }
 
     #[test]
@@ -813,12 +828,7 @@ mod tests {
     fn format_variable_name_produces_tmux_format() {
         let mut buf = [0u8; 64];
         let mut written: usize = 0;
-        let r = format_variable_name(
-            Variable::PaneId,
-            buf.as_mut_ptr(),
-            buf.len(),
-            &mut written,
-        );
+        let r = format_variable_name(Variable::PaneId, buf.as_mut_ptr(), buf.len(), &mut written);
         assert_eq!(r, 0);
         assert_eq!(&buf[..written], b"#{pane_id}");
     }
@@ -930,7 +940,10 @@ mod tests {
     #[test]
     fn parse_pane_state_line_null_out() {
         let line = b"%0;42;0;1;;;;0;4294967295;4294967295;0;1;0;0;0;0;0;0;0;0;0;;;0;39;8,16;3.4";
-        assert_eq!(parse_pane_state_line(line, core::ptr::null_mut()), OUTPUT_PARSE_ERROR);
+        assert_eq!(
+            parse_pane_state_line(line, core::ptr::null_mut()),
+            OUTPUT_PARSE_ERROR
+        );
     }
 
     #[test]
@@ -957,9 +970,8 @@ mod tests {
         assert_eq!(info.window_id, 2);
         assert_eq!(info.window_width, 80);
         assert_eq!(info.window_height, 24);
-        let layout = unsafe {
-            core::slice::from_raw_parts(info.window_layout_ptr, info.window_layout_len)
-        };
+        let layout =
+            unsafe { core::slice::from_raw_parts(info.window_layout_ptr, info.window_layout_len) };
         assert_eq!(layout, b"1234x791,0,0{617x791,0,0,0,617x791,618,0,1}");
     }
 

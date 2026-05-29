@@ -1,8 +1,8 @@
-use core::ffi::c_void;
-use crate::early::*;
 use crate::constants::*;
-use crate::vt_parser::*;
+use crate::early::*;
 use crate::tmux::*;
+use crate::vt_parser::*;
+use core::ffi::c_void;
 
 pub const DCS_DEFAULT_MAX_BYTES: usize = 1024 * 1024;
 pub const DCS_DECRQSS_MAX_LEN: usize = 2;
@@ -218,49 +218,35 @@ impl DcsHandler {
         tmux_enabled: bool,
     ) -> Option<(DcsState, Option<DcsCommand>)> {
         match dcs.intermediates_len {
-            0 => {
-                match dcs.final_byte {
-                    b'p' => {
-                        if !tmux_enabled {
-                            return None;
-                        }
-                        if dcs.params_len != 1 || dcs.params[0] != 1000 {
-                            return None;
-                        }
-                        Some((
-                            DcsState::tmux(tmux_parser),
-                            Some(DcsCommand {
-                                tag: DcsCommandTag::Tmux,
-                                ..Default::default()
-                            }),
-                        ))
+            0 => match dcs.final_byte {
+                b'p' => {
+                    if !tmux_enabled {
+                        return None;
                     }
-                    _ => None,
+                    if dcs.params_len != 1 || dcs.params[0] != 1000 {
+                        return None;
+                    }
+                    Some((
+                        DcsState::tmux(tmux_parser),
+                        Some(DcsCommand {
+                            tag: DcsCommandTag::Tmux,
+                            ..Default::default()
+                        }),
+                    ))
                 }
-            }
-            1 => {
-                match dcs.intermediates[0] {
-                    b'+' => {
-                        match dcs.final_byte {
-                            b'q' => Some((
-                                DcsState::xtgettcap(buf, buf_cap),
-                                None,
-                            )),
-                            _ => None,
-                        }
-                    }
-                    b'$' => {
-                        match dcs.final_byte {
-                            b'q' => Some((
-                                DcsState::decrqss(),
-                                None,
-                            )),
-                            _ => None,
-                        }
-                    }
+                _ => None,
+            },
+            1 => match dcs.intermediates[0] {
+                b'+' => match dcs.final_byte {
+                    b'q' => Some((DcsState::xtgettcap(buf, buf_cap), None)),
                     _ => None,
-                }
-            }
+                },
+                b'$' => match dcs.final_byte {
+                    b'q' => Some((DcsState::decrqss(), None)),
+                    _ => None,
+                },
+                _ => None,
+            },
             _ => None,
         }
     }
@@ -279,9 +265,7 @@ impl DcsHandler {
     fn try_put(&mut self, byte: u8) -> Result<Option<DcsCommand>, ()> {
         match self.state.tag {
             DcsStateTag::Inactive | DcsStateTag::Ignore => Ok(None),
-            DcsStateTag::Tmux => {
-                Err(())
-            }
+            DcsStateTag::Tmux => Err(()),
             DcsStateTag::XTGETTCAP => {
                 if self.state.xtgettcap_len >= self.state.xtgettcap_cap
                     || self.state.xtgettcap_len >= self.max_bytes
@@ -308,12 +292,10 @@ impl DcsHandler {
     pub fn unhook(&mut self) -> Option<DcsCommand> {
         let cmd = match self.state.tag {
             DcsStateTag::Inactive | DcsStateTag::Ignore => None,
-            DcsStateTag::Tmux => {
-                Some(DcsCommand {
-                    tag: DcsCommandTag::Tmux,
-                    ..Default::default()
-                })
-            }
+            DcsStateTag::Tmux => Some(DcsCommand {
+                tag: DcsCommandTag::Tmux,
+                ..Default::default()
+            }),
             DcsStateTag::XTGETTCAP => {
                 unsafe {
                     let buf = self.state.xtgettcap_buf;

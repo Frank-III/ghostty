@@ -61,11 +61,7 @@ impl<T: DeepEqual> DeepEqual for Option<T> {
 
 impl<T: DeepEqual> DeepEqual for [T] {
     fn deep_equal(&self, other: &Self) -> bool {
-        self.len() == other.len()
-            && self
-                .iter()
-                .zip(other.iter())
-                .all(|(a, b)| a.deep_equal(b))
+        self.len() == other.len() && self.iter().zip(other.iter()).all(|(a, b)| a.deep_equal(b))
     }
 }
 

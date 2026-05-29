@@ -4,10 +4,7 @@ use core::ffi::c_void;
 use core::ptr;
 
 use crate::charsets::*;
-use crate::CellCountInt;
-use crate::formatter_types::{
-    Format, Options, PinMap, ScreenContent, ScreenExtra, Writer,
-};
+use crate::formatter_types::{Format, Options, PinMap, ScreenContent, ScreenExtra, Writer};
 use crate::highlight::Pin;
 use crate::hyperlink::*;
 use crate::kitty_key::*;
@@ -18,6 +15,7 @@ use crate::point::PointTag;
 use crate::screen_types::*;
 use crate::selection_types::Selection;
 use crate::style_types::Style;
+use crate::CellCountInt;
 
 pub trait FormatterWriter {
     fn write_bytes(&mut self, bytes: &[u8]) -> bool;
@@ -166,16 +164,12 @@ impl PageFormatter {
             let row_ptr = unsafe { rows_ptr.add(y) };
             let row = unsafe { &*row_ptr };
 
-            let x_lo = if y == y_start
-                || (self.rectangle && x_start < cols as usize)
-            {
+            let x_lo = if y == y_start || (self.rectangle && x_start < cols as usize) {
                 x_start
             } else {
                 0
             };
-            let x_hi = if y == y_end - 1
-                || (self.rectangle && x_end <= cols as usize)
-            {
+            let x_hi = if y == y_end - 1 || (self.rectangle && x_end <= cols as usize) {
                 x_end
             } else {
                 cols as usize
@@ -307,14 +301,11 @@ impl ScreenFormatter {
                 if pages.is_null() {
                     return false;
                 }
-                let mut list_formatter =
-                    PageListFormatter::init(pages, self.opts);
+                let mut list_formatter = PageListFormatter::init(pages, self.opts);
                 list_formatter.pin_map = self.pin_map;
                 if let Some(sel) = selection_ptr {
-                    list_formatter.top_left =
-                        Some(selection_top_left(sel, screen));
-                    list_formatter.bottom_right =
-                        Some(selection_bottom_right(sel, screen));
+                    list_formatter.top_left = Some(selection_top_left(sel, screen));
+                    list_formatter.bottom_right = Some(selection_bottom_right(sel, screen));
                     list_formatter.rectangle = sel.rectangle;
                 }
                 if !list_formatter.format(writer) {
@@ -517,12 +508,12 @@ impl PageListFormatter {
             }
             let node = unsafe { &*current_node };
 
-            let start: CellCountInt =
-                if current_node == tl.node { tl.y } else { 0 };
-            let end: CellCountInt =
-                if current_node == br.node { br.y + 1 } else {
-                    node.data.size.rows
-                };
+            let start: CellCountInt = if current_node == tl.node { tl.y } else { 0 };
+            let end: CellCountInt = if current_node == br.node {
+                br.y + 1
+            } else {
+                node.data.size.rows
+            };
             if start >= end {
                 if current_node == br.node {
                     break;
@@ -531,8 +522,7 @@ impl PageListFormatter {
                 continue;
             }
 
-            let mut formatter =
-                PageFormatter::init(&node.data, self.opts);
+            let mut formatter = PageFormatter::init(&node.data, self.opts);
             formatter.start_y = start;
             formatter.end_y = end - 1;
             formatter.trailing_state = page_state;
@@ -610,7 +600,11 @@ fn selection_top_left(sel: &Selection, _screen: &Screen) -> Pin {
             cur = (*cur).next;
         }
     }
-    if seen_end { start } else { end }
+    if seen_end {
+        start
+    } else {
+        end
+    }
 }
 
 fn selection_bottom_right(sel: &Selection, _screen: &Screen) -> Pin {
@@ -633,7 +627,11 @@ fn selection_bottom_right(sel: &Selection, _screen: &Screen) -> Pin {
             cur = (*cur).next;
         }
     }
-    if seen_end { end } else { start }
+    if seen_end {
+        end
+    } else {
+        start
+    }
 }
 
 #[cfg(test)]
@@ -710,7 +708,10 @@ mod tests {
                 true
             }
         }
-        let mut w = BufW { data: [0u8; 8], n: 0 };
+        let mut w = BufW {
+            data: [0u8; 8],
+            n: 0,
+        };
         assert!(write_u16(&mut w, 12345));
         assert_eq!(&w.data[..w.n], b"12345");
     }
@@ -730,7 +731,10 @@ mod tests {
                 true
             }
         }
-        let mut w = BufW { data: [0u8; 8], n: 0 };
+        let mut w = BufW {
+            data: [0u8; 8],
+            n: 0,
+        };
         assert!(write_usize(&mut w, 0));
         assert_eq!(&w.data[..w.n], b"0");
     }

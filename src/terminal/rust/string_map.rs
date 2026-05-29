@@ -1,6 +1,6 @@
-use crate::early::*;
-use crate::constants::*;
 use crate::allocator::*;
+use crate::constants::*;
+use crate::early::*;
 
 #[repr(C)]
 pub struct StringMap {
@@ -20,10 +20,18 @@ impl StringMap {
 
     pub unsafe fn deinit(&self, alloc: *const GhosttyAllocator) {
         if !self.string_ptr.is_null() && self.string_len > 0 {
-            unsafe { alloc_free_impl(alloc, self.string_ptr, self.string_len + 1); }
+            unsafe {
+                alloc_free_impl(alloc, self.string_ptr, self.string_len + 1);
+            }
         }
         if !self.map_ptr.is_null() && self.map_len > 0 {
-            unsafe { alloc_free_impl(alloc, self.map_ptr, self.map_len * core::mem::size_of::<usize>()); }
+            unsafe {
+                alloc_free_impl(
+                    alloc,
+                    self.map_ptr,
+                    self.map_len * core::mem::size_of::<usize>(),
+                );
+            }
         }
     }
 }

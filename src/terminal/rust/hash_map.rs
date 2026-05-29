@@ -1,5 +1,5 @@
-use crate::early::*;
 use crate::constants::*;
+use crate::early::*;
 use crate::size_types::*;
 
 use core::marker::PhantomData;
@@ -11,7 +11,13 @@ const fn align_forward(addr: usize, align: usize) -> usize {
 }
 
 const fn max3(a: usize, b: usize, c: usize) -> usize {
-    if a >= b && a >= c { a } else if b >= c { b } else { c }
+    if a >= b && a >= c {
+        a
+    } else if b >= c {
+        b
+    } else {
+        c
+    }
 }
 
 pub type Size = u32;
@@ -125,10 +131,7 @@ impl<K: Copy> HashMapContext<K> for AutoContext {
         const FNV_OFFSET: u64 = 0xcbf29ce484222325;
         const FNV_PRIME: u64 = 0x100000001b3;
         let bytes: &[u8] = unsafe {
-            core::slice::from_raw_parts(
-                (key as *const K) as *const u8,
-                mem::size_of::<K>(),
-            )
+            core::slice::from_raw_parts((key as *const K) as *const u8, mem::size_of::<K>())
         };
         let mut h: u64 = FNV_OFFSET;
         let mut i: usize = 0;
@@ -142,16 +145,10 @@ impl<K: Copy> HashMapContext<K> for AutoContext {
 
     fn eql(a: &K, b: &K) -> bool {
         let a_bytes: &[u8] = unsafe {
-            core::slice::from_raw_parts(
-                (a as *const K) as *const u8,
-                mem::size_of::<K>(),
-            )
+            core::slice::from_raw_parts((a as *const K) as *const u8, mem::size_of::<K>())
         };
         let b_bytes: &[u8] = unsafe {
-            core::slice::from_raw_parts(
-                (b as *const K) as *const u8,
-                mem::size_of::<K>(),
-            )
+            core::slice::from_raw_parts((b as *const K) as *const u8, mem::size_of::<K>())
         };
         a_bytes == b_bytes
     }
@@ -169,7 +166,9 @@ pub struct HashMapUnmanaged<K, V, C> {
 impl<K, V, C> Copy for HashMapUnmanaged<K, V, C> {}
 
 impl<K, V, C> Clone for HashMapUnmanaged<K, V, C> {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<K, V, C: HashMapContext<K>> HashMapUnmanaged<K, V, C> {
@@ -269,7 +268,11 @@ impl<K, V, C: HashMapContext<K>> HashMapUnmanaged<K, V, C> {
 
     #[inline]
     pub fn values_mut(&mut self) -> *mut V {
-        unsafe { (*self.header_ptr()).values.ptr_mut(self.metadata as *mut u8) }
+        unsafe {
+            (*self.header_ptr())
+                .values
+                .ptr_mut(self.metadata as *mut u8)
+        }
     }
 
     #[inline]
@@ -335,11 +338,7 @@ impl<K, V, C: HashMapContext<K>> HashMapUnmanaged<K, V, C> {
 
     // -- Insert ---------------------------------------------------------------
 
-    fn get_or_put_assume_capacity_adapted(
-        &mut self,
-        key: &K,
-        _ctx: C,
-    ) -> GetOrPutResult<K, V> {
+    fn get_or_put_assume_capacity_adapted(&mut self, key: &K, _ctx: C) -> GetOrPutResult<K, V> {
         let hash = C::hash(key);
         let cap = self.capacity() as usize;
         let mask = cap - 1;
@@ -387,11 +386,7 @@ impl<K, V, C: HashMapContext<K>> HashMapUnmanaged<K, V, C> {
         }
     }
 
-    pub fn get_or_put_assume_capacity(
-        &mut self,
-        key: K,
-        ctx: C,
-    ) -> GetOrPutResult<K, V> {
+    pub fn get_or_put_assume_capacity(&mut self, key: K, ctx: C) -> GetOrPutResult<K, V> {
         let result = self.get_or_put_assume_capacity_adapted(&key, ctx);
         if !result.found_existing {
             unsafe {
@@ -432,12 +427,7 @@ impl<K, V, C: HashMapContext<K>> HashMapUnmanaged<K, V, C> {
         }
     }
 
-    pub fn fetch_put_assume_capacity(
-        &mut self,
-        key: K,
-        value: V,
-        ctx: C,
-    ) -> Option<KV<K, V>> {
+    pub fn fetch_put_assume_capacity(&mut self, key: K, value: V, ctx: C) -> Option<KV<K, V>> {
         let gop = self.get_or_put_assume_capacity(key, ctx);
         let result = if gop.found_existing {
             Some(KV {
@@ -478,7 +468,10 @@ impl<K, V, C: HashMapContext<K>> HashMapUnmanaged<K, V, C> {
             let old_val = ptr::read(self.values().add(idx));
             Metadata::remove_slot(&mut *self.metadata.add(idx));
             (*self.header_mut_ptr()).size -= 1;
-            Some(KV { key: old_key, value: old_val })
+            Some(KV {
+                key: old_key,
+                value: old_val,
+            })
         }
     }
 
@@ -537,7 +530,9 @@ pub struct OffsetHashMap<K, V, C> {
 impl<K, V, C> Copy for OffsetHashMap<K, V, C> {}
 
 impl<K, V, C> Clone for OffsetHashMap<K, V, C> {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<K, V, C: HashMapContext<K>> OffsetHashMap<K, V, C> {

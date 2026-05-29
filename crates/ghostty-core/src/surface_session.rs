@@ -6,13 +6,22 @@ use std::time::Instant;
 
 use ghostty_foundation::{FoundationError, FoundationResult};
 use ghostty_termio::{
-    CommandBuildError, CommandSpec, RustOwnedTerminalSink, SpawnPtyError, TermioHarness,
+    CommandBuildError, CommandSpec, RustOwnedTerminalSink, SpawnPtyError, TermioLoop,
     TermioMessage, Winsize,
 };
 
 use crate::app_config::AppConfig;
 use crate::session_command::command_from_config;
 use crate::surface_id::SurfaceId;
+
+#[cfg(feature = "rust-vt")]
+use ghostty_config::DerivedFontConfig;
+#[cfg(feature = "rust-vt")]
+use ghostty_font::metrics::{calc, FaceMetrics};
+#[cfg(feature = "rust-vt")]
+use ghostty_renderer::damage::{DamageRect, DamageState};
+#[cfg(feature = "rust-vt")]
+use ghostty_renderer::size::GridSize;
 
 const DEFAULT_COLS: u16 = 80;
 const DEFAULT_ROWS: u16 = 24;
@@ -67,12 +76,18 @@ impl From<FoundationError> for SurfaceSessionError {
     }
 }
 
-/// Owns config, PTY harness, and Rust VT for one headless surface.
+/// Owns config, production termio loop, and Rust VT for one headless surface.
 pub struct SurfaceSession {
     id: SurfaceId,
     config: AppConfig,
-    harness: TermioHarness,
+    termio: TermioLoop,
     terminal: RustOwnedTerminalSink,
+    #[cfg(feature = "rust-vt")]
+    cell_width_px: u32,
+    #[cfg(feature = "rust-vt")]
+    cell_height_px: u32,
+    #[cfg(feature = "rust-vt")]
+    damage: DamageState,
 }
 
 impl SurfaceSession {
@@ -80,21 +95,27 @@ impl SurfaceSession {
         config: AppConfig,
         opts: SurfaceSessionOptions,
     ) -> Result<Self, SurfaceSessionError> {
-        let id = opts.id.unwrap_or_else(|| SurfaceId::from_raw(1).expect("non-zero id"));
+        let id = opts
+            .id
+            .unwrap_or_else(|| SurfaceId::from_raw(1).expect("non-zero id"));
         let winsize = opts.winsize;
         let spec = opts
             .command
             .unwrap_or_else(|| command_from_config(config.config()).expect("command spec"));
         let scrollback = config.config().scrollback_limit;
-        let mut harness = TermioHarness::spawn(&spec, winsize)?;
+        let (cell_width_px, cell_height_px) = cell_size_from_config(config.config());
+        let mut termio = TermioLoop::spawn(&spec, winsize)?;
         let mut terminal = RustOwnedTerminalSink::new(winsize.cols, winsize.rows, scrollback)
             .ok_or(SurfaceSessionError::Terminal)?;
-        harness.drain_mailbox(&mut terminal)?;
+        termio.tick(&mut terminal)?;
         Ok(Self {
             id,
             config,
-            harness,
+            termio,
             terminal,
+            cell_width_px,
+            cell_height_px,
+            damage: DamageState::default(),
         })
     }
 
@@ -111,46 +132,59 @@ impl SurfaceSession {
     }
 
     pub fn pid(&self) -> libc::pid_t {
-        self.harness.pid()
+        self.termio.pid()
     }
 
     pub fn winsize(&self) -> Winsize {
-        self.harness.winsize()
+        self.termio.winsize()
+    }
+
+    #[cfg(feature = "rust-vt")]
+    pub fn cell_size_px(&self) -> (u32, u32) {
+        (self.cell_width_px, self.cell_height_px)
+    }
+
+    #[cfg(feature = "rust-vt")]
+    pub fn damage(&self) -> &DamageState {
+        &self.damage
     }
 
     /// Queue bytes for the PTY child (keyboard/input path).
     pub fn write(&mut self, bytes: &[u8]) -> FoundationResult<()> {
-        self.harness
-            .mailbox_mut()
+        self.termio
             .push(TermioMessage::Write(bytes.to_vec()))?;
-        self.harness.drain_mailbox(&mut self.terminal)
+        self.tick().map(|_| ())
     }
 
     pub fn resize(&mut self, cols: u16, rows: u16) -> FoundationResult<()> {
-        self.harness
-            .mailbox_mut()
-            .push(TermioMessage::Resize { cols, rows })?;
-        self.harness.drain_mailbox(&mut self.terminal)
+        self.termio.push(TermioMessage::Resize { cols, rows })?;
+        self.tick().map(|_| ())?;
+        #[cfg(feature = "rust-vt")]
+        self.damage.mark_full();
+        Ok(())
     }
 
-    /// One iteration: drain mailbox, read PTY output into terminal state.
+    /// One iteration: drain thread events into terminal state.
     pub fn tick(&mut self) -> FoundationResult<usize> {
-        self.harness.drain_mailbox(&mut self.terminal)?;
-        self.harness
-            .pump_pty(&mut self.terminal)
-            .map_err(|_| FoundationError::Unsupported)
+        let n = self.termio.tick(&mut self.terminal)?;
+        #[cfg(feature = "rust-vt")]
+        if n > 0 {
+            let ws = self.winsize();
+            let size = GridSize {
+                columns: ws.cols,
+                rows: ws.rows,
+            };
+            self.damage.mark_rect(DamageRect::full_screen(size));
+        }
+        Ok(n)
     }
 
     pub fn run_until<F>(&mut self, deadline: Instant, mut done: F) -> FoundationResult<()>
     where
         F: FnMut(&mut Self) -> bool,
     {
-        while !self.harness.is_shutdown() {
-            self.harness.drain_mailbox(&mut self.terminal)?;
-            let _ = self
-                .harness
-                .pump_pty(&mut self.terminal)
-                .map_err(|_| FoundationError::Unsupported)?;
+        while !self.termio.is_shutdown() {
+            self.tick()?;
             if done(self) {
                 return Ok(());
             }
@@ -158,23 +192,14 @@ impl SurfaceSession {
             if remaining.is_zero() {
                 break;
             }
-            let timeout_ms = remaining.as_millis().min(i32::MAX as u128) as i32;
-            if !self
-                .harness
-                .poll_readable(timeout_ms)
-                .map_err(|_| FoundationError::Unsupported)?
-            {
-                continue;
-            }
+            std::thread::sleep(remaining.min(std::time::Duration::from_millis(16)));
         }
         Ok(())
     }
 
     pub fn shutdown(&mut self) -> FoundationResult<()> {
-        self.harness
-            .mailbox_mut()
-            .push(TermioMessage::Shutdown)?;
-        self.harness.drain_mailbox(&mut self.terminal)
+        self.termio.shutdown()?;
+        self.tick().map(|_| ())
     }
 
     pub fn cell_codepoint(&self, x: u16, y: u16) -> Option<u32> {
@@ -182,11 +207,11 @@ impl SurfaceSession {
     }
 
     pub fn poll_child_exit(&mut self) -> Option<u32> {
-        self.harness.poll_child_exit()
+        self.termio.poll_child_exit()
     }
 
     pub fn is_shutdown(&self) -> bool {
-        self.harness.is_shutdown()
+        self.termio.is_shutdown()
     }
 
     pub fn contains_text(&self, needle: &str) -> bool {
@@ -194,11 +219,26 @@ impl SurfaceSession {
     }
 }
 
+#[cfg(feature = "rust-vt")]
+fn cell_size_from_config(config: &ghostty_config::Config) -> (u32, u32) {
+    let font = DerivedFontConfig::from(config);
+    let px = f64::from(font.font_size);
+    let face = FaceMetrics {
+        px_per_em: px,
+        cell_width: px * 0.6,
+        ascent: px * 0.8,
+        descent: -(px * 0.2),
+        line_gap: 0.0,
+        ..FaceMetrics::default()
+    };
+    let metrics = calc(face);
+    (metrics.cell_width, metrics.cell_height)
+}
+
 impl std::fmt::Debug for SurfaceSession {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SurfaceSession")
             .field("id", &self.id)
-            .field("pid", &self.pid())
             .field("winsize", &self.winsize())
             .finish_non_exhaustive()
     }

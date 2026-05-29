@@ -8,7 +8,15 @@ use ghostty_foundation::{FoundationError, FoundationResult};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TermioMessage {
     Write(Vec<u8>),
-    Resize { cols: u16, rows: u16 },
+    Resize {
+        cols: u16,
+        rows: u16,
+    },
+    /// Surface/renderer acknowledged a resize (`Termio.zig` resize ack path).
+    ResizeAck {
+        cols: u16,
+        rows: u16,
+    },
     Shutdown,
     /// Renderer/surface bridge placeholder (`Termio.zig` surface mailbox).
     RedrawRequested,
@@ -57,13 +65,7 @@ mod tests {
         mb.push(TermioMessage::Write(b"hi".to_vec())).unwrap();
         mb.push(TermioMessage::Resize { cols: 80, rows: 24 })
             .unwrap();
-        assert_eq!(
-            mb.pop(),
-            Some(TermioMessage::Write(b"hi".to_vec()))
-        );
-        assert_eq!(
-            mb.pop(),
-            Some(TermioMessage::Resize { cols: 80, rows: 24 })
-        );
+        assert_eq!(mb.pop(), Some(TermioMessage::Write(b"hi".to_vec())));
+        assert_eq!(mb.pop(), Some(TermioMessage::Resize { cols: 80, rows: 24 }));
     }
 }

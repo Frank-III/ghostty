@@ -1,5 +1,5 @@
-use crate::early::*;
 use crate::constants::*;
+use crate::early::*;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

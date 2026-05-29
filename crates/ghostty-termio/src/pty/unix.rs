@@ -29,7 +29,15 @@ impl PosixPty {
         let mut slave: RawFd = -1;
         let mut ws = size.to_libc();
 
-        let rc = unsafe { libc::openpty(&mut master, &mut slave, std::ptr::null_mut(), std::ptr::null_mut(), &mut ws) };
+        let rc = unsafe {
+            libc::openpty(
+                &mut master,
+                &mut slave,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                &mut ws,
+            )
+        };
         if rc != 0 {
             return Err(PtyOpenError::OpenptyFailed);
         }
@@ -95,13 +103,8 @@ impl PosixPty {
             return Ok(0);
         }
         loop {
-            let rc = unsafe {
-                libc::write(
-                    self.master.as_raw_fd(),
-                    buf.as_ptr().cast(),
-                    buf.len(),
-                )
-            };
+            let rc =
+                unsafe { libc::write(self.master.as_raw_fd(), buf.as_ptr().cast(), buf.len()) };
             if rc >= 0 {
                 return Ok(rc as usize);
             }
@@ -119,13 +122,8 @@ impl PosixPty {
             return Ok(0);
         }
         loop {
-            let rc = unsafe {
-                libc::read(
-                    self.master.as_raw_fd(),
-                    buf.as_mut_ptr().cast(),
-                    buf.len(),
-                )
-            };
+            let rc =
+                unsafe { libc::read(self.master.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
             if rc >= 0 {
                 return Ok(rc as usize);
             }

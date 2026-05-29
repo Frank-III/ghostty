@@ -52,11 +52,19 @@ packaging can depend on a Cargo-built `libghostty_ffi.a` instead of per-module `
 ```bash
 export RUSTFLAGS='--cfg ghostty_vt_terminal_owned'
 cargo build -p ghostty-ffi --features rust-vt
+
+# Opt-in Zig step (does not affect default `zig build`):
+zig build -Drust-core-pilot=true -Demit-macos-app=false
 ```
+
+The `rust-core` step runs `cargo build -p ghostty-ffi --features rust-vt` with
+`RUSTFLAGS='--cfg ghostty_vt_terminal_owned'`. Artifact path: `coreStaticLibPath` in
+`GhosttyRust.zig` (`target/<triple>/{debug,release}/libghostty_ffi.a`).
 
 ## Phase 8 flip criteria (not yet)
 
 - [x] `coreStaticLibBuild` / `coreStaticLibPath` in `GhosttyRust.zig`
+- [x] `zig build -Drust-core-pilot=true` → `rust-core` step (Cargo `ghostty-ffi` staticlib)
 - [ ] All `crates/*` tests green on Linux + macOS CI
 - [ ] `ghostty-vt` object built via Cargo artifact, not direct `rustc` invoke
 - [ ] Zig build reduced to packaging, codegen, and platform shells only

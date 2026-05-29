@@ -420,7 +420,10 @@ impl<V> SplitTree<V> {
         let mut zoomed = None;
         let written = self.remove_node(&mut slots, &mut zoomed, 0, NodeHandle::ROOT, at);
         debug_assert!(written == count);
-        let nodes = slots.into_iter().map(|node| node.expect("remove_node slot")).collect();
+        let nodes = slots
+            .into_iter()
+            .map(|node| node.expect("remove_node slot"))
+            .collect();
         Self { nodes, zoomed }
     }
 
@@ -637,7 +640,9 @@ impl<V> SplitTree<V> {
                 Backtrack::Deadend => match self.next_backtrack(from, split.left) {
                     Backtrack::Result(v) => Backtrack::Result(v),
                     Backtrack::Deadend => Backtrack::Deadend,
-                    Backtrack::Backtrack => Backtrack::Result(self.deepest(Side::Left, split.right)),
+                    Backtrack::Backtrack => {
+                        Backtrack::Result(self.deepest(Side::Left, split.right))
+                    }
                 },
             },
         }
@@ -690,13 +695,7 @@ impl<V> SplitTree<V> {
                     return self.remove_node(new_nodes, zoomed, new_offset, split.left, target);
                 }
 
-                let left = self.remove_node(
-                    new_nodes,
-                    zoomed,
-                    new_offset + 1,
-                    split.left,
-                    target,
-                );
+                let left = self.remove_node(new_nodes, zoomed, new_offset + 1, split.left, target);
                 debug_assert!(left != 0);
                 let right = self.remove_node(
                     new_nodes,

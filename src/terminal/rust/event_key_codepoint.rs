@@ -14,10 +14,7 @@ pub unsafe extern "C" fn ghostty_rust_key_event_set_unshifted_codepoint(
     }
 }
 
-pub(crate) unsafe fn key_event_set_unshifted_codepoint_impl(
-    event: *mut c_void,
-    codepoint: u32,
-) {
+pub(crate) unsafe fn key_event_set_unshifted_codepoint_impl(event: *mut c_void, codepoint: u32) {
     unsafe {
         ptr::write(
             key_event_field::<u32>(event, KEY_EVENT_UNSHIFTED_CODEPOINT_OFFSET),

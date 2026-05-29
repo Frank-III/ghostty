@@ -1,5 +1,6 @@
-use core::ffi::c_void;
-use core::ptr;
+use super::control::*;
+use super::layout::*;
+use super::output::*;
 use crate::allocator::*;
 use crate::csi::EraseDisplay;
 use crate::cursor_style::CursorVisualStyle;
@@ -7,9 +8,8 @@ use crate::mode_def::ModeTag;
 use crate::screen_set::ScreenKey;
 use crate::size_types::CellCountInt;
 use crate::terminal_types::{Terminal, TABSTOP_INTERVAL};
-use super::control::*;
-use super::layout::*;
-use super::output::*;
+use core::ffi::c_void;
+use core::ptr;
 
 const COMMAND_QUEUE_INITIAL: usize = 8;
 
@@ -149,7 +149,9 @@ impl Command {
     fn deinit(&mut self, alloc: *const GhosttyAllocator) {
         if matches!(self.tag, CommandTag::User) {
             if !self.user_cmd_ptr.is_null() && self.user_cmd_len > 0 {
-                unsafe { alloc_free_impl(alloc, self.user_cmd_ptr, self.user_cmd_len); }
+                unsafe {
+                    alloc_free_impl(alloc, self.user_cmd_ptr, self.user_cmd_len);
+                }
             }
         }
     }
@@ -172,7 +174,9 @@ impl CommandQueue {
             ptr::null_mut()
         };
         if !raw.is_null() {
-            unsafe { ptr::write_bytes(raw, 0, total); }
+            unsafe {
+                ptr::write_bytes(raw, 0, total);
+            }
         }
         CommandQueue {
             ptr: raw as *mut Command,
@@ -211,20 +215,28 @@ impl CommandQueue {
             }
         }
         let idx = (self.head + self.len) % self.cap;
-        unsafe { *self.ptr.add(idx) = cmd; }
+        unsafe {
+            *self.ptr.add(idx) = cmd;
+        }
         self.len += 1;
         true
     }
 
     fn grow(&mut self, alloc: *const GhosttyAllocator) -> bool {
-        let new_cap = if self.cap == 0 { COMMAND_QUEUE_INITIAL } else { self.cap * 2 };
+        let new_cap = if self.cap == 0 {
+            COMMAND_QUEUE_INITIAL
+        } else {
+            self.cap * 2
+        };
         let cmd_size = core::mem::size_of::<Command>();
         let total = cmd_size * new_cap;
         let new_raw = unsafe { alloc_alloc_impl(alloc, total) };
         if new_raw.is_null() {
             return false;
         }
-        unsafe { ptr::write_bytes(new_raw, 0, total); }
+        unsafe {
+            ptr::write_bytes(new_raw, 0, total);
+        }
         let new_ptr = new_raw as *mut Command;
 
         let mut i: usize = 0;
@@ -240,7 +252,9 @@ impl CommandQueue {
 
         if !self.ptr.is_null() && self.cap > 0 {
             let old_total = cmd_size * self.cap;
-            unsafe { alloc_free_impl(alloc, self.ptr as *mut u8, old_total); }
+            unsafe {
+                alloc_free_impl(alloc, self.ptr as *mut u8, old_total);
+            }
         }
 
         self.ptr = new_ptr;
@@ -254,11 +268,15 @@ impl CommandQueue {
             let mut i: usize = 0;
             while i < self.len {
                 let idx = (self.head + i) % self.cap;
-                unsafe { (*self.ptr.add(idx)).deinit(alloc); }
+                unsafe {
+                    (*self.ptr.add(idx)).deinit(alloc);
+                }
                 i += 1;
             }
             let total = core::mem::size_of::<Command>() * self.cap;
-            unsafe { alloc_free_impl(alloc, self.ptr as *mut u8, total); }
+            unsafe {
+                alloc_free_impl(alloc, self.ptr as *mut u8, total);
+            }
         }
         self.ptr = ptr::null_mut();
         self.len = 0;
@@ -298,22 +316,22 @@ impl WindowList {
             if new_raw.is_null() {
                 return false;
             }
-            unsafe { ptr::write_bytes(new_raw, 0, total); }
+            unsafe {
+                ptr::write_bytes(new_raw, 0, total);
+            }
             if !self.ptr.is_null() && self.len > 0 {
                 let old_total = win_size * self.len;
                 unsafe {
-                    ptr::copy_nonoverlapping(
-                        self.ptr as *const u8,
-                        new_raw,
-                        old_total,
-                    );
+                    ptr::copy_nonoverlapping(self.ptr as *const u8, new_raw, old_total);
                     alloc_free_impl(alloc, self.ptr as *mut u8, win_size * self.cap);
                 }
             }
             self.ptr = new_raw as *mut ViewerWindow;
             self.cap = new_cap;
         }
-        unsafe { *self.ptr.add(self.len) = window; }
+        unsafe {
+            *self.ptr.add(self.len) = window;
+        }
         self.len += 1;
         true
     }
@@ -325,7 +343,9 @@ impl WindowList {
     fn deinit(&mut self, alloc: *const GhosttyAllocator) {
         if !self.ptr.is_null() && self.cap > 0 {
             let total = core::mem::size_of::<ViewerWindow>() * self.cap;
-            unsafe { alloc_free_impl(alloc, self.ptr as *mut u8, total); }
+            unsafe {
+                alloc_free_impl(alloc, self.ptr as *mut u8, total);
+            }
         }
         self.ptr = ptr::null_mut();
         self.len = 0;
@@ -369,12 +389,7 @@ impl PaneMap {
         self.get(key).is_some()
     }
 
-    fn insert(
-        &mut self,
-        key: usize,
-        value: ViewerPane,
-        alloc: *const GhosttyAllocator,
-    ) -> bool {
+    fn insert(&mut self, key: usize, value: ViewerPane, alloc: *const GhosttyAllocator) -> bool {
         if self.len >= self.cap {
             let new_cap = if self.cap == 0 { 8 } else { self.cap * 2 };
             let key_size = core::mem::size_of::<usize>();
@@ -383,10 +398,14 @@ impl PaneMap {
             let new_values = unsafe { alloc_alloc_impl(alloc, val_size * new_cap) };
             if new_keys.is_null() || new_values.is_null() {
                 if !new_keys.is_null() {
-                    unsafe { alloc_free_impl(alloc, new_keys, key_size * new_cap); }
+                    unsafe {
+                        alloc_free_impl(alloc, new_keys, key_size * new_cap);
+                    }
                 }
                 if !new_values.is_null() {
-                    unsafe { alloc_free_impl(alloc, new_values, val_size * new_cap); }
+                    unsafe {
+                        alloc_free_impl(alloc, new_values, val_size * new_cap);
+                    }
                 }
                 return false;
             }
@@ -396,16 +415,8 @@ impl PaneMap {
             }
             if !self.keys.is_null() && self.len > 0 {
                 unsafe {
-                    ptr::copy_nonoverlapping(
-                        self.keys,
-                        new_keys as *mut usize,
-                        self.len,
-                    );
-                    ptr::copy_nonoverlapping(
-                        self.values,
-                        new_values as *mut ViewerPane,
-                        self.len,
-                    );
+                    ptr::copy_nonoverlapping(self.keys, new_keys as *mut usize, self.len);
+                    ptr::copy_nonoverlapping(self.values, new_values as *mut ViewerPane, self.len);
                     alloc_free_impl(alloc, self.keys as *mut u8, key_size * self.cap);
                     alloc_free_impl(alloc, self.values as *mut u8, val_size * self.cap);
                 }
@@ -447,11 +458,15 @@ impl PaneMap {
     fn deinit(&mut self, alloc: *const GhosttyAllocator) {
         if !self.keys.is_null() && self.cap > 0 {
             let key_size = core::mem::size_of::<usize>();
-            unsafe { alloc_free_impl(alloc, self.keys as *mut u8, key_size * self.cap); }
+            unsafe {
+                alloc_free_impl(alloc, self.keys as *mut u8, key_size * self.cap);
+            }
         }
         if !self.values.is_null() && self.cap > 0 {
             let val_size = core::mem::size_of::<ViewerPane>();
-            unsafe { alloc_free_impl(alloc, self.values as *mut u8, val_size * self.cap); }
+            unsafe {
+                alloc_free_impl(alloc, self.values as *mut u8, val_size * self.cap);
+            }
         }
         self.keys = ptr::null_mut();
         self.values = ptr::null_mut();
@@ -501,21 +516,21 @@ impl Viewer {
         self.panes.deinit(self.alloc);
         if !self.version_ptr.is_null() && self.version_len > 0 {
             unsafe {
-                alloc_free_impl(
-                    self.alloc,
-                    self.version_ptr as *mut u8,
-                    self.version_len,
-                );
+                alloc_free_impl(self.alloc, self.version_ptr as *mut u8, self.version_len);
             }
         }
         if !self.actions_ptr.is_null() && self.actions_cap > 0 {
             let total = core::mem::size_of::<Action>() * self.actions_cap;
-            unsafe { alloc_free_impl(self.alloc, self.actions_ptr as *mut u8, total); }
+            unsafe {
+                alloc_free_impl(self.alloc, self.actions_ptr as *mut u8, total);
+            }
         }
     }
 
     fn single_action(&mut self, action: Action) -> *const Action {
-        unsafe { *self.action_single.get_unchecked_mut(0) = action; }
+        unsafe {
+            *self.action_single.get_unchecked_mut(0) = action;
+        }
         self.action_single.as_ptr()
     }
 
@@ -530,22 +545,24 @@ impl Viewer {
 
     fn push_action(&mut self, action: Action) -> bool {
         if self.actions_len >= self.actions_cap {
-            let new_cap = if self.actions_cap == 0 { 4 } else { self.actions_cap * 2 };
+            let new_cap = if self.actions_cap == 0 {
+                4
+            } else {
+                self.actions_cap * 2
+            };
             let action_size = core::mem::size_of::<Action>();
             let total = action_size * new_cap;
             let new_raw = unsafe { alloc_alloc_impl(self.alloc, total) };
             if new_raw.is_null() {
                 return false;
             }
-            unsafe { ptr::write_bytes(new_raw, 0, total); }
+            unsafe {
+                ptr::write_bytes(new_raw, 0, total);
+            }
             if !self.actions_ptr.is_null() && self.actions_len > 0 {
                 let old_total = action_size * self.actions_len;
                 unsafe {
-                    ptr::copy_nonoverlapping(
-                        self.actions_ptr as *const u8,
-                        new_raw,
-                        old_total,
-                    );
+                    ptr::copy_nonoverlapping(self.actions_ptr as *const u8, new_raw, old_total);
                     alloc_free_impl(
                         self.alloc,
                         self.actions_ptr as *mut u8,
@@ -556,7 +573,9 @@ impl Viewer {
             self.actions_ptr = new_raw as *mut Action;
             self.actions_cap = new_cap;
         }
-        unsafe { *self.actions_ptr.add(self.actions_len) = action; }
+        unsafe {
+            *self.actions_ptr.add(self.actions_len) = action;
+        }
         self.actions_len += 1;
         true
     }
@@ -568,10 +587,7 @@ impl Viewer {
         (self.actions_ptr, self.actions_len)
     }
 
-    pub fn next(
-        &mut self,
-        notification: *const Notification,
-    ) -> (*const Action, usize) {
+    pub fn next(&mut self, notification: *const Notification) -> (*const Action, usize) {
         if notification.is_null() {
             return (ptr::null(), 0);
         }
@@ -600,9 +616,10 @@ impl Viewer {
             NotificationTag::Exit => return self.defunct(),
             NotificationTag::SessionChanged => {
                 self.session_id = n.id;
-                let result = self.enter_command_queue_with_commands(
-                    &[Command::tmux_version(), Command::list_windows()],
-                );
+                let result = self.enter_command_queue_with_commands(&[
+                    Command::tmux_version(),
+                    Command::list_windows(),
+                ]);
                 if !result {
                     return self.defunct();
                 }
@@ -748,18 +765,16 @@ impl Viewer {
         }
         if !self.version_ptr.is_null() && self.version_len > 0 {
             unsafe {
-                alloc_free_impl(
-                    self.alloc,
-                    self.version_ptr as *mut u8,
-                    self.version_len,
-                );
+                alloc_free_impl(self.alloc, self.version_ptr as *mut u8, self.version_len);
             }
         }
         let copy = unsafe { alloc_alloc_impl(self.alloc, trimmed.len()) };
         if copy.is_null() {
             return;
         }
-        unsafe { ptr::copy_nonoverlapping(trimmed.as_ptr(), copy, trimmed.len()); }
+        unsafe {
+            ptr::copy_nonoverlapping(trimmed.as_ptr(), copy, trimmed.len());
+        }
         self.version_ptr = copy as *const u8;
         self.version_len = trimmed.len();
     }
@@ -808,11 +823,8 @@ impl Viewer {
                                 y: 0,
                                 content: LayoutContent::Pane(0),
                             };
-                            let _ = layout_parse_with_checksum(
-                                self.alloc,
-                                layout_slice,
-                                &mut layout,
-                            );
+                            let _ =
+                                layout_parse_with_checksum(self.alloc, layout_slice, &mut layout);
 
                             let window = ViewerWindow {
                                 id: info.window_id,
@@ -848,7 +860,9 @@ impl Viewer {
         self.windows.cap = new_windows.cap;
         if !old_ptr.is_null() && old_cap > 0 {
             let total = core::mem::size_of::<ViewerWindow>() * old_cap;
-            unsafe { alloc_free_impl(self.alloc, old_ptr as *mut u8, total); }
+            unsafe {
+                alloc_free_impl(self.alloc, old_ptr as *mut u8, total);
+            }
         }
     }
 
@@ -923,12 +937,7 @@ impl Viewer {
         true
     }
 
-    fn received_output(
-        &mut self,
-        pane_id: usize,
-        data_ptr: *const u8,
-        data_len: usize,
-    ) {
+    fn received_output(&mut self, pane_id: usize, data_ptr: *const u8, data_len: usize) {
         if data_ptr.is_null() || data_len == 0 {
             return;
         }
@@ -992,12 +1001,10 @@ impl Viewer {
             }
 
             let screen = t.active();
-            if !screen.is_null() && !state.cursor_shape_ptr.is_null() && state.cursor_shape_len > 0 {
+            if !screen.is_null() && !state.cursor_shape_ptr.is_null() && state.cursor_shape_len > 0
+            {
                 let shape = unsafe {
-                    core::slice::from_raw_parts(
-                        state.cursor_shape_ptr,
-                        state.cursor_shape_len,
-                    )
+                    core::slice::from_raw_parts(state.cursor_shape_ptr, state.cursor_shape_len)
                 };
                 unsafe {
                     if bytes_eq(shape, b"block") {
@@ -1020,30 +1027,119 @@ impl Viewer {
         }
         let _ = Self::switch_terminal_screen(t, screen_key);
 
-        t.mode_set(ModeTag { value: 25, ansi: false }, state.cursor_flag);
-        t.mode_set(ModeTag { value: 12, ansi: false }, state.cursor_blinking);
-        t.mode_set(ModeTag { value: 4, ansi: true }, state.insert_flag);
-        t.mode_set(ModeTag { value: 7, ansi: false }, state.wrap_flag);
-        t.mode_set(ModeTag { value: 66, ansi: false }, state.keypad_flag);
-        t.mode_set(ModeTag { value: 1, ansi: false }, state.keypad_cursor_flag);
-        t.mode_set(ModeTag { value: 6, ansi: false }, state.origin_flag);
-        t.mode_set(ModeTag { value: 1003, ansi: false }, state.mouse_all_flag);
-        t.mode_set(ModeTag { value: 1002, ansi: false }, state.mouse_any_flag);
-        t.mode_set(ModeTag { value: 1000, ansi: false }, state.mouse_button_flag);
-        t.mode_set(ModeTag { value: 9, ansi: false }, state.mouse_standard_flag);
-        t.mode_set(ModeTag { value: 1005, ansi: false }, state.mouse_utf8_flag);
-        t.mode_set(ModeTag { value: 1006, ansi: false }, state.mouse_sgr_flag);
-        t.mode_set(ModeTag { value: 1004, ansi: false }, state.focus_flag);
-        t.mode_set(ModeTag { value: 2004, ansi: false }, state.bracketed_paste);
+        t.mode_set(
+            ModeTag {
+                value: 25,
+                ansi: false,
+            },
+            state.cursor_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 12,
+                ansi: false,
+            },
+            state.cursor_blinking,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 4,
+                ansi: true,
+            },
+            state.insert_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 7,
+                ansi: false,
+            },
+            state.wrap_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 66,
+                ansi: false,
+            },
+            state.keypad_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 1,
+                ansi: false,
+            },
+            state.keypad_cursor_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 6,
+                ansi: false,
+            },
+            state.origin_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 1003,
+                ansi: false,
+            },
+            state.mouse_all_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 1002,
+                ansi: false,
+            },
+            state.mouse_any_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 1000,
+                ansi: false,
+            },
+            state.mouse_button_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 9,
+                ansi: false,
+            },
+            state.mouse_standard_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 1005,
+                ansi: false,
+            },
+            state.mouse_utf8_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 1006,
+                ansi: false,
+            },
+            state.mouse_sgr_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 1004,
+                ansi: false,
+            },
+            state.focus_flag,
+        );
+        t.mode_set(
+            ModeTag {
+                value: 2004,
+                ansi: false,
+            },
+            state.bracketed_paste,
+        );
 
         t.scrolling_region.top = state.scroll_region_upper as CellCountInt;
         t.scrolling_region.bottom = state.scroll_region_lower as CellCountInt;
 
         t.tabstops.reset(0);
         if !state.pane_tabs_ptr.is_null() && state.pane_tabs_len > 0 {
-            let tabs = unsafe {
-                core::slice::from_raw_parts(state.pane_tabs_ptr, state.pane_tabs_len)
-            };
+            let tabs =
+                unsafe { core::slice::from_raw_parts(state.pane_tabs_ptr, state.pane_tabs_len) };
             for_each_usize_field(tabs, b',', |col| {
                 if col < t.cols as usize {
                     t.tabstops.set(col);
@@ -1070,22 +1166,18 @@ impl Viewer {
             let pane_id = unsafe { *new_panes.keys.add(i) };
             if !self.panes.contains(pane_id) {
                 added_any = true;
-                let _ = self.command_queue.push(
-                    Command::pane_history(pane_id, false),
-                    self.alloc,
-                );
-                let _ = self.command_queue.push(
-                    Command::pane_visible(pane_id, false),
-                    self.alloc,
-                );
-                let _ = self.command_queue.push(
-                    Command::pane_history(pane_id, true),
-                    self.alloc,
-                );
-                let _ = self.command_queue.push(
-                    Command::pane_visible(pane_id, true),
-                    self.alloc,
-                );
+                let _ = self
+                    .command_queue
+                    .push(Command::pane_history(pane_id, false), self.alloc);
+                let _ = self
+                    .command_queue
+                    .push(Command::pane_visible(pane_id, false), self.alloc);
+                let _ = self
+                    .command_queue
+                    .push(Command::pane_history(pane_id, true), self.alloc);
+                let _ = self
+                    .command_queue
+                    .push(Command::pane_visible(pane_id, true), self.alloc);
             }
             i += 1;
         }
@@ -1117,10 +1209,7 @@ impl Viewer {
         new_panes.deinit(self.alloc);
     }
 
-    fn alloc_pane_terminal(
-        alloc: *const GhosttyAllocator,
-        layout: &Layout,
-    ) -> *mut c_void {
+    fn alloc_pane_terminal(alloc: *const GhosttyAllocator, layout: &Layout) -> *mut c_void {
         let cols = layout.width as CellCountInt;
         let rows = layout.height as CellCountInt;
         if cols == 0 || rows == 0 {
@@ -1172,11 +1261,7 @@ impl Viewer {
         }
     }
 
-    fn collect_panes_from_layout(
-        &self,
-        layout: *const Layout,
-        panes: *mut PaneMap,
-    ) {
+    fn collect_panes_from_layout(&self, layout: *const Layout, panes: *mut PaneMap) {
         if layout.is_null() {
             return;
         }
@@ -1194,8 +1279,7 @@ impl Viewer {
                         let _ = (*panes).insert(id, pane, self.alloc);
                     }
                 }
-                LayoutContent::Horizontal { ptr, len } |
-                LayoutContent::Vertical { ptr, len } => {
+                LayoutContent::Horizontal { ptr, len } | LayoutContent::Vertical { ptr, len } => {
                     let mut i: usize = 0;
                     while i < len {
                         let child = ptr.add(i);
@@ -1220,9 +1304,8 @@ impl Viewer {
             if w.id == window_id {
                 found = true;
                 if !layout_ptr.is_null() && layout_len > 0 {
-                    let layout_slice = unsafe {
-                        core::slice::from_raw_parts(layout_ptr, layout_len)
-                    };
+                    let layout_slice =
+                        unsafe { core::slice::from_raw_parts(layout_ptr, layout_len) };
                     let mut new_layout = Layout {
                         width: 0,
                         height: 0,
@@ -1230,11 +1313,7 @@ impl Viewer {
                         y: 0,
                         content: LayoutContent::Pane(0),
                     };
-                    let _ = layout_parse_with_checksum(
-                        self.alloc,
-                        layout_slice,
-                        &mut new_layout,
-                    );
+                    let _ = layout_parse_with_checksum(self.alloc, layout_slice, &mut new_layout);
                     w.layout = new_layout;
                 }
                 break;
@@ -1357,11 +1436,7 @@ impl Viewer {
     }
 }
 
-fn format_command_string(
-    cmd: &Command,
-    buf: &mut [u8; 512],
-    written: *mut usize,
-) {
+fn format_command_string(cmd: &Command, buf: &mut [u8; 512], written: *mut usize) {
     let mut pos: usize = 0;
 
     macro_rules! write_bytes {
@@ -1369,7 +1444,9 @@ fn format_command_string(
             let b = $bytes;
             let mut bi: usize = 0;
             while bi < b.len() && pos < 512 {
-                unsafe { *buf.get_unchecked_mut(pos) = *b.get_unchecked(bi); }
+                unsafe {
+                    *buf.get_unchecked_mut(pos) = *b.get_unchecked(bi);
+                }
                 pos += 1;
                 bi += 1;
             }
@@ -1382,12 +1459,16 @@ fn format_command_string(
             let mut digits: [u8; 20] = [0; 20];
             let mut dcount: usize = 0;
             if v == 0 {
-                unsafe { *digits.get_unchecked_mut(0) = b'0'; }
+                unsafe {
+                    *digits.get_unchecked_mut(0) = b'0';
+                }
                 dcount = 1;
             } else {
                 while v > 0 {
                     let d = (v % 10) as u8;
-                    unsafe { *digits.get_unchecked_mut(dcount) = b'0' + d; }
+                    unsafe {
+                        *digits.get_unchecked_mut(dcount) = b'0' + d;
+                    }
                     dcount += 1;
                     v /= 10;
                 }
@@ -1395,7 +1476,9 @@ fn format_command_string(
             let mut di = dcount;
             while di > 0 && pos < 512 {
                 di -= 1;
-                unsafe { *buf.get_unchecked_mut(pos) = *digits.get_unchecked(di); }
+                unsafe {
+                    *buf.get_unchecked_mut(pos) = *digits.get_unchecked(di);
+                }
                 pos += 1;
             }
         }};
@@ -1443,7 +1526,9 @@ fn format_command_string(
         }
     }
 
-    unsafe { *written = pos; }
+    unsafe {
+        *written = pos;
+    }
 }
 
 fn trim_ws(s: &[u8]) -> &[u8] {

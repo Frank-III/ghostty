@@ -46,7 +46,10 @@ impl<T: IntrusiveNode> IntrusiveList<T> {
             (*new_ref).set_prev(Some(node));
             if let Some(next) = (*node_ref).next() {
                 (*new_ref).set_next(Some(next));
-                next.as_ptr().as_mut().unwrap_unchecked().set_prev(Some(new_node));
+                next.as_ptr()
+                    .as_mut()
+                    .unwrap_unchecked()
+                    .set_prev(Some(new_node));
             } else {
                 (*new_ref).set_next(None);
                 self.last = Some(new_node);
@@ -63,7 +66,10 @@ impl<T: IntrusiveNode> IntrusiveList<T> {
             (*new_ref).set_next(Some(node));
             if let Some(prev) = (*node_ref).prev() {
                 (*new_ref).set_prev(Some(prev));
-                prev.as_ptr().as_mut().unwrap_unchecked().set_next(Some(new_node));
+                prev.as_ptr()
+                    .as_mut()
+                    .unwrap_unchecked()
+                    .set_next(Some(new_node));
             } else {
                 (*new_ref).set_prev(None);
                 self.first = Some(new_node);

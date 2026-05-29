@@ -9,11 +9,19 @@ repository.workspace = true
 [features]
 default = []
 # Headless SurfaceSession with Rust-owned VT (unix integration tests).
-rust-vt = ["dep:ghostty-termio", "dep:ghostty-foundation", "ghostty-termio/rust-vt"]
+rust-vt = [
+    "dep:ghostty-termio",
+    "dep:ghostty-foundation",
+    "dep:ghostty-font",
+    "dep:ghostty-renderer",
+    "ghostty-termio/rust-vt",
+]
 
 [dependencies]
 ghostty-config = { path = "../ghostty-config" }
 ghostty-foundation = { path = "../ghostty-foundation", optional = true }
+ghostty-font = { path = "../ghostty-font", optional = true }
+ghostty-renderer = { path = "../ghostty-renderer", optional = true }
 ghostty-termio = { path = "../ghostty-termio", optional = true }
 
 [target.'cfg(unix)'.dependencies]

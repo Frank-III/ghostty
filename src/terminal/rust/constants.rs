@@ -1,14 +1,14 @@
-use core::ffi::{c_int, c_void};
-use core::{mem, ptr};
 use crate::early::*;
-use crate::terminal::*;
-use crate::render::*;
 use crate::input::*;
-use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
+use crate::render::*;
+use crate::selection::*;
 use crate::simple::*;
 use crate::style::*;
+use crate::terminal::*;
+use core::ffi::{c_int, c_void};
+use core::{mem, ptr};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -209,4 +209,3 @@ pub(crate) const MOD_SHIFT: u16 = 1 << 0;
 pub(crate) const MOD_CTRL: u16 = 1 << 1;
 pub(crate) const MOD_ALT: u16 = 1 << 2;
 pub(crate) static EMPTY_UTF8: [u8; 0] = [];
-

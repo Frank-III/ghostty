@@ -1,15 +1,15 @@
-use core::ffi::{c_int, c_void};
-use core::{mem, ptr};
+use crate::cell::*;
 use crate::constants::*;
-use crate::terminal::*;
 use crate::input::*;
-use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
+use crate::render_row_data::*;
+use crate::selection::*;
 use crate::simple::*;
 use crate::style::*;
-use crate::cell::*;
-use crate::render_row_data::*;
+use crate::terminal::*;
+use core::ffi::{c_int, c_void};
+use core::{mem, ptr};
 
 #[no_mangle]
 pub extern "C" fn ghostty_rust_render_row_get(

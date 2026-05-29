@@ -1,9 +1,9 @@
-use core::ptr;
-use crate::early::*;
 use crate::constants::*;
-use crate::size_types::*;
+use crate::early::*;
 use crate::highlight::Pin;
 use crate::page_list_types::PageList;
+use crate::size_types::*;
+use core::ptr;
 
 #[repr(u8)]
 #[derive(PartialEq, Eq)]

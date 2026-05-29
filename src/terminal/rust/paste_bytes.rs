@@ -44,7 +44,12 @@ pub(crate) unsafe fn matches_bytes_at(
     true
 }
 
-pub(crate) unsafe fn copy_data_bytes(out: *mut u8, offset: &mut usize, data: *const u8, len: usize) {
+pub(crate) unsafe fn copy_data_bytes(
+    out: *mut u8,
+    offset: &mut usize,
+    data: *const u8,
+    len: usize,
+) {
     let mut i = 0usize;
     while i < len {
         let byte = unsafe { ptr::read(data.add(i)) };

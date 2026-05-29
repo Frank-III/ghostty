@@ -1,14 +1,14 @@
-use core::ffi::c_int;
-use core::ptr;
-use crate::early::*;
 use crate::constants::*;
-use crate::terminal::*;
-use crate::render::*;
+use crate::early::*;
 use crate::input::*;
 use crate::kitty_geometry::*;
 use crate::mouse_encode::*;
+use crate::render::*;
 use crate::simple::*;
 use crate::style::*;
+use crate::terminal::*;
+use core::ffi::c_int;
+use core::ptr;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_kitty_render_info(

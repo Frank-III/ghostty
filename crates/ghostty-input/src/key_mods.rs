@@ -231,10 +231,7 @@ pub fn ctrl_or_super(mods: Mods) -> Mods {
 
 #[cfg(not(target_os = "macos"))]
 pub fn ctrl_or_super(mods: Mods) -> Mods {
-    Mods {
-        ctrl: true,
-        ..mods
-    }
+    Mods { ctrl: true, ..mods }
 }
 
 impl ModKeys {
@@ -263,13 +260,23 @@ mod tests {
     #[test]
     fn backing_bit_layout() {
         assert_eq!(Mods::default().int(), 0);
-        assert_eq!(Mods { shift: true, ..Default::default() }.int(), 0b1);
+        assert_eq!(
+            Mods {
+                shift: true,
+                ..Default::default()
+            }
+            .int(),
+            0b1
+        );
     }
 
     #[test]
     #[cfg(target_os = "macos")]
     fn translation_macos_option_as_alt() {
-        assert_eq!(Mods::default().translation(OptionAsAlt::True), Mods::default());
+        assert_eq!(
+            Mods::default().translation(OptionAsAlt::True),
+            Mods::default()
+        );
 
         let with_alt = Mods {
             alt: true,
@@ -277,10 +284,7 @@ mod tests {
         };
         assert_eq!(with_alt.translation(OptionAsAlt::True), Mods::default());
 
-        assert_eq!(
-            with_alt.translation(OptionAsAlt::False),
-            with_alt
-        );
+        assert_eq!(with_alt.translation(OptionAsAlt::False), with_alt);
 
         let right_alt = Mods {
             alt: true,
@@ -290,10 +294,7 @@ mod tests {
             },
             ..Default::default()
         };
-        assert_eq!(
-            right_alt.translation(OptionAsAlt::Left),
-            right_alt
-        );
+        assert_eq!(right_alt.translation(OptionAsAlt::Left), right_alt);
 
         let left_alt = Mods {
             alt: true,
@@ -303,10 +304,7 @@ mod tests {
             },
             ..Default::default()
         };
-        assert_eq!(
-            left_alt.translation(OptionAsAlt::Right),
-            left_alt
-        );
+        assert_eq!(left_alt.translation(OptionAsAlt::Right), left_alt);
 
         let mods = Mods {
             alt: true,

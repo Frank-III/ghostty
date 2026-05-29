@@ -1,13 +1,13 @@
 use core::ffi::c_void;
 use core::ptr;
 
-use crate::allocator::{GhosttyAllocator, alloc_alloc_impl, alloc_free_impl};
+use crate::allocator::{alloc_alloc_impl, alloc_free_impl, GhosttyAllocator};
 use crate::cell::cell_codepoint;
+use crate::highlight::{FlattenedChunk, HighlightFlattened};
 use crate::page_list_types::{PageList, PageListNode};
 use crate::page_types::{Cell, Row};
 use crate::point::Coordinate;
 use crate::size_types::CellCountInt;
-use crate::highlight::{FlattenedChunk, HighlightFlattened};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -445,18 +445,21 @@ impl SlidingWindow {
                 ptr::null_mut()
             };
 
-            ptr::write(sw_ptr, SlidingWindow {
-                alloc,
-                data: CircBuf::empty(),
-                meta: MetaBuf::empty(),
-                chunk_buf: ChunkBuf::empty(),
-                data_offset: 0,
-                needle_ptr: needle_copy,
-                needle_len: n,
-                direction,
-                overlap_buf,
-                overlap_buf_len: overlap_len,
-            });
+            ptr::write(
+                sw_ptr,
+                SlidingWindow {
+                    alloc,
+                    data: CircBuf::empty(),
+                    meta: MetaBuf::empty(),
+                    chunk_buf: ChunkBuf::empty(),
+                    data_offset: 0,
+                    needle_ptr: needle_copy,
+                    needle_len: n,
+                    direction,
+                    overlap_buf,
+                    overlap_buf_len: overlap_len,
+                },
+            );
 
             sw_ptr
         }
@@ -577,10 +580,7 @@ impl SlidingWindow {
                         suffix_len,
                     );
 
-                    let overlap_slice = core::slice::from_raw_parts(
-                        (*sw).overlap_buf,
-                        overlap_len,
-                    );
+                    let overlap_slice = core::slice::from_raw_parts((*sw).overlap_buf, overlap_len);
                     if let Some(idx) = ascii_index_of_ignore_case(overlap_slice, needle) {
                         let abs_idx = search0_len - prefix_len + idx;
                         return Self::highlight(sw, abs_idx, needle_len);
@@ -862,10 +862,7 @@ impl SlidingWindow {
         }
     }
 
-    pub unsafe fn append(
-        sw: *mut SlidingWindow,
-        node: *mut PageListNode,
-    ) -> usize {
+    pub unsafe fn append(sw: *mut SlidingWindow, node: *mut PageListNode) -> usize {
         if sw.is_null() || node.is_null() {
             return 0;
         }
@@ -946,7 +943,10 @@ impl SlidingWindow {
                         cell_map_ptr = new_ptr;
                         cell_map_cap = new_cap;
                     }
-                    let coord = Coordinate { x: x as CellCountInt, y: y as u32 };
+                    let coord = Coordinate {
+                        x: x as CellCountInt,
+                        y: y as u32,
+                    };
                     ptr::write(cell_map_ptr.add(cell_map_len), coord);
                     cell_map_len += 1;
                 }
@@ -1020,7 +1020,9 @@ impl SlidingWindow {
             let ok = (*sw).data.ensure_unused_capacity(alloc, encoded_len);
             let ok2 = (*sw).meta.ensure_unused_capacity(alloc, 1);
             let meta_cap_needed = (*sw).meta.len() + 1;
-            let ok3 = (*sw).chunk_buf.ensure_total_capacity(alloc, meta_cap_needed);
+            let ok3 = (*sw)
+                .chunk_buf
+                .ensure_total_capacity(alloc, meta_cap_needed);
 
             if !ok || !ok2 || !ok3 {
                 if !encoded_ptr.is_null() {
@@ -1054,7 +1056,11 @@ impl SlidingWindow {
 }
 
 fn min_usize(a: usize, b: usize) -> usize {
-    if a < b { a } else { b }
+    if a < b {
+        a
+    } else {
+        b
+    }
 }
 
 unsafe fn reverse_bytes(ptr: *mut u8, len: usize) {

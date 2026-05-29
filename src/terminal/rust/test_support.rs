@@ -7,11 +7,7 @@ pub fn test_allocator() -> crate::allocator::GhosttyAllocator {
 
 /// Read a cell codepoint from a rust-owned terminal at active-screen `(x, y)`.
 #[cfg(feature = "std")]
-pub fn terminal_cell_codepoint(
-    handle: *mut core::ffi::c_void,
-    x: u16,
-    y: u16,
-) -> Option<u32> {
+pub fn terminal_cell_codepoint(handle: *mut core::ffi::c_void, x: u16, y: u16) -> Option<u32> {
     use core::mem;
     use core::ptr;
 
@@ -25,10 +21,7 @@ pub fn terminal_cell_codepoint(
         ptr::write(ptr::addr_of_mut!((*pt_ptr).tag), PointTag::ACTIVE);
         ptr::write(
             ptr::addr_of_mut!((*pt_ptr).value.active),
-            Coordinate {
-                x,
-                y: u32::from(y),
-            },
+            Coordinate { x, y: u32::from(y) },
         );
         let pt = pt.assume_init();
 

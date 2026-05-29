@@ -115,10 +115,7 @@ mod tests {
 
     #[test]
     fn shader_rgba_packs_alpha() {
-        assert_eq!(
-            shader_rgba(Rgb::new(1, 2, 3), 200),
-            [1, 2, 3, 200]
-        );
+        assert_eq!(shader_rgba(Rgb::new(1, 2, 3), 200), [1, 2, 3, 200]);
     }
 
     #[test]

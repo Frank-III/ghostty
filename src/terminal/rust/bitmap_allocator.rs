@@ -81,11 +81,7 @@ impl<const CHUNK_SIZE: usize> BitmapAllocator<CHUNK_SIZE> {
         align_forward(byte_count, CHUNK_SIZE)
     }
 
-    pub unsafe fn alloc<'a, T>(
-        &mut self,
-        base: *mut u8,
-        n: usize,
-    ) -> Option<&'a mut [T]> {
+    pub unsafe fn alloc<'a, T>(&mut self, base: *mut u8, n: usize) -> Option<&'a mut [T]> {
         debug_assert!(CHUNK_SIZE % mem::align_of::<T>() == 0);
         debug_assert!(n > 0);
 
@@ -103,11 +99,7 @@ impl<const CHUNK_SIZE: usize> BitmapAllocator<CHUNK_SIZE> {
         }
     }
 
-    pub unsafe fn free<T>(
-        &mut self,
-        base: *mut u8,
-        slice: &[T],
-    ) {
+    pub unsafe fn free<T>(&mut self, base: *mut u8, slice: &[T]) {
         let bytes_len = slice.len() * mem::size_of::<T>();
         let aligned_len = align_forward(bytes_len, CHUNK_SIZE);
         let chunk_count = aligned_len / CHUNK_SIZE;
@@ -205,8 +197,7 @@ fn find_free_chunks(bitmaps: &mut [u64], n: usize) -> Option<usize> {
             if (!bitmaps[i]).trailing_zeros() as usize >= rem {
                 let suffix = (n - prefix) % 64;
 
-                bitmaps[start_bitmap] ^=
-                    (!0u64) >> (start_bit as u32) << (start_bit as u32);
+                bitmaps[start_bitmap] ^= (!0u64) >> (start_bit as u32) << (start_bit as u32);
                 let full_bitmaps = (n - prefix - suffix) / 64;
                 let mut j: usize = 0;
                 while j < full_bitmaps {

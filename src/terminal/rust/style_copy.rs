@@ -3,6 +3,7 @@ use core::ptr;
 
 use crate::constants::*;
 use crate::early::*;
+use crate::scrollbar_write::*;
 use crate::selection::*;
 use crate::style::*;
 use crate::style_attrs_copy::*;
@@ -10,7 +11,6 @@ use crate::style_color::*;
 use crate::style_color_copy::*;
 use crate::style_size_copy::*;
 use crate::style_write::*;
-use crate::scrollbar_write::*;
 
 pub(crate) use crate::scrollbar_write::*;
 pub(crate) use crate::style_attrs_copy::*;

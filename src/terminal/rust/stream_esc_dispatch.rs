@@ -1,18 +1,21 @@
 #![allow(unused)]
 
-use crate::early::*;
-use crate::constants::*;
 use crate::ansi::*;
-use crate::charsets::*;
-use crate::vt_parser::*;
-use crate::stream_types::*;
 use crate::bytes_util::subslice_len;
-use crate::stream_handler::StreamHandler;
-use crate::stream_core::Stream;
-use crate::mode_def::ModeTag;
+use crate::charsets::*;
+use crate::constants::*;
 use crate::device_attributes::DeviceAttributeReq;
+use crate::early::*;
+use crate::mode_def::ModeTag;
+use crate::stream_core::Stream;
+use crate::stream_handler::StreamHandler;
+use crate::stream_types::*;
+use crate::vt_parser::*;
 
-const MODE_KEYPAD_KEYS: ModeTag = ModeTag { value: 66, ansi: false };
+const MODE_KEYPAD_KEYS: ModeTag = ModeTag {
+    value: 66,
+    ansi: false,
+};
 
 pub fn configure_charset<H: StreamHandler>(
     stream: &mut Stream<H>,
@@ -31,16 +34,15 @@ pub fn configure_charset<H: StreamHandler>(
         _ => return,
     };
 
-    stream.handler.on_action(StreamAction::ConfigureCharset(ConfigureCharset {
-        slot,
-        charset,
-    }));
+    stream
+        .handler
+        .on_action(StreamAction::ConfigureCharset(ConfigureCharset {
+            slot,
+            charset,
+        }));
 }
 
-pub fn esc_dispatch<H: StreamHandler>(
-    stream: &mut Stream<H>,
-    esc: &ParserEsc,
-) {
+pub fn esc_dispatch<H: StreamHandler>(stream: &mut Stream<H>, esc: &ParserEsc) {
     match esc.final_byte {
         b'B' => configure_charset(stream, esc_intermediates(esc), CharsetId::Ascii),
         b'A' => configure_charset(stream, esc_intermediates(esc), CharsetId::British),
@@ -81,20 +83,24 @@ pub fn esc_dispatch<H: StreamHandler>(
         },
 
         b'N' => match esc.intermediates_len {
-            0 => stream.handler.on_action(StreamAction::InvokeCharset(InvokeCharset {
-                bank: ActiveSlot::GL,
-                charset: CharsetSlot::G2,
-                locking: true,
-            })),
+            0 => stream
+                .handler
+                .on_action(StreamAction::InvokeCharset(InvokeCharset {
+                    bank: ActiveSlot::GL,
+                    charset: CharsetSlot::G2,
+                    locking: true,
+                })),
             _ => return,
         },
 
         b'O' => match esc.intermediates_len {
-            0 => stream.handler.on_action(StreamAction::InvokeCharset(InvokeCharset {
-                bank: ActiveSlot::GL,
-                charset: CharsetSlot::G3,
-                locking: true,
-            })),
+            0 => stream
+                .handler
+                .on_action(StreamAction::InvokeCharset(InvokeCharset {
+                    bank: ActiveSlot::GL,
+                    charset: CharsetSlot::G3,
+                    locking: true,
+                })),
             _ => return,
         },
 
@@ -110,7 +116,9 @@ pub fn esc_dispatch<H: StreamHandler>(
 
         b'Z' => {
             if esc.intermediates_len == 0 {
-                stream.handler.on_action(StreamAction::DeviceAttributes(DeviceAttributeReq::Primary));
+                stream
+                    .handler
+                    .on_action(StreamAction::DeviceAttributes(DeviceAttributeReq::Primary));
             }
         }
 
@@ -120,47 +128,57 @@ pub fn esc_dispatch<H: StreamHandler>(
         },
 
         b'n' => match esc.intermediates_len {
-            0 => stream.handler.on_action(StreamAction::InvokeCharset(InvokeCharset {
-                bank: ActiveSlot::GL,
-                charset: CharsetSlot::G2,
-                locking: false,
-            })),
+            0 => stream
+                .handler
+                .on_action(StreamAction::InvokeCharset(InvokeCharset {
+                    bank: ActiveSlot::GL,
+                    charset: CharsetSlot::G2,
+                    locking: false,
+                })),
             _ => return,
         },
 
         b'o' => match esc.intermediates_len {
-            0 => stream.handler.on_action(StreamAction::InvokeCharset(InvokeCharset {
-                bank: ActiveSlot::GL,
-                charset: CharsetSlot::G3,
-                locking: false,
-            })),
+            0 => stream
+                .handler
+                .on_action(StreamAction::InvokeCharset(InvokeCharset {
+                    bank: ActiveSlot::GL,
+                    charset: CharsetSlot::G3,
+                    locking: false,
+                })),
             _ => return,
         },
 
         b'~' => match esc.intermediates_len {
-            0 => stream.handler.on_action(StreamAction::InvokeCharset(InvokeCharset {
-                bank: ActiveSlot::GR,
-                charset: CharsetSlot::G1,
-                locking: false,
-            })),
+            0 => stream
+                .handler
+                .on_action(StreamAction::InvokeCharset(InvokeCharset {
+                    bank: ActiveSlot::GR,
+                    charset: CharsetSlot::G1,
+                    locking: false,
+                })),
             _ => return,
         },
 
         b'}' => match esc.intermediates_len {
-            0 => stream.handler.on_action(StreamAction::InvokeCharset(InvokeCharset {
-                bank: ActiveSlot::GR,
-                charset: CharsetSlot::G2,
-                locking: false,
-            })),
+            0 => stream
+                .handler
+                .on_action(StreamAction::InvokeCharset(InvokeCharset {
+                    bank: ActiveSlot::GR,
+                    charset: CharsetSlot::G2,
+                    locking: false,
+                })),
             _ => return,
         },
 
         b'|' => match esc.intermediates_len {
-            0 => stream.handler.on_action(StreamAction::InvokeCharset(InvokeCharset {
-                bank: ActiveSlot::GR,
-                charset: CharsetSlot::G3,
-                locking: false,
-            })),
+            0 => stream
+                .handler
+                .on_action(StreamAction::InvokeCharset(InvokeCharset {
+                    bank: ActiveSlot::GR,
+                    charset: CharsetSlot::G3,
+                    locking: false,
+                })),
             _ => return,
         },
 

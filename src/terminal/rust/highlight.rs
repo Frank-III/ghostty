@@ -1,8 +1,8 @@
-use core::ffi::c_void;
-use crate::early::*;
 use crate::constants::*;
-use crate::size_types::*;
+use crate::early::*;
 use crate::page_list_types::PageListNode;
+use crate::size_types::*;
+use core::ffi::c_void;
 
 /// A stable reference to a specific cell position within the PageList.
 /// Pins are tracked and automatically updated when pages change.
@@ -152,11 +152,7 @@ impl HighlightFlattened {
     }
 }
 
-pub fn highlight_tracked_deinit(
-    _tracked: *const HighlightTracked,
-    _screen: *mut c_void,
-) {
-}
+pub fn highlight_tracked_deinit(_tracked: *const HighlightTracked, _screen: *mut c_void) {}
 
 pub fn highlight_untracked_track(
     _untracked: *const HighlightUntracked,

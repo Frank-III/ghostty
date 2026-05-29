@@ -1,16 +1,16 @@
-use core::ffi::{c_int, c_void};
-use core::{mem, ptr};
-use crate::early::*;
+use crate::color::*;
 use crate::constants::*;
-use crate::terminal::*;
-use crate::render::*;
+use crate::early::*;
 use crate::input::*;
-use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
+use crate::render::*;
+use crate::selection::*;
 use crate::simple::*;
 use crate::style::*;
-use crate::color::*;
+use crate::terminal::*;
+use core::ffi::{c_int, c_void};
+use core::{mem, ptr};
 
 #[repr(C)]
 pub struct GhosttyAllocatorVtable {
@@ -50,10 +50,7 @@ pub unsafe extern "C" fn ghostty_rust_alloc_alloc(
     unsafe { alloc_alloc_impl(alloc, len) }
 }
 
-pub(crate) unsafe fn alloc_alloc_impl(
-    alloc: *const GhosttyAllocator,
-    len: usize,
-) -> *mut u8 {
+pub(crate) unsafe fn alloc_alloc_impl(alloc: *const GhosttyAllocator, len: usize) -> *mut u8 {
     if alloc.is_null() {
         return ptr::null_mut();
     }
@@ -80,11 +77,7 @@ pub unsafe extern "C" fn ghostty_rust_alloc_free(
     unsafe { alloc_free_impl(alloc, ptr, len) }
 }
 
-pub(crate) unsafe fn alloc_free_impl(
-    alloc: *const GhosttyAllocator,
-    ptr: *mut u8,
-    len: usize,
-) {
+pub(crate) unsafe fn alloc_free_impl(alloc: *const GhosttyAllocator, ptr: *mut u8, len: usize) {
     if alloc.is_null() || ptr.is_null() || len == 0 {
         return;
     }

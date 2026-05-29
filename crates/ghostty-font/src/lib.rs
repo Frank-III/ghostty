@@ -20,6 +20,8 @@ pub mod style;
 pub use backend::Backend;
 pub use descriptor::Descriptor;
 pub use discovery::{discover_for_backend, Discover, DiscoveredFont, DiscoveryError};
-pub use face::{default_dpi, DesiredSize, GlyphSize, Options, RenderOptions, Variation, VariationId};
+pub use face::{
+    default_dpi, DesiredSize, GlyphSize, Options, RenderOptions, Variation, VariationId,
+};
 pub use metrics::{calc, FaceMetrics, Key, Metrics, Modifier, ModifierSet, ParseError};
 pub use style::{Presentation, Style};

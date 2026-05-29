@@ -226,7 +226,13 @@ fn parse_conemu_sleep(payload: &[u8]) -> Command<'_> {
         };
         i += 1;
     }
-    let ms = if has_digit && acc <= 10_000 { acc } else if has_digit { 10_000 } else { 100 };
+    let ms = if has_digit && acc <= 10_000 {
+        acc
+    } else if has_digit {
+        10_000
+    } else {
+        100
+    };
     Command::ConemuSleep { duration_ms: ms }
 }
 
@@ -450,8 +456,8 @@ pub fn parse(osc: &ParserOsc) -> Command<'_> {
     match osc_num {
         0 | 2 => Command::Invalid,
         1 => Command::ChangeWindowIcon(bytes_to_str(payload)),
-        4 | 5 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 104 | 105 | 110 | 111
-        | 112 | 113 | 114 | 115 | 116 | 117 | 118 | 119 => {
+        4 | 5 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 104 | 105 | 110 | 111 | 112
+        | 113 | 114 | 115 | 116 | 117 | 118 | 119 => {
             let op = match color_op_from_num(osc_num) {
                 Some(op) => op,
                 None => return Command::Invalid,

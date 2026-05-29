@@ -1,5 +1,5 @@
-use crate::early::*;
 use crate::constants::*;
+use crate::early::*;
 
 pub const MAX_INTERMEDIATE: usize = 4;
 pub const MAX_PARAMS: usize = 24;
@@ -229,7 +229,10 @@ impl VtParser {
             return;
         }
         if c >= b'0' && c <= b'9' {
-            self.param_acc = self.param_acc.wrapping_mul(10).wrapping_add((c - b'0') as u16);
+            self.param_acc = self
+                .param_acc
+                .wrapping_mul(10)
+                .wrapping_add((c - b'0') as u16);
             self.param_acc_idx = 1;
         }
     }
@@ -499,10 +502,16 @@ impl Default for VtParser {
     }
 }
 
-const T: Transition = Transition { state: State::Ground, action: TransitionAction::None };
+const T: Transition = Transition {
+    state: State::Ground,
+    action: TransitionAction::None,
+};
 
 const fn t(s: State, a: TransitionAction) -> Transition {
-    Transition { state: s, action: a }
+    Transition {
+        state: s,
+        action: a,
+    }
 }
 
 const TABLE: [[Transition; NUM_STATES]; 256] = {

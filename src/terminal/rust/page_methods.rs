@@ -1,13 +1,13 @@
-use crate::early::*;
-use crate::page_core::*;
-use crate::page_types::*;
-use crate::size_types::*;
 use crate::bitmap_allocator::BitmapAllocator;
+use crate::early::*;
 use crate::hash_map::{AutoContext, HashMapUnmanaged, OffsetHashMap};
 use crate::hyperlink::{HyperlinkPageEntry, HyperlinkPageEntryId, HYPERLINK_DEFAULT_ID};
+use crate::page_core::*;
+use crate::page_types::*;
 use crate::ref_counted_set::RefCountedSet;
-use core::ptr;
+use crate::size_types::*;
 use crate::style_types::Style;
+use core::ptr;
 
 const STYLE_DEFAULT_ID: u16 = 0;
 const KITTY_GRAPHICS_UNICODE_PLACEHOLDER: u32 = 0xE0B6;
@@ -825,7 +825,11 @@ impl Page {
             } else {
                 other_cols
             };
-            let x_end = if x_end_req < cell_len { x_end_req } else { cell_len };
+            let x_end = if x_end_req < cell_len {
+                x_end_req
+            } else {
+                cell_len
+            };
             debug_assert!(x_start <= x_end);
             let copy_len = x_end - x_start;
 
@@ -904,24 +908,21 @@ impl Page {
                                     let other_base = other_ref.memory;
                                     let other_set: *const RefCountedSet = &other_ref.hyperlink_set;
                                     let _other_entry: HyperlinkPageEntry =
-                                        (*other_set).get::<HyperlinkPageEntry>(
-                                            other_base as *mut u8,
-                                            id,
-                                        );
+                                        (*other_set)
+                                            .get::<HyperlinkPageEntry>(other_base as *mut u8, id);
 
                                     let our_base = self.memory;
                                     let our_set: *mut RefCountedSet = &mut self.hyperlink_set;
-                                    let rc =
-                                        (*our_set).ref_count(our_base as *const u8, id);
+                                    let rc = (*our_set).ref_count(our_base as *const u8, id);
                                     if rc > 0 {
                                         (*our_set).add_id(our_base, id);
                                         id
                                     } else {
                                         let entry: HyperlinkPageEntry = (*other_set)
                                             .get::<HyperlinkPageEntry>(
-                                                other_base as *mut u8,
-                                                id,
-                                            );
+                                            other_base as *mut u8,
+                                            id,
+                                        );
                                         (*our_set)
                                             .next_id::<HyperlinkPageEntry>(our_base, entry)
                                             .ok_or("HyperlinkSetOutOfMemory")?
@@ -954,8 +955,8 @@ impl Page {
 
                                 let our_base = self.memory;
                                 let our_set: *mut RefCountedSet = &mut self.styles;
-                                let rc = (*our_set)
-                                    .ref_count(our_base as *const u8, (*sc).style_id());
+                                let rc =
+                                    (*our_set).ref_count(our_base as *const u8, (*sc).style_id());
                                 if rc > 0 {
                                     (*our_set).add_id(our_base, (*sc).style_id());
                                     (*dc).set_style_id((*sc).style_id());

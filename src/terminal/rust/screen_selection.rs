@@ -4,9 +4,7 @@
 //! `PageList.highlightSemanticContent` (output path for `selectOutput`).
 
 use crate::highlight::{HighlightUntracked, Pin};
-use crate::page_list_methods::{
-    cell_iterator_at_pin, PromptIterator, RowIterator,
-};
+use crate::page_list_methods::{cell_iterator_at_pin, PromptIterator, RowIterator};
 use crate::page_list_types::{PageList, PageListDirection};
 use crate::page_types::SemanticContent;
 use crate::point::PointTag;
@@ -136,11 +134,7 @@ pub fn select_word(pin: Pin, boundary_codepoints: &[u32]) -> Option<Selection> {
     Some(Selection::init(start, end, false))
 }
 
-pub fn select_word_between(
-    start: Pin,
-    end: Pin,
-    boundary_codepoints: &[u32],
-) -> Option<Selection> {
+pub fn select_word_between(start: Pin, end: Pin, boundary_codepoints: &[u32]) -> Option<Selection> {
     let dir = if start.before(end) {
         PageListDirection::RightDown
     } else {
@@ -184,10 +178,7 @@ pub fn select_line(_screen: &Screen, opts: SelectLineOpts<'_>) -> Option<Selecti
     Some(Selection::init(start, end, false))
 }
 
-fn find_line_start_pin(
-    pin: Pin,
-    semantic_prompt_state: Option<SemanticContent>,
-) -> Pin {
+fn find_line_start_pin(pin: Pin, semantic_prompt_state: Option<SemanticContent>) -> Pin {
     let mut it = RowIterator::new_from_pin(pin, PageListDirection::LeftUp);
     let mut it_prev = match it.next() {
         Some(p) => p,
@@ -198,10 +189,7 @@ fn find_line_start_pin(
         let row = it_prev.row_ptr();
         let cells = unsafe {
             let page = &(*it_prev.node).data;
-            core::slice::from_raw_parts(
-                page.row_cells_ptr(row),
-                page.size.cols as usize,
-            )
+            core::slice::from_raw_parts(page.row_cells_ptr(row), page.size.cols as usize)
         };
         for i in 0..=pin.x as usize {
             let x_rev = pin.x as usize - i;
@@ -225,10 +213,7 @@ fn find_line_start_pin(
         if let Some(v) = semantic_prompt_state {
             let cells = unsafe {
                 let page = &(*p.node).data;
-                core::slice::from_raw_parts(
-                    page.row_cells_ptr(row),
-                    page.size.cols as usize,
-                )
+                core::slice::from_raw_parts(page.row_cells_ptr(row), page.size.cols as usize)
             };
             for x in 0..cells.len() {
                 let x_rev = cells.len() - 1 - x;
@@ -249,10 +234,7 @@ fn find_line_start_pin(
     copy
 }
 
-fn find_line_end_pin(
-    pin: Pin,
-    semantic_prompt_state: Option<SemanticContent>,
-) -> Option<Pin> {
+fn find_line_end_pin(pin: Pin, semantic_prompt_state: Option<SemanticContent>) -> Option<Pin> {
     let mut it = RowIterator::new_from_pin(pin, PageListDirection::RightDown);
     while let Some(p) = it.next() {
         let row = p.row_ptr();
@@ -260,10 +242,7 @@ fn find_line_end_pin(
         if let Some(v) = semantic_prompt_state {
             let cells = unsafe {
                 let page = &(*p.node).data;
-                core::slice::from_raw_parts(
-                    page.row_cells_ptr(row),
-                    page.size.cols as usize,
-                )
+                core::slice::from_raw_parts(page.row_cells_ptr(row), page.size.cols as usize)
             };
 
             let start_offset = if p.node == pin.node && p.y == pin.y {
@@ -297,11 +276,7 @@ fn find_line_end_pin(
     None
 }
 
-fn trim_line_start(
-    start_pin: Pin,
-    end_pin: Pin,
-    whitespace: Option<&[u32]>,
-) -> Option<Pin> {
+fn trim_line_start(start_pin: Pin, end_pin: Pin, whitespace: Option<&[u32]>) -> Option<Pin> {
     let Some(whitespace) = whitespace else {
         return Some(start_pin);
     };
@@ -453,10 +428,7 @@ fn highlight_semantic_content_output(pages: &PageList, at: Pin) -> Option<Highli
                 if !unsafe { (*cell).has_text() } {
                     continue;
                 }
-                result = Some(HighlightUntracked {
-                    start: p,
-                    end: p,
-                });
+                result = Some(HighlightUntracked { start: p, end: p });
                 break;
             }
         }
@@ -511,19 +483,16 @@ mod ffi {
     use core::ptr;
 
     use crate::early::*;
-    use crate::selection::GhosttyGridRef;
-    use crate::selection_copy::{grid_ref_to_pin, selection_to_ghostty};
-    use crate::selection::{selection_write_impl, GhosttySelection};
     use crate::screen_selection::{
         default_line_whitespace_u32, default_word_boundaries_u32, select_all, select_line,
         select_output, select_word, select_word_between, SelectLineOpts,
     };
     use crate::screen_types::Screen;
+    use crate::selection::GhosttyGridRef;
+    use crate::selection::{selection_write_impl, GhosttySelection};
+    use crate::selection_copy::{grid_ref_to_pin, selection_to_ghostty};
 
-    unsafe fn codepoint_slice<'a>(
-        ptr: *const u32,
-        len: usize,
-    ) -> Result<Option<&'a [u32]>, c_int> {
+    unsafe fn codepoint_slice<'a>(ptr: *const u32, len: usize) -> Result<Option<&'a [u32]>, c_int> {
         if len == 0 {
             if ptr.is_null() {
                 return Ok(None);
@@ -536,10 +505,7 @@ mod ffi {
         Ok(Some(unsafe { core::slice::from_raw_parts(ptr, len) }))
     }
 
-    unsafe fn boundaries_slice<'a>(
-        ptr: *const u32,
-        len: usize,
-    ) -> Result<&'a [u32], c_int> {
+    unsafe fn boundaries_slice<'a>(ptr: *const u32, len: usize) -> Result<&'a [u32], c_int> {
         unsafe {
             match codepoint_slice(ptr, len) {
                 Ok(None) => Ok(default_word_boundaries_u32()),

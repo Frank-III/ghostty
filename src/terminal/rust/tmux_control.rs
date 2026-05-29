@@ -1,5 +1,5 @@
-use core::ptr;
 use crate::allocator::*;
+use core::ptr;
 
 const MAX_BUFFER_DEFAULT: usize = 1024 * 1024;
 
@@ -109,7 +109,9 @@ impl ControlParser {
 
     fn free_buf(&mut self, alloc: *const GhosttyAllocator) {
         if !self.buf_ptr.is_null() && self.buf_cap > 0 {
-            unsafe { alloc_free_impl(alloc, self.buf_ptr, self.buf_cap); }
+            unsafe {
+                alloc_free_impl(alloc, self.buf_ptr, self.buf_cap);
+            }
         }
         self.buf_ptr = ptr::null_mut();
         self.buf_len = 0;
@@ -117,7 +119,11 @@ impl ControlParser {
     }
 
     fn grow_buf(&mut self, alloc: *const GhosttyAllocator) -> bool {
-        let new_cap = if self.buf_cap == 0 { 256 } else { self.buf_cap * 2 };
+        let new_cap = if self.buf_cap == 0 {
+            256
+        } else {
+            self.buf_cap * 2
+        };
         if new_cap > self.max_bytes {
             return false;
         }
@@ -142,7 +148,9 @@ impl ControlParser {
                 return false;
             }
         }
-        unsafe { *self.buf_ptr.add(self.buf_len) = byte; }
+        unsafe {
+            *self.buf_ptr.add(self.buf_len) = byte;
+        }
         self.buf_len += 1;
         true
     }
@@ -160,12 +168,7 @@ impl ControlParser {
         self.free_buf(alloc);
     }
 
-    pub fn put(
-        &mut self,
-        byte: u8,
-        alloc: *const GhosttyAllocator,
-        out: *mut Notification,
-    ) -> i32 {
+    pub fn put(&mut self, byte: u8, alloc: *const GhosttyAllocator, out: *mut Notification) -> i32 {
         if matches!(self.state, ParserState::Broken) {
             return CONTROL_NO_NOTIFICATION;
         }
@@ -544,7 +547,11 @@ fn parse_window_renamed_raw(line_ptr: *const u8, line_len: usize, out: *mut Noti
     CONTROL_OK
 }
 
-fn parse_window_pane_changed_raw(line_ptr: *const u8, line_len: usize, out: *mut Notification) -> i32 {
+fn parse_window_pane_changed_raw(
+    line_ptr: *const u8,
+    line_len: usize,
+    out: *mut Notification,
+) -> i32 {
     let prefix = b"%window-pane-changed @";
     if line_len < prefix.len() {
         return CONTROL_NO_NOTIFICATION;
@@ -615,7 +622,11 @@ fn parse_client_detached_raw(line_ptr: *const u8, line_len: usize, out: *mut Not
     CONTROL_OK
 }
 
-fn parse_client_session_changed_raw(line_ptr: *const u8, line_len: usize, out: *mut Notification) -> i32 {
+fn parse_client_session_changed_raw(
+    line_ptr: *const u8,
+    line_len: usize,
+    out: *mut Notification,
+) -> i32 {
     let prefix = b"%client-session-changed ";
     if line_len < prefix.len() {
         return CONTROL_NO_NOTIFICATION;
@@ -893,7 +904,11 @@ mod tests {
         }
     }
 
-    fn feed(parser: &mut ControlParser, alloc: &GhosttyAllocator, input: &[u8]) -> (i32, Notification) {
+    fn feed(
+        parser: &mut ControlParser,
+        alloc: &GhosttyAllocator,
+        input: &[u8],
+    ) -> (i32, Notification) {
         let mut out = Notification::empty();
         let mut last_result = CONTROL_NO_NOTIFICATION;
         for &byte in input {
@@ -990,7 +1005,11 @@ mod tests {
     fn tmux_block_payload_may_start_with_end() {
         let alloc = test_allocator();
         let mut c = ControlParser::init(&alloc);
-        feed(&mut c, &alloc, b"%begin 1 1 1\n%end not really\nhello\n%end 1 1 1\n");
+        feed(
+            &mut c,
+            &alloc,
+            b"%begin 1 1 1\n%end not really\nhello\n%end 1 1 1\n",
+        );
         let (r, _n) = feed(&mut c, &alloc, b"%end 1 1 1\n");
         // Actually the block should terminate at the real %end line
         // But we already fed %end 1 1 1 within feed. Let me redo:
@@ -1135,8 +1154,14 @@ mod tests {
         assert_eq!(r, CONTROL_OK);
         assert!(matches!(n.tag, NotificationTag::LayoutChange));
         assert_eq!(n.window_id, 2);
-        assert_eq!(notification_layout(&n), b"1234x791,0,0{617x791,0,0,0,617x791,618,0,1}");
-        assert_eq!(notification_visible_layout(&n), b"1234x791,0,0{617x791,0,0,0,617x791,618,0,1}");
+        assert_eq!(
+            notification_layout(&n),
+            b"1234x791,0,0{617x791,0,0,0,617x791,618,0,1}"
+        );
+        assert_eq!(
+            notification_visible_layout(&n),
+            b"1234x791,0,0{617x791,0,0,0,617x791,618,0,1}"
+        );
         assert_eq!(notification_raw_flags(&n), b"*-");
         c.deinit(&alloc);
     }
@@ -1191,7 +1216,11 @@ mod tests {
     fn tmux_client_session_changed() {
         let alloc = test_allocator();
         let mut c = ControlParser::init(&alloc);
-        let (r, n) = feed(&mut c, &alloc, b"%client-session-changed /dev/pts/1 $2 mysession\n");
+        let (r, n) = feed(
+            &mut c,
+            &alloc,
+            b"%client-session-changed /dev/pts/1 $2 mysession\n",
+        );
         assert_eq!(r, CONTROL_OK);
         assert!(matches!(n.tag, NotificationTag::ClientSessionChanged));
         assert_eq!(notification_client(&n), b"/dev/pts/1");

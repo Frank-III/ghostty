@@ -27,13 +27,7 @@ pub(crate) unsafe fn mouse_viewport_or_suppress(
     size: GhosttyMouseSize,
     out_written: *mut usize,
 ) -> Result<(), c_int> {
-    if mouse_should_suppress_out_of_viewport(
-        action,
-        tracking_mode,
-        any_button_pressed,
-        pos,
-        size,
-    ) {
+    if mouse_should_suppress_out_of_viewport(action, tracking_mode, any_button_pressed, pos, size) {
         Err(unsafe { mouse_suppress_result(out_written) })
     } else {
         Ok(())

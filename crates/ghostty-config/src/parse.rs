@@ -106,16 +106,12 @@ mod tests {
     use super::*;
 
     fn collect(s: &str) -> Vec<(String, Option<String>)> {
-        LineIter::new(s)
-            .map(|l| (l.key, l.value))
-            .collect()
+        LineIter::new(s).map(|l| (l.key, l.value)).collect()
     }
 
     #[test]
     fn basic_lines() {
-        let lines = collect(
-            "A\nB=42\nC\n\n# comment\nD\n  E\nF=  \"value \"\n",
-        );
+        let lines = collect("A\nB=42\nC\n\n# comment\nD\n  E\nF=  \"value \"\n");
         assert_eq!(
             lines,
             vec![

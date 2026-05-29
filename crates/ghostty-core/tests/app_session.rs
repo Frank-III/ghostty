@@ -2,9 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use ghostty_core::{
-    App, AppEvent, RuntimeConfig, SurfaceEvent, SurfaceSessionOptions,
-};
+use ghostty_core::{App, AppEvent, RuntimeConfig, SurfaceEvent, SurfaceSessionOptions};
 use ghostty_termio::{CommandBuilder, CommandSpec};
 
 fn printf_spec(text: &str) -> CommandSpec {

@@ -1,6 +1,6 @@
 use core::ffi::c_void;
-use core::ptr;
 use core::mem;
+use core::ptr;
 
 use crate::highlight::Pin;
 use crate::hyperlink::HyperlinkPageEntry;
@@ -236,49 +236,47 @@ impl ReflowCursor {
             let dst_row = self.page_row;
 
             match cell_val.content_tag() {
-                ContentTag::Codepoint | ContentTag::CodepointGrapheme => {
-                    match cell_val.wide() {
-                        Wide::Narrow => {
-                            ptr::write(dst_cell, cell_val);
-                        }
+                ContentTag::Codepoint | ContentTag::CodepointGrapheme => match cell_val.wide() {
+                    Wide::Narrow => {
+                        ptr::write(dst_cell, cell_val);
+                    }
 
-                        Wide::Wide => {
-                            if page.size.cols > 1 {
-                                if self.x == page.size.cols - 1 {
-                                    let mut spacer = Cell(0);
-                                    spacer.set_content_tag(ContentTag::Codepoint);
-                                    spacer.set_content_codepoint(0);
-                                    spacer.set_wide(Wide::SpacerHead);
-                                    ptr::write(dst_cell, spacer);
-                                    self.cursor_forward();
-                                    return Ok(WriteOutcome::Repeat);
-                                } else {
-                                    ptr::write(dst_cell, cell_val);
-                                }
-                            } else {
-                                let mut empty = Cell(0);
-                                empty.set_content_tag(ContentTag::Codepoint);
-                                empty.set_content_codepoint(0);
-                                empty.set_wide(Wide::Narrow);
-                                ptr::write(dst_cell, empty);
+                    Wide::Wide => {
+                        if page.size.cols > 1 {
+                            if self.x == page.size.cols - 1 {
+                                let mut spacer = Cell(0);
+                                spacer.set_content_tag(ContentTag::Codepoint);
+                                spacer.set_content_codepoint(0);
+                                spacer.set_wide(Wide::SpacerHead);
+                                ptr::write(dst_cell, spacer);
                                 self.cursor_forward();
-                                return Ok(WriteOutcome::SkipNext);
-                            }
-                        }
-
-                        Wide::SpacerTail => {
-                            if page.size.cols > 1 {
-                                ptr::write(dst_cell, cell_val);
+                                return Ok(WriteOutcome::Repeat);
                             } else {
-                                return Ok(WriteOutcome::Success);
+                                ptr::write(dst_cell, cell_val);
                             }
+                        } else {
+                            let mut empty = Cell(0);
+                            empty.set_content_tag(ContentTag::Codepoint);
+                            empty.set_content_codepoint(0);
+                            empty.set_wide(Wide::Narrow);
+                            ptr::write(dst_cell, empty);
+                            self.cursor_forward();
+                            return Ok(WriteOutcome::SkipNext);
                         }
+                    }
 
-                        Wide::SpacerHead => {
+                    Wide::SpacerTail => {
+                        if page.size.cols > 1 {
+                            ptr::write(dst_cell, cell_val);
+                        } else {
                             return Ok(WriteOutcome::Success);
                         }
                     }
-                }
+
+                    Wide::SpacerHead => {
+                        return Ok(WriteOutcome::Success);
+                    }
+                },
 
                 ContentTag::BgColorPalette | ContentTag::BgColorRgb => {
                     ptr::write(dst_cell, cell_val);
@@ -287,18 +285,15 @@ impl ReflowCursor {
                 }
             }
 
-            ptr::write(
-                dst_cell,
-                {
-                    let mut c = Cell(0);
-                    c.set_content_tag(ContentTag::Codepoint);
-                    c.set_content_codepoint(cell_val.codepoint());
-                    c.set_wide(cell_val.wide());
-                    c.set_protected(cell_val.protected());
-                    c.set_semantic_content(cell_val.semantic_content());
-                    c
-                },
-            );
+            ptr::write(dst_cell, {
+                let mut c = Cell(0);
+                c.set_content_tag(ContentTag::Codepoint);
+                c.set_content_codepoint(cell_val.codepoint());
+                c.set_wide(cell_val.wide());
+                c.set_protected(cell_val.protected());
+                c.set_semantic_content(cell_val.semantic_content());
+                c
+            });
 
             if cell_val.codepoint() == KITTY_GRAPHICS_UNICODE_PLACEHOLDER {
                 (*dst_row).set_kitty_virtual_placeholder(true);
@@ -329,10 +324,8 @@ impl ReflowCursor {
                     let src_base = (*src_page).memory;
                     let our_base = page.memory;
 
-                    let src_set: *const RefCountedSet =
-                        &(*src_page).hyperlink_set;
-                    let our_set: *mut RefCountedSet =
-                        &mut page.hyperlink_set;
+                    let src_set: *const RefCountedSet = &(*src_page).hyperlink_set;
+                    let our_set: *mut RefCountedSet = &mut page.hyperlink_set;
 
                     if (*our_set).capacity() > 0 && (*src_set).capacity() > 0 {
                         let rc = (*our_set).ref_count(our_base as *const u8, src_id);
@@ -364,10 +357,8 @@ impl ReflowCursor {
             if cell_val.style_id() != DEFAULT_ID {
                 let src_base = (*src_page).memory;
                 let our_base = page.memory;
-                let src_styles: *const RefCountedSet =
-                    &(*src_page).styles;
-                let our_styles: *mut RefCountedSet =
-                    &mut page.styles;
+                let src_styles: *const RefCountedSet = &(*src_page).styles;
+                let our_styles: *mut RefCountedSet = &mut page.styles;
 
                 if (*our_styles).capacity() > 0 && (*src_styles).capacity() > 0 {
                     let style: Style =
@@ -519,7 +510,8 @@ impl ReflowCursor {
                             }
 
                             if pin.x as usize >= cols_len {
-                                let available = (*self.page).size.cols as usize - 1 - self.x as usize;
+                                let available =
+                                    (*self.page).size.cols as usize - 1 - self.x as usize;
                                 let clamped = if (pin.x as usize) < available {
                                     pin.x
                                 } else {
@@ -621,9 +613,7 @@ impl ReflowCursor {
                     }
                     Ok(WriteOutcome::SkipNext) => {
                         {
-                            let (keys, len) = tracked_pins_slice(
-                                list as *const PageListType,
-                            );
+                            let (keys, len) = tracked_pins_slice(list as *const PageListType);
                             if !keys.is_null() {
                                 let src_page_ref_val: *const Page = &(*src_node).data;
                                 let mut i = 0usize;

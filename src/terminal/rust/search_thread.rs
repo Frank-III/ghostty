@@ -1,7 +1,7 @@
 use core::ffi::c_void;
 use core::ptr;
 
-use crate::allocator::{GhosttyAllocator, alloc_alloc_impl, alloc_free_impl};
+use crate::allocator::{alloc_alloc_impl, alloc_free_impl, GhosttyAllocator};
 use crate::highlight::HighlightFlattened;
 use crate::search::search_screen::{ScreenSearch, SelectDirection};
 use crate::search::search_viewport::ViewportSearch;
@@ -295,8 +295,16 @@ fn ascii_equal_ignore_case(a: &[u8], b: &[u8]) -> bool {
     }
     let mut i = 0;
     while i < a.len() {
-        let ca = if a[i] >= b'A' && a[i] <= b'Z' { a[i] + 32 } else { a[i] };
-        let cb = if b[i] >= b'A' && b[i] <= b'Z' { b[i] + 32 } else { b[i] };
+        let ca = if a[i] >= b'A' && a[i] <= b'Z' {
+            a[i] + 32
+        } else {
+            a[i]
+        };
+        let cb = if b[i] >= b'A' && b[i] <= b'Z' {
+            b[i] + 32
+        } else {
+            b[i]
+        };
         if ca != cb {
             return false;
         }

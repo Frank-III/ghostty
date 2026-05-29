@@ -260,8 +260,6 @@ extern "C" {
     );
 }
 
-
-
 struct CountingWriter {
     count: usize,
 }

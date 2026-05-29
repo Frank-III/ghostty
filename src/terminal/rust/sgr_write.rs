@@ -8,10 +8,7 @@ use crate::style::*;
 
 pub(crate) unsafe fn clear_sgr_value(result: *mut GhosttySgrAttribute) {
     unsafe {
-        ptr::write(
-            core::ptr::addr_of_mut!((*result).value.padding),
-            [0u64; 8],
-        );
+        ptr::write(core::ptr::addr_of_mut!((*result).value.padding), [0u64; 8]);
     }
 }
 
@@ -22,11 +19,7 @@ pub(crate) unsafe fn write_sgr_empty(result: *mut GhosttySgrAttribute, tag: c_in
     }
 }
 
-pub(crate) unsafe fn write_sgr_c_int(
-    result: *mut GhosttySgrAttribute,
-    tag: c_int,
-    value: c_int,
-) {
+pub(crate) unsafe fn write_sgr_c_int(result: *mut GhosttySgrAttribute, tag: c_int, value: c_int) {
     unsafe {
         write_sgr_empty(result, tag);
         ptr::write(

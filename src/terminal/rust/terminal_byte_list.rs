@@ -48,11 +48,7 @@ impl ByteList {
         }
     }
 
-    pub unsafe fn set_slice(
-        alloc: *const GhosttyAllocator,
-        list: *mut Self,
-        value: &[u8],
-    ) -> bool {
+    pub unsafe fn set_slice(alloc: *const GhosttyAllocator, list: *mut Self, value: &[u8]) -> bool {
         unsafe {
             if list.is_null() {
                 return false;

@@ -1,5 +1,5 @@
-use crate::early::*;
 use crate::constants::*;
+use crate::early::*;
 
 const KITTY_KEY_STACK_LEN: usize = 8;
 

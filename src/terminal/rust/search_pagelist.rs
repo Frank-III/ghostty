@@ -1,9 +1,9 @@
 use core::ptr;
 
-use crate::allocator::{GhosttyAllocator, alloc_alloc_impl, alloc_free_impl};
-use crate::page_list_types::{PageList, PageListNode};
+use crate::allocator::{alloc_alloc_impl, alloc_free_impl, GhosttyAllocator};
 use crate::highlight::{HighlightFlattened, Pin};
-use crate::search::search_sliding_window::{SlidingWindow, Direction};
+use crate::page_list_types::{PageList, PageListNode};
+use crate::search::search_sliding_window::{Direction, SlidingWindow};
 
 pub struct PageListSearch {
     pub list: *mut PageList,
@@ -42,12 +42,15 @@ impl PageListSearch {
 
             let node_rows = (*start).data.size.rows;
             let node_cols = (*start).data.size.cols;
-            ptr::write(pin_ptr, Pin {
-                node: start,
-                x: if node_cols > 0 { node_cols - 1 } else { 0 },
-                y: if node_rows > 0 { node_rows - 1 } else { 0 },
-                garbage: false,
-            });
+            ptr::write(
+                pin_ptr,
+                Pin {
+                    node: start,
+                    x: if node_cols > 0 { node_cols - 1 } else { 0 },
+                    y: if node_rows > 0 { node_rows - 1 } else { 0 },
+                    garbage: false,
+                },
+            );
 
             let window = SlidingWindow::init(alloc, Direction::Reverse, needle);
             if window.is_null() {

@@ -21,9 +21,9 @@ pub(crate) unsafe fn write_sgr_color(
 
     let mode = unsafe { ptr::read(params.add(start + 1)) };
     if mode == 2 {
-        if let Some((next_idx, r, g, b)) = unsafe {
-            parse_sgr_direct_color(params, params_len, sep_mask, start, colon)
-        } {
+        if let Some((next_idx, r, g, b)) =
+            unsafe { parse_sgr_direct_color(params, params_len, sep_mask, start, colon) }
+        {
             unsafe {
                 ptr::write(idx, next_idx);
                 write_sgr_rgb(

@@ -1,12 +1,12 @@
 use crate::color_palette::Palette;
-use crate::formatter_types::{CodepointReplacement, Format, format_styled, Options};
+use crate::formatter_types::{format_styled, CodepointReplacement, Format, Options};
+use crate::hyperlink::HyperlinkPageEntry;
 use crate::page_core::Page;
 use crate::page_types::*;
 use crate::point::Coordinate;
-use crate::CellCountInt;
 use crate::style::GhosttyColorRgb;
-use crate::hyperlink::HyperlinkPageEntry;
-use crate::style_types::{Color, RGB, Style};
+use crate::style_types::{Color, Style, RGB};
+use crate::CellCountInt;
 
 pub trait FormatterWriter {
     fn write_bytes(&mut self, bytes: &[u8]) -> bool;
@@ -53,14 +53,30 @@ impl<'a> PageFormatter<'a> {
         }
     }
 
-    pub fn set_start_x(&mut self, v: CellCountInt) { self.start_x = v; }
-    pub fn set_start_y(&mut self, v: CellCountInt) { self.start_y = v; }
-    pub fn set_end_x(&mut self, v: Option<CellCountInt>) { self.end_x = v; }
-    pub fn set_end_y(&mut self, v: Option<CellCountInt>) { self.end_y = v; }
-    pub fn set_rectangle(&mut self, v: bool) { self.rectangle = v; }
-    pub fn set_trailing_state(&mut self, v: Option<TrailingState>) { self.trailing_state = v; }
-    pub fn opts_mut(&mut self) -> &mut Options { &mut self.opts }
-    pub fn opts(&self) -> &Options { &self.opts }
+    pub fn set_start_x(&mut self, v: CellCountInt) {
+        self.start_x = v;
+    }
+    pub fn set_start_y(&mut self, v: CellCountInt) {
+        self.start_y = v;
+    }
+    pub fn set_end_x(&mut self, v: Option<CellCountInt>) {
+        self.end_x = v;
+    }
+    pub fn set_end_y(&mut self, v: Option<CellCountInt>) {
+        self.end_y = v;
+    }
+    pub fn set_rectangle(&mut self, v: bool) {
+        self.rectangle = v;
+    }
+    pub fn set_trailing_state(&mut self, v: Option<TrailingState>) {
+        self.trailing_state = v;
+    }
+    pub fn opts_mut(&mut self) -> &mut Options {
+        &mut self.opts
+    }
+    pub fn opts(&self) -> &Options {
+        &self.opts
+    }
 
     pub fn format(&self, writer: &mut dyn FormatterWriter) -> bool {
         let _state = self.format_with_state(writer);
@@ -80,18 +96,27 @@ impl<'a> PageFormatter<'a> {
 
         let start_x = self.start_x;
         if start_x >= self.page.size.cols {
-            return TrailingState { rows: blank_rows, cells: blank_cells };
+            return TrailingState {
+                rows: blank_rows,
+                cells: blank_cells,
+            };
         }
         let end_x_unclamped = self.end_x.unwrap_or(self.page.size.cols - 1);
         let mut end_x = end_x_unclamped.min(self.page.size.cols - 1);
 
         let start_y = self.start_y;
         if start_y >= self.page.size.rows {
-            return TrailingState { rows: blank_rows, cells: blank_cells };
+            return TrailingState {
+                rows: blank_rows,
+                cells: blank_cells,
+            };
         }
         let end_y_unclamped = self.end_y.unwrap_or(self.page.size.rows - 1);
         if start_y > end_y_unclamped {
-            return TrailingState { rows: blank_rows, cells: blank_cells };
+            return TrailingState {
+                rows: blank_rows,
+                cells: blank_cells,
+            };
         }
         let mut end_y = end_y_unclamped.min(self.page.size.rows - 1);
 
@@ -107,11 +132,17 @@ impl<'a> PageFormatter<'a> {
         }
 
         if start_y == end_y && start_x > end_x {
-            return TrailingState { rows: blank_rows, cells: blank_cells };
+            return TrailingState {
+                rows: blank_rows,
+                cells: blank_cells,
+            };
         }
 
         if !self.emit_header(writer) {
-            return TrailingState { rows: blank_rows, cells: blank_cells };
+            return TrailingState {
+                rows: blank_rows,
+                cells: blank_cells,
+            };
         }
 
         let mut style = Style::default();
@@ -129,24 +160,27 @@ impl<'a> PageFormatter<'a> {
                 self.page.size.cols
             };
 
-            let row_start_x: CellCountInt = if start_x > 0
-                && (self.rectangle || y == start_y as usize)
-            {
-                let cell_at_start = unsafe { *cells.as_ptr().add(start_x as usize) };
-                match cell_at_start.wide() {
-                    Wide::SpacerTail => start_x - 1,
-                    Wide::SpacerHead => {
-                        y += 1;
-                        continue;
+            let row_start_x: CellCountInt =
+                if start_x > 0 && (self.rectangle || y == start_y as usize) {
+                    let cell_at_start = unsafe { *cells.as_ptr().add(start_x as usize) };
+                    match cell_at_start.wide() {
+                        Wide::SpacerTail => start_x - 1,
+                        Wide::SpacerHead => {
+                            y += 1;
+                            continue;
+                        }
+                        _ => start_x,
                     }
-                    _ => start_x,
-                }
-            } else {
-                0
-            };
+                } else {
+                    0
+                };
 
-            let subset =
-                unsafe { core::slice::from_raw_parts(cells.as_ptr().add(row_start_x as usize), (row_end_x - row_start_x) as usize) };
+            let subset = unsafe {
+                core::slice::from_raw_parts(
+                    cells.as_ptr().add(row_start_x as usize),
+                    (row_end_x - row_start_x) as usize,
+                )
+            };
 
             if !Cell::has_text_any(subset) {
                 blank_rows += 1;
@@ -168,7 +202,10 @@ impl<'a> PageFormatter<'a> {
                 let mut i = 0usize;
                 while i < blank_rows {
                     if !writer.write_bytes(newline) {
-                        return TrailingState { rows: blank_rows, cells: blank_cells };
+                        return TrailingState {
+                            rows: blank_rows,
+                            cells: blank_cells,
+                        };
                     }
                     i += 1;
                 }
@@ -250,8 +287,10 @@ impl<'a> PageFormatter<'a> {
                         if let Some(lid) = link_id {
                             current_hyperlink_id = Some(lid);
                             let uri: &[u8] = unsafe {
-                                let entry: HyperlinkPageEntry =
-                                    self.page.hyperlink_set.get(self.page.memory as *const u8, lid);
+                                let entry: HyperlinkPageEntry = self
+                                    .page
+                                    .hyperlink_set
+                                    .get(self.page.memory as *const u8, lid);
                                 entry.uri_slice(self.page.memory as *const u8)
                             };
                             self.format_hyperlink_open(writer, uri);
@@ -284,7 +323,10 @@ impl<'a> PageFormatter<'a> {
 
         self.emit_footer(writer);
 
-        TrailingState { rows: blank_rows, cells: blank_cells }
+        TrailingState {
+            rows: blank_rows,
+            cells: blank_cells,
+        }
     }
 
     fn is_cell_blank(&self, cell: Cell) -> bool {
@@ -313,8 +355,7 @@ impl<'a> PageFormatter<'a> {
         self.write_codepoint_with_replacement(writer, cp);
 
         if cell.content_tag() == ContentTag::CodepointGrapheme {
-            let grapheme =
-                unsafe { self.page.lookup_grapheme(&cell as *const Cell) };
+            let grapheme = unsafe { self.page.lookup_grapheme(&cell as *const Cell) };
             if let Some((ptr, len)) = grapheme {
                 let mut i = 0usize;
                 while i < len {
@@ -399,24 +440,32 @@ impl<'a> PageFormatter<'a> {
                 let len = encode_utf8(cp, &mut buf);
                 writer.write_bytes(&buf[..len]);
             }
-            Format::Html => {
-                match cp {
-                    0x3C => { writer.write_bytes(b"&lt;"); }
-                    0x3E => { writer.write_bytes(b"&gt;"); }
-                    0x26 => { writer.write_bytes(b"&amp;"); }
-                    0x22 => { writer.write_bytes(b"&quot;"); }
-                    0x27 => { writer.write_bytes(b"&#39;"); }
-                    _ => {
-                        if cp < 0x80 {
-                            writer.write_bytes(&[cp as u8]);
-                        } else {
-                            let mut buf = [0u8; 16];
-                            let n = write_numeric_entity(cp, &mut buf);
-                            writer.write_bytes(&buf[..n]);
-                        }
+            Format::Html => match cp {
+                0x3C => {
+                    writer.write_bytes(b"&lt;");
+                }
+                0x3E => {
+                    writer.write_bytes(b"&gt;");
+                }
+                0x26 => {
+                    writer.write_bytes(b"&amp;");
+                }
+                0x22 => {
+                    writer.write_bytes(b"&quot;");
+                }
+                0x27 => {
+                    writer.write_bytes(b"&#39;");
+                }
+                _ => {
+                    if cp < 0x80 {
+                        writer.write_bytes(&[cp as u8]);
+                    } else {
+                        let mut buf = [0u8; 16];
+                        let n = write_numeric_entity(cp, &mut buf);
+                        writer.write_bytes(&buf[..n]);
                     }
                 }
-            }
+            },
         }
     }
 
@@ -428,7 +477,9 @@ impl<'a> PageFormatter<'a> {
                 }
                 let sid = cell.style_id();
                 unsafe {
-                    self.page.styles.get::<Style>(self.page.memory as *const u8, sid)
+                    self.page
+                        .styles
+                        .get::<Style>(self.page.memory as *const u8, sid)
                 }
             }
             ContentTag::BgColorPalette => Style {
@@ -521,7 +572,10 @@ impl<'a> PageFormatter<'a> {
                     pos = write_hex_byte(&mut buf, pos, bg.r);
                     pos = write_hex_byte(&mut buf, pos, bg.g);
                     pos = write_hex_byte(&mut buf, pos, bg.b);
-                    if pos < buf.len() { buf[pos] = b';'; pos += 1; }
+                    if pos < buf.len() {
+                        buf[pos] = b';';
+                        pos += 1;
+                    }
                 }
                 if let Some(fg) = self.opts.foreground {
                     let s = b"color: #";
@@ -530,11 +584,16 @@ impl<'a> PageFormatter<'a> {
                     pos = write_hex_byte(&mut buf, pos, fg.r);
                     pos = write_hex_byte(&mut buf, pos, fg.g);
                     pos = write_hex_byte(&mut buf, pos, fg.b);
-                    if pos < buf.len() { buf[pos] = b';'; pos += 1; }
+                    if pos < buf.len() {
+                        buf[pos] = b';';
+                        pos += 1;
+                    }
                 }
                 if pos + 2 <= buf.len() {
-                    buf[pos] = b'"'; pos += 1;
-                    buf[pos] = b'>'; pos += 1;
+                    buf[pos] = b'"';
+                    pos += 1;
+                    buf[pos] = b'>';
+                    pos += 1;
                 }
                 writer.write_bytes(&buf[..pos])
             }
@@ -593,16 +652,25 @@ fn write_osc_color(buf: &mut [u8], mut pos: usize, cmd: u8, r: u8, g: u8, b: u8)
         pos += prefix.len();
     }
     pos = decimal_to_buf_u8(buf, pos, cmd);
-    if pos < buf.len() { buf[pos] = b';'; pos += 1; }
+    if pos < buf.len() {
+        buf[pos] = b';';
+        pos += 1;
+    }
     let rgb_prefix = b"rgb:";
     if pos + rgb_prefix.len() <= buf.len() {
         buf[pos..pos + rgb_prefix.len()].copy_from_slice(rgb_prefix);
         pos += rgb_prefix.len();
     }
     pos = write_hex_byte(buf, pos, r);
-    if pos < buf.len() { buf[pos] = b'/'; pos += 1; }
+    if pos < buf.len() {
+        buf[pos] = b'/';
+        pos += 1;
+    }
     pos = write_hex_byte(buf, pos, g);
-    if pos < buf.len() { buf[pos] = b'/'; pos += 1; }
+    if pos < buf.len() {
+        buf[pos] = b'/';
+        pos += 1;
+    }
     pos = write_hex_byte(buf, pos, b);
     let st = b"\x1b\\";
     if pos + st.len() <= buf.len() {
@@ -614,7 +682,9 @@ fn write_osc_color(buf: &mut [u8], mut pos: usize, cmd: u8, r: u8, g: u8, b: u8)
 
 fn decimal_to_buf_u8(buf: &mut [u8], mut pos: usize, v: u8) -> usize {
     if v == 0 {
-        if pos < buf.len() { buf[pos] = b'0'; }
+        if pos < buf.len() {
+            buf[pos] = b'0';
+        }
         return pos + 1;
     }
     let mut tmp = [0u8; 3];
@@ -626,7 +696,9 @@ fn decimal_to_buf_u8(buf: &mut [u8], mut pos: usize, v: u8) -> usize {
         val /= 10;
     }
     for i in (0..n).rev() {
-        if pos < buf.len() { buf[pos] = tmp[i]; }
+        if pos < buf.len() {
+            buf[pos] = tmp[i];
+        }
         pos += 1;
     }
     pos
@@ -682,17 +754,21 @@ fn decode_utf8(s: &[u8]) -> (u32, usize) {
     if b0 < 0x80 {
         (b0 as u32, 1)
     } else if b0 & 0xE0 == 0xC0 {
-        if s.len() < 2 { return (0, 1); }
+        if s.len() < 2 {
+            return (0, 1);
+        }
         let cp = ((b0 as u32 & 0x1F) << 6) | (s[1] as u32 & 0x3F);
         (cp, 2)
     } else if b0 & 0xF0 == 0xE0 {
-        if s.len() < 3 { return (0, 1); }
-        let cp = ((b0 as u32 & 0x0F) << 12)
-            | ((s[1] as u32 & 0x3F) << 6)
-            | (s[2] as u32 & 0x3F);
+        if s.len() < 3 {
+            return (0, 1);
+        }
+        let cp = ((b0 as u32 & 0x0F) << 12) | ((s[1] as u32 & 0x3F) << 6) | (s[2] as u32 & 0x3F);
         (cp, 3)
     } else if b0 & 0xF8 == 0xF0 {
-        if s.len() < 4 { return (0, 1); }
+        if s.len() < 4 {
+            return (0, 1);
+        }
         let cp = ((b0 as u32 & 0x07) << 18)
             | ((s[1] as u32 & 0x3F) << 12)
             | ((s[2] as u32 & 0x3F) << 6)
@@ -761,11 +837,26 @@ fn append_html_style(
             }
             pos += s.len();
             pos = decimal_to_buf_u8(buf, pos, rgb.r);
-            if pos + 2 <= buf.len() { buf[pos] = b','; pos += 1; buf[pos] = b' '; pos += 1; }
+            if pos + 2 <= buf.len() {
+                buf[pos] = b',';
+                pos += 1;
+                buf[pos] = b' ';
+                pos += 1;
+            }
             pos = decimal_to_buf_u8(buf, pos, rgb.g);
-            if pos + 2 <= buf.len() { buf[pos] = b','; pos += 1; buf[pos] = b' '; pos += 1; }
+            if pos + 2 <= buf.len() {
+                buf[pos] = b',';
+                pos += 1;
+                buf[pos] = b' ';
+                pos += 1;
+            }
             pos = decimal_to_buf_u8(buf, pos, rgb.b);
-            if pos + 2 <= buf.len() { buf[pos] = b')'; pos += 1; buf[pos] = b';'; pos += 1; }
+            if pos + 2 <= buf.len() {
+                buf[pos] = b')';
+                pos += 1;
+                buf[pos] = b';';
+                pos += 1;
+            }
         }
     }
 
@@ -792,11 +883,26 @@ fn append_html_style(
             }
             pos += s.len();
             pos = decimal_to_buf_u8(buf, pos, rgb.r);
-            if pos + 2 <= buf.len() { buf[pos] = b','; pos += 1; buf[pos] = b' '; pos += 1; }
+            if pos + 2 <= buf.len() {
+                buf[pos] = b',';
+                pos += 1;
+                buf[pos] = b' ';
+                pos += 1;
+            }
             pos = decimal_to_buf_u8(buf, pos, rgb.g);
-            if pos + 2 <= buf.len() { buf[pos] = b','; pos += 1; buf[pos] = b' '; pos += 1; }
+            if pos + 2 <= buf.len() {
+                buf[pos] = b',';
+                pos += 1;
+                buf[pos] = b' ';
+                pos += 1;
+            }
             pos = decimal_to_buf_u8(buf, pos, rgb.b);
-            if pos + 2 <= buf.len() { buf[pos] = b')'; pos += 1; buf[pos] = b';'; pos += 1; }
+            if pos + 2 <= buf.len() {
+                buf[pos] = b')';
+                pos += 1;
+                buf[pos] = b';';
+                pos += 1;
+            }
         }
     }
 

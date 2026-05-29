@@ -231,11 +231,9 @@ impl Parser {
                     let mode = self.params[self.idx];
                     match mode {
                         2 => {
-                            if let Some(attr) = self.parse_direct_color(
-                                slice_start,
-                                colon,
-                                DirectColorKind::Fg,
-                            ) {
+                            if let Some(attr) =
+                                self.parse_direct_color(slice_start, colon, DirectColorKind::Fg)
+                            {
                                 return Some(attr);
                             }
                         }
@@ -262,11 +260,9 @@ impl Parser {
                     let mode = self.params[self.idx];
                     match mode {
                         2 => {
-                            if let Some(attr) = self.parse_direct_color(
-                                slice_start,
-                                colon,
-                                DirectColorKind::Bg,
-                            ) {
+                            if let Some(attr) =
+                                self.parse_direct_color(slice_start, colon, DirectColorKind::Bg)
+                            {
                                 return Some(attr);
                             }
                         }

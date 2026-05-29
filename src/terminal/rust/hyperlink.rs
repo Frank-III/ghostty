@@ -1,7 +1,7 @@
-use core::ffi::c_void;
-use crate::early::*;
 use crate::constants::*;
+use crate::early::*;
 use crate::size_types::*;
+use core::ffi::c_void;
 
 pub type HyperlinkId = HyperlinkCountInt;
 
@@ -92,7 +92,12 @@ impl HyperlinkPageEntry {
         h
     }
 
-    pub unsafe fn eql(&self, self_base: *const u8, other: &HyperlinkPageEntry, other_base: *const u8) -> bool {
+    pub unsafe fn eql(
+        &self,
+        self_base: *const u8,
+        other: &HyperlinkPageEntry,
+        other_base: *const u8,
+    ) -> bool {
         if self.id.tag != other.id.tag {
             return false;
         }

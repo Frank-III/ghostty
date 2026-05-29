@@ -1,6 +1,4 @@
-use ghostty_vt::{
-    test_allocator, ActionTag, Notification, NotificationTag, Viewer, ViewerState,
-};
+use ghostty_vt::{test_allocator, ActionTag, Notification, NotificationTag, Viewer, ViewerState};
 
 fn notification(tag: NotificationTag) -> Notification {
     Notification {
@@ -95,7 +93,10 @@ fn initial_flow_list_windows_and_panes() {
     let alloc = test_allocator();
     let mut viewer = Viewer::init(&alloc);
 
-    let _ = actions_slice(&mut viewer, notification_with_data(NotificationTag::BlockEnd, b""));
+    let _ = actions_slice(
+        &mut viewer,
+        notification_with_data(NotificationTag::BlockEnd, b""),
+    );
     let actions = actions_slice(&mut viewer, notification_session(42));
     assert!(has_command(&actions, "display-message"));
     assert_eq!(viewer.session_id, 42);
@@ -107,8 +108,7 @@ fn initial_flow_list_windows_and_panes() {
     assert!(has_command(&actions, "list-windows"));
     assert_eq!(viewer.tmux_version_bytes(), b"3.5a");
 
-    let list_windows =
-        b"$0 @0 83 44 027b,83x44,0,0[83x20,0,0,0,83x23,0,21,1]\n";
+    let list_windows = b"$0 @0 83 44 027b,83x44,0,0[83x20,0,0,0,83x23,0,21,1]\n";
     let actions = actions_slice(
         &mut viewer,
         notification_with_data(NotificationTag::BlockEnd, list_windows),
@@ -126,7 +126,10 @@ fn pane_capture_visible_then_live_output() {
     let alloc = test_allocator();
     let mut viewer = Viewer::init(&alloc);
 
-    let _ = actions_slice(&mut viewer, notification_with_data(NotificationTag::BlockEnd, b""));
+    let _ = actions_slice(
+        &mut viewer,
+        notification_with_data(NotificationTag::BlockEnd, b""),
+    );
     let _ = actions_slice(&mut viewer, notification_session(0));
     let _ = actions_slice(
         &mut viewer,
@@ -161,17 +164,11 @@ fn pane_capture_visible_then_live_output() {
         );
     }
 
-    let actions = actions_slice(
-        &mut viewer,
-        notification_output(0, b"new output"),
-    );
+    let actions = actions_slice(&mut viewer, notification_output(0, b"new output"));
     assert!(actions.is_empty());
     assert!(viewer.pane_has_terminal(0));
 
-    let actions = actions_slice(
-        &mut viewer,
-        notification_output(999, b"ignored"),
-    );
+    let actions = actions_slice(&mut viewer, notification_output(999, b"ignored"));
     assert!(actions.is_empty());
 }
 
@@ -180,7 +177,10 @@ fn session_changed_resets_panes() {
     let alloc = test_allocator();
     let mut viewer = Viewer::init(&alloc);
 
-    let _ = actions_slice(&mut viewer, notification_with_data(NotificationTag::BlockEnd, b""));
+    let _ = actions_slice(
+        &mut viewer,
+        notification_with_data(NotificationTag::BlockEnd, b""),
+    );
     let _ = actions_slice(&mut viewer, notification_session(1));
     let _ = actions_slice(
         &mut viewer,

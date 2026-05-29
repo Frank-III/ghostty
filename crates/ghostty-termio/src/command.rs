@@ -127,10 +127,7 @@ mod tests {
 
     #[test]
     fn builder_sets_argv0_from_path_when_args_empty() {
-        let spec = CommandBuilder::new()
-            .path("/bin/sh")
-            .build()
-            .unwrap();
+        let spec = CommandBuilder::new().path("/bin/sh").build().unwrap();
         assert_eq!(spec.path, OsStr::new("/bin/sh"));
         assert_eq!(spec.args.len(), 1);
         assert_eq!(spec.args[0], OsStr::new("/bin/sh"));
@@ -149,7 +146,11 @@ mod tests {
         assert_eq!(spec.argv(), vec![OsStr::new("sh"), OsStr::new("-l")]);
         assert_eq!(spec.cwd.as_deref(), Some(Path::new("/tmp")));
         assert_eq!(
-            spec.env.as_ref().unwrap().get(OsStr::new("TERM")).map(OsStr::new),
+            spec.env
+                .as_ref()
+                .unwrap()
+                .get(OsStr::new("TERM"))
+                .map(OsStr::new),
             Some(OsStr::new("xterm-ghostty"))
         );
     }

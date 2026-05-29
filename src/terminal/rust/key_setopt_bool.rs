@@ -11,10 +11,6 @@ pub unsafe extern "C" fn ghostty_rust_key_encoder_setopt_bool(
     unsafe { key_encoder_setopt_bool_state(option, value, out) }
 }
 
-pub(crate) unsafe fn key_encoder_setopt_bool_state(
-    option: c_int,
-    value: bool,
-    out: *mut bool,
-) {
+pub(crate) unsafe fn key_encoder_setopt_bool_state(option: c_int, value: bool, out: *mut bool) {
     unsafe { key_encoder_setopt_bool_write(option, value, out) }
 }

@@ -218,7 +218,10 @@ fn parse_iterm2_key(key_str: &[u8]) -> Option<Iterm2Key> {
         (b"SetMark", Iterm2Key::SetMark),
         (b"SetProfile", Iterm2Key::SetProfile),
         (b"SetUserVar", Iterm2Key::SetUserVar),
-        (b"ShellIntegrationVersion", Iterm2Key::ShellIntegrationVersion),
+        (
+            b"ShellIntegrationVersion",
+            Iterm2Key::ShellIntegrationVersion,
+        ),
         (b"StealFocus", Iterm2Key::StealFocus),
         (b"UnicodeVersion", Iterm2Key::UnicodeVersion),
     ];

@@ -1,10 +1,10 @@
 use core::ffi::c_void;
 use core::ptr;
 
-use crate::allocator::{GhosttyAllocator, alloc_alloc_impl, alloc_free_impl};
-use crate::page_list_types::{PageList, PageListNode};
+use crate::allocator::{alloc_alloc_impl, alloc_free_impl, GhosttyAllocator};
 use crate::highlight::HighlightFlattened;
-use crate::search::search_sliding_window::{SlidingWindow, Direction};
+use crate::page_list_types::{PageList, PageListNode};
+use crate::search::search_sliding_window::{Direction, SlidingWindow};
 
 pub struct Fingerprint {
     pub nodes_ptr: *mut *mut PageListNode,
@@ -65,10 +65,7 @@ pub struct ViewportSearch {
 }
 
 impl ViewportSearch {
-    pub unsafe fn init(
-        alloc: *const GhosttyAllocator,
-        needle: &[u8],
-    ) -> ViewportSearch {
+    pub unsafe fn init(alloc: *const GhosttyAllocator, needle: &[u8]) -> ViewportSearch {
         let window = unsafe { SlidingWindow::init(alloc, Direction::Forward, needle) };
         ViewportSearch {
             window,

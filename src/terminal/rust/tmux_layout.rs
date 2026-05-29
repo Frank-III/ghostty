@@ -1,5 +1,5 @@
-use core::ptr;
 use crate::allocator::*;
+use core::ptr;
 
 pub const LAYOUT_PARSE_ERROR: i32 = -1;
 pub const LAYOUT_CHECKSUM_MISMATCH: i32 = -2;
@@ -43,12 +43,13 @@ impl Layout {
     pub fn deinit(&mut self, alloc: *const GhosttyAllocator) {
         match self.content {
             LayoutContent::Pane(_) => {}
-            LayoutContent::Horizontal { ptr, len } |
-            LayoutContent::Vertical { ptr, len } => {
+            LayoutContent::Horizontal { ptr, len } | LayoutContent::Vertical { ptr, len } => {
                 if !ptr.is_null() && len > 0 {
                     let layout_size = core::mem::size_of::<Layout>();
                     let total = layout_size * len;
-                    unsafe { alloc_free_impl(alloc, ptr as *mut u8, total); }
+                    unsafe {
+                        alloc_free_impl(alloc, ptr as *mut u8, total);
+                    }
                 }
             }
         }
@@ -146,10 +147,7 @@ fn starts_with(s: &[u8], prefix: &[u8]) -> bool {
     true
 }
 
-fn alloc_layout_array(
-    alloc: *const GhosttyAllocator,
-    count: usize,
-) -> *mut Layout {
+fn alloc_layout_array(alloc: *const GhosttyAllocator, count: usize) -> *mut Layout {
     if count == 0 {
         return ptr::null_mut();
     }
@@ -159,15 +157,13 @@ fn alloc_layout_array(
     if raw.is_null() {
         return ptr::null_mut();
     }
-    unsafe { ptr::write_bytes(raw, 0, total); }
+    unsafe {
+        ptr::write_bytes(raw, 0, total);
+    }
     raw as *mut Layout
 }
 
-pub fn layout_parse(
-    alloc: *const GhosttyAllocator,
-    s: &[u8],
-    out: *mut Layout,
-) -> i32 {
+pub fn layout_parse(alloc: *const GhosttyAllocator, s: &[u8], out: *mut Layout) -> i32 {
     if out.is_null() {
         return LAYOUT_PARSE_ERROR;
     }
@@ -256,19 +252,25 @@ fn parse_next(
     let current_off = off + after_x + after_comma + after_comma2 + delim_idx;
     let delim = unsafe { *s.get_unchecked(current_off) };
 
-    unsafe { *offset = current_off; }
+    unsafe {
+        *offset = current_off;
+    }
 
     let content: LayoutContent;
 
     if delim == b',' {
-        unsafe { *offset = current_off + 1; }
+        unsafe {
+            *offset = current_off + 1;
+        }
         let remaining5 = unsafe { s.get_unchecked(current_off + 1..) };
         let end_idx = index_of_any(remaining5, b",}]").unwrap_or(remaining5.len());
         let pane_id = match parse_usize(unsafe { remaining5.get_unchecked(..end_idx) }) {
             Some(v) => v,
             None => return LAYOUT_PARSE_ERROR,
         };
-        unsafe { *offset = current_off + 1 + end_idx; }
+        unsafe {
+            *offset = current_off + 1 + end_idx;
+        }
         content = LayoutContent::Pane(pane_id);
     } else if delim == b'{' || delim == b'[' {
         let closing = if delim == b'{' { b'}' } else { b']' };
@@ -279,7 +281,9 @@ fn parse_next(
             return LAYOUT_PARSE_ERROR;
         }
 
-        unsafe { *offset = current_off + 1; }
+        unsafe {
+            *offset = current_off + 1;
+        }
 
         loop {
             if nodes_count >= nodes_cap {
@@ -287,16 +291,14 @@ fn parse_next(
                 let new_nodes = alloc_layout_array(alloc, new_cap);
                 if new_nodes.is_null() {
                     let old_total = core::mem::size_of::<Layout>() * nodes_cap;
-                    unsafe { alloc_free_impl(alloc, nodes as *mut u8, old_total); }
+                    unsafe {
+                        alloc_free_impl(alloc, nodes as *mut u8, old_total);
+                    }
                     return LAYOUT_PARSE_ERROR;
                 }
                 let old_total = core::mem::size_of::<Layout>() * nodes_count;
                 unsafe {
-                    ptr::copy_nonoverlapping(
-                        nodes as *const u8,
-                        new_nodes as *mut u8,
-                        old_total,
-                    );
+                    ptr::copy_nonoverlapping(nodes as *const u8, new_nodes as *mut u8, old_total);
                     alloc_free_impl(
                         alloc,
                         nodes as *mut u8,
@@ -311,7 +313,9 @@ fn parse_next(
             let result = parse_next(alloc, s, offset, node_ptr);
             if result < 0 {
                 let total = core::mem::size_of::<Layout>() * nodes_cap;
-                unsafe { alloc_free_impl(alloc, nodes as *mut u8, total); }
+                unsafe {
+                    alloc_free_impl(alloc, nodes as *mut u8, total);
+                }
                 return result;
             }
             nodes_count += 1;
@@ -319,29 +323,39 @@ fn parse_next(
             let cur_off = unsafe { *offset };
             if cur_off >= s.len() {
                 let total = core::mem::size_of::<Layout>() * nodes_cap;
-                unsafe { alloc_free_impl(alloc, nodes as *mut u8, total); }
+                unsafe {
+                    alloc_free_impl(alloc, nodes as *mut u8, total);
+                }
                 return LAYOUT_PARSE_ERROR;
             }
 
             let next_byte = unsafe { *s.get_unchecked(cur_off) };
             if next_byte == b',' {
-                unsafe { *offset = cur_off + 1; }
+                unsafe {
+                    *offset = cur_off + 1;
+                }
                 continue;
             }
 
             if next_byte != closing {
                 let total = core::mem::size_of::<Layout>() * nodes_cap;
-                unsafe { alloc_free_impl(alloc, nodes as *mut u8, total); }
+                unsafe {
+                    alloc_free_impl(alloc, nodes as *mut u8, total);
+                }
                 return LAYOUT_PARSE_ERROR;
             }
 
-            unsafe { *offset = cur_off + 1; }
+            unsafe {
+                *offset = cur_off + 1;
+            }
 
             if nodes_count < nodes_cap {
                 let final_nodes = alloc_layout_array(alloc, nodes_count);
                 if final_nodes.is_null() && nodes_count > 0 {
                     let total = core::mem::size_of::<Layout>() * nodes_cap;
-                    unsafe { alloc_free_impl(alloc, nodes as *mut u8, total); }
+                    unsafe {
+                        alloc_free_impl(alloc, nodes as *mut u8, total);
+                    }
                     return LAYOUT_PARSE_ERROR;
                 }
                 if !final_nodes.is_null() {
@@ -363,9 +377,15 @@ fn parse_next(
             }
 
             content = if delim == b'{' {
-                LayoutContent::Horizontal { ptr: nodes, len: nodes_count }
+                LayoutContent::Horizontal {
+                    ptr: nodes,
+                    len: nodes_count,
+                }
             } else {
-                LayoutContent::Vertical { ptr: nodes, len: nodes_count }
+                LayoutContent::Vertical {
+                    ptr: nodes,
+                    len: nodes_count,
+                }
             };
             break;
         }
@@ -398,8 +418,7 @@ fn layout_deinit(layout: *mut Layout, alloc: *const GhosttyAllocator) {
     unsafe {
         match (*layout).content {
             LayoutContent::Pane(_) => {}
-            LayoutContent::Horizontal { ptr, len } |
-            LayoutContent::Vertical { ptr, len } => {
+            LayoutContent::Horizontal { ptr, len } | LayoutContent::Vertical { ptr, len } => {
                 if !ptr.is_null() && len > 0 {
                     let mut i: usize = 0;
                     while i < len {
@@ -428,8 +447,7 @@ pub fn layout_walk_panes(
             LayoutContent::Pane(id) => {
                 callback(id, ctx);
             }
-            LayoutContent::Horizontal { ptr, len } |
-            LayoutContent::Vertical { ptr, len } => {
+            LayoutContent::Horizontal { ptr, len } | LayoutContent::Vertical { ptr, len } => {
                 let mut i: usize = 0;
                 while i < len {
                     let child = ptr.add(i);
@@ -663,8 +681,20 @@ mod tests {
     #[test]
     fn layout_children_returns_ptr_and_len() {
         let children_arr: [Layout; 2] = [
-            Layout { width: 40, height: 24, x: 0, y: 0, content: LayoutContent::Pane(1) },
-            Layout { width: 40, height: 24, x: 40, y: 0, content: LayoutContent::Pane(2) },
+            Layout {
+                width: 40,
+                height: 24,
+                x: 0,
+                y: 0,
+                content: LayoutContent::Pane(1),
+            },
+            Layout {
+                width: 40,
+                height: 24,
+                x: 40,
+                y: 0,
+                content: LayoutContent::Pane(2),
+            },
         ];
         let layout = Layout {
             width: 80,
@@ -865,11 +895,7 @@ mod tests {
         fn syntax_error_unclosed_horizontal_bracket() {
             let alloc = test_allocator();
             let mut out = core::mem::MaybeUninit::<Layout>::uninit();
-            let r = layout_parse(
-                &alloc,
-                b"80x24,0,0{40x24,0,0,1",
-                out.as_mut_ptr(),
-            );
+            let r = layout_parse(&alloc, b"80x24,0,0{40x24,0,0,1", out.as_mut_ptr());
             assert_eq!(r, LAYOUT_PARSE_ERROR);
         }
 
@@ -877,11 +903,7 @@ mod tests {
         fn syntax_error_unclosed_vertical_bracket() {
             let alloc = test_allocator();
             let mut out = core::mem::MaybeUninit::<Layout>::uninit();
-            let r = layout_parse(
-                &alloc,
-                b"80x24,0,0[40x24,0,0,1",
-                out.as_mut_ptr(),
-            );
+            let r = layout_parse(&alloc, b"80x24,0,0[40x24,0,0,1", out.as_mut_ptr());
             assert_eq!(r, LAYOUT_PARSE_ERROR);
         }
 
@@ -889,17 +911,9 @@ mod tests {
         fn syntax_error_mismatched_brackets() {
             let alloc = test_allocator();
             let mut out = core::mem::MaybeUninit::<Layout>::uninit();
-            let r = layout_parse(
-                &alloc,
-                b"80x24,0,0{40x24,0,0,1]",
-                out.as_mut_ptr(),
-            );
+            let r = layout_parse(&alloc, b"80x24,0,0{40x24,0,0,1]", out.as_mut_ptr());
             assert_eq!(r, LAYOUT_PARSE_ERROR);
-            let r2 = layout_parse(
-                &alloc,
-                b"80x24,0,0[40x24,0,0,1}",
-                out.as_mut_ptr(),
-            );
+            let r2 = layout_parse(&alloc, b"80x24,0,0[40x24,0,0,1}", out.as_mut_ptr());
             assert_eq!(r2, LAYOUT_PARSE_ERROR);
         }
 

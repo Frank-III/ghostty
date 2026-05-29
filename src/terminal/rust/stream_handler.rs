@@ -1,13 +1,13 @@
 #![allow(unused)]
-use crate::early::*;
-use crate::constants::*;
 use crate::ansi::*;
-use crate::csi::*;
-use crate::mode_def::*;
 use crate::charsets::*;
+use crate::constants::*;
+use crate::csi::*;
 use crate::device_attributes::*;
 use crate::device_status::*;
+use crate::early::*;
 use crate::kitty_key::*;
+use crate::mode_def::*;
 use crate::mouse_shape::*;
 use crate::stream_types::*;
 use crate::vt_parser::*;
@@ -43,7 +43,9 @@ pub trait StreamHandler {
             StreamAction::EraseLineRight(v) => self.on_erase_line_right(v),
             StreamAction::EraseLineLeft(v) => self.on_erase_line_left(v),
             StreamAction::EraseLineComplete(v) => self.on_erase_line_complete(v),
-            StreamAction::EraseLineRightUnlessPendingWrap(v) => self.on_erase_line_right_unless_pending_wrap(v),
+            StreamAction::EraseLineRightUnlessPendingWrap(v) => {
+                self.on_erase_line_right_unless_pending_wrap(v)
+            }
             StreamAction::DeleteChars(v) => self.on_delete_chars(v),
             StreamAction::EraseChars(v) => self.on_erase_chars(v),
             StreamAction::InsertLines(v) => self.on_insert_lines(v),

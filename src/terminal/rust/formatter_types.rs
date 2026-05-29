@@ -1,6 +1,5 @@
 use core::ffi::c_void;
 
-
 use crate::color_palette::Palette;
 use crate::style::GhosttyColorRgb;
 
@@ -86,7 +85,9 @@ pub struct Options {
 }
 
 impl Clone for Options {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl Copy for Options {}
@@ -200,10 +201,16 @@ mod tests {
             range_end: 0x2603,
             replacement: CodepointReplacement::Codepoint(0x2764),
         }];
-        let map = CodepointMap { entries: entries.as_ptr(), len: 1 };
+        let map = CodepointMap {
+            entries: entries.as_ptr(),
+            len: 1,
+        };
         match map.find_replacement(0x2603) {
             Some(CodepointReplacement::Codepoint(cp)) => assert_eq!(cp, 0x2764),
-            other => panic!("expected CodepointReplacement::Codepoint(0x2764), got {:?}", other.is_some()),
+            other => panic!(
+                "expected CodepointReplacement::Codepoint(0x2764), got {:?}",
+                other.is_some()
+            ),
         }
         assert!(map.find_replacement(0x41).is_none());
     }
@@ -219,13 +226,19 @@ mod tests {
                 len: repl.len(),
             },
         }];
-        let map = CodepointMap { entries: entries.as_ptr(), len: 1 };
+        let map = CodepointMap {
+            entries: entries.as_ptr(),
+            len: 1,
+        };
         match map.find_replacement(0x00A0) {
             Some(CodepointReplacement::String { data, len }) => {
                 let bytes = unsafe { core::slice::from_raw_parts(data, len) };
                 assert_eq!(bytes, b" ");
             }
-            other => panic!("expected CodepointReplacement::String, got {:?}", other.is_some()),
+            other => panic!(
+                "expected CodepointReplacement::String, got {:?}",
+                other.is_some()
+            ),
         }
         assert!(map.find_replacement(0x20).is_none());
     }
@@ -244,14 +257,23 @@ mod tests {
                 replacement: CodepointReplacement::Codepoint(0x42),
             },
         ];
-        let map = CodepointMap { entries: entries.as_ptr(), len: 2 };
+        let map = CodepointMap {
+            entries: entries.as_ptr(),
+            len: 2,
+        };
         match map.find_replacement(0x2603) {
             Some(CodepointReplacement::Codepoint(cp)) => assert_eq!(cp, 0x42),
-            other => panic!("expected Codepoint(0x42) (last entry), got {:?}", other.is_some()),
+            other => panic!(
+                "expected Codepoint(0x42) (last entry), got {:?}",
+                other.is_some()
+            ),
         }
         match map.find_replacement(0x41) {
             Some(CodepointReplacement::Codepoint(cp)) => assert_eq!(cp, 0x41),
-            other => panic!("expected Codepoint(0x41) (first entry), got {:?}", other.is_some()),
+            other => panic!(
+                "expected Codepoint(0x41) (first entry), got {:?}",
+                other.is_some()
+            ),
         }
     }
 

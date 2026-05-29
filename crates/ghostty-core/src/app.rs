@@ -165,10 +165,7 @@ impl App {
                 surface.set_focused(self.focused_surface == Some(surface.id()));
             }
             if let Some(new_focus) = self.focused_surface {
-                self.push_surface_event(
-                    new_focus,
-                    SurfaceEvent::FocusChanged { focused: true },
-                );
+                self.push_surface_event(new_focus, SurfaceEvent::FocusChanged { focused: true });
             }
         }
 
@@ -274,8 +271,8 @@ mod tests {
 
     #[cfg(all(unix, feature = "rust-vt"))]
     fn short_lived_surface(app: &mut App) -> SurfaceId {
-        use ghostty_termio::{CommandBuilder, CommandSpec};
         use crate::surface_session::SurfaceSessionOptions;
+        use ghostty_termio::{CommandBuilder, CommandSpec};
 
         let spec: CommandSpec = CommandBuilder::new()
             .path("/bin/sh")
@@ -405,6 +402,7 @@ mod tests {
                 } if title == "term"
             )
         }));
+        #[cfg(all(unix, feature = "rust-vt"))]
         cleanup_app(&mut app);
     }
 }

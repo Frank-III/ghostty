@@ -1,11 +1,6 @@
-use core::ffi::{c_int, c_void};
-use core::{mem, ptr};
-use crate::early::*;
 use crate::constants::*;
-use crate::terminal::*;
-use crate::render::*;
+use crate::early::*;
 use crate::input::*;
-use crate::selection::*;
 use crate::kitty_graphics::*;
 use crate::mouse_button::*;
 use crate::mouse_button_required::*;
@@ -13,16 +8,21 @@ use crate::mouse_commit::*;
 use crate::mouse_encode_size::*;
 use crate::mouse_geometry::*;
 use crate::mouse_last_cell::*;
-use crate::mouse_output::*;
 use crate::mouse_out_written::*;
+use crate::mouse_output::*;
 use crate::mouse_size::*;
 use crate::mouse_suppress::*;
 use crate::mouse_types::*;
 use crate::mouse_viewport_report::*;
 use crate::mouse_write::*;
 use crate::mouse_x10::*;
+use crate::render::*;
+use crate::selection::*;
 use crate::simple::*;
 use crate::style::*;
+use crate::terminal::*;
+use core::ffi::{c_int, c_void};
+use core::{mem, ptr};
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mouse_encode(

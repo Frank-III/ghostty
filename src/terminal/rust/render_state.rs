@@ -2,8 +2,8 @@ use core::ffi::{c_int, c_void};
 use core::ptr;
 
 use crate::constants::*;
-use crate::render_state_primitive::*;
 use crate::render_state_color::*;
+use crate::render_state_primitive::*;
 use crate::style::*;
 
 #[no_mangle]

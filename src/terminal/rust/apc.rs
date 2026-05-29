@@ -1,6 +1,6 @@
-use core::ffi::c_void;
-use crate::early::*;
 use crate::constants::*;
+use crate::early::*;
+use core::ffi::c_void;
 
 pub const APC_KITTY_DEFAULT_MAX_BYTES: usize = 65 * 1024 * 1024;
 
@@ -165,24 +165,22 @@ impl ApcHandler {
         match self.state.tag {
             ApcStateTag::Inactive => unsafe { core::hint::unreachable_unchecked() },
             ApcStateTag::Ignore => {}
-            ApcStateTag::Identify => {
-                match byte {
-                    b'G' => {
-                        if kitty_enabled {
-                            let max = self
-                                .max_bytes
-                                .get(ApcProtocol::Kitty)
-                                .unwrap_or_else(|| apc_protocol_default_max_bytes(ApcProtocol::Kitty));
-                            self.state = ApcState::kitty(max, core::ptr::null_mut());
-                        } else {
-                            self.state = ApcState::ignore();
-                        }
-                    }
-                    _ => {
+            ApcStateTag::Identify => match byte {
+                b'G' => {
+                    if kitty_enabled {
+                        let max = self
+                            .max_bytes
+                            .get(ApcProtocol::Kitty)
+                            .unwrap_or_else(|| apc_protocol_default_max_bytes(ApcProtocol::Kitty));
+                        self.state = ApcState::kitty(max, core::ptr::null_mut());
+                    } else {
                         self.state = ApcState::ignore();
                     }
                 }
-            }
+                _ => {
+                    self.state = ApcState::ignore();
+                }
+            },
             ApcStateTag::Kitty => {
                 if !kitty_enabled {
                     unsafe { core::hint::unreachable_unchecked() }

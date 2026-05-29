@@ -1,15 +1,15 @@
-use core::ffi::{c_int, c_void};
-use core::{mem, ptr};
-use crate::early::*;
 use crate::constants::*;
-use crate::terminal::*;
-use crate::render::*;
+use crate::early::*;
 use crate::input::*;
 use crate::kitty_graphics::*;
 use crate::mouse_encode::*;
+use crate::render::*;
 use crate::selection_copy::*;
 use crate::simple::*;
 use crate::style::*;
+use crate::terminal::*;
+use core::ffi::{c_int, c_void};
+use core::{mem, ptr};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -70,10 +70,7 @@ pub unsafe extern "C" fn ghostty_rust_selection_write_order(
     unsafe { selection_write_order_impl(order, out) }
 }
 
-pub(crate) unsafe fn selection_write_order_impl(
-    order: c_int,
-    out: *mut c_int,
-) -> c_int {
+pub(crate) unsafe fn selection_write_order_impl(order: c_int, out: *mut c_int) -> c_int {
     if out.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }

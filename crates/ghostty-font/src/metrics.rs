@@ -99,9 +99,8 @@ impl Metrics {
 
                         add_float_to_int(&mut self.underline_position, diff_top);
                         add_float_to_int(&mut self.strikethrough_position, diff_top);
-                        self.overline_position = self
-                            .overline_position
-                            .saturating_add(diff_top as i32);
+                        self.overline_position =
+                            self.overline_position.saturating_add(diff_top as i32);
                     }
                 }
                 Key::IconHeight => {

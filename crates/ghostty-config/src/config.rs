@@ -6,7 +6,10 @@ use std::path::Path;
 use crate::error::{ConfigError, DiagnosticList, LoadError};
 use crate::file_load;
 use crate::parse::{strip_utf8_bom, LineIter};
-use crate::types::{BackgroundBlur, CursorStyle, GraphemeWidthMethod, LinkPreviews, MouseShiftCapture, RgbColor, WindowPadding};
+use crate::types::{
+    BackgroundBlur, CursorStyle, GraphemeWidthMethod, LinkPreviews, MouseShiftCapture, RgbColor,
+    WindowPadding,
+};
 
 /// Subset of Ghostty config fields used across the stack (full schema deferred).
 #[derive(Debug, Clone, PartialEq)]
@@ -143,7 +146,8 @@ impl Config {
                 if let Some(value) = line.value.as_deref() {
                     includes.push(value.trim().to_string());
                 } else {
-                    self.diagnostics.invalid_value("config-file", "value required", loc);
+                    self.diagnostics
+                        .invalid_value("config-file", "value required", loc);
                 }
                 continue;
             }
@@ -264,8 +268,7 @@ impl Config {
             }
             "font-thicken-strength" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
-                self.font_thicken_strength =
-                    v.parse().map_err(|_| ConfigError::InvalidValue)?;
+                self.font_thicken_strength = v.parse().map_err(|_| ConfigError::InvalidValue)?;
             }
             "term" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
@@ -285,8 +288,7 @@ impl Config {
             }
             "cursor-click-to-move" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
-                self.cursor_click_to_move =
-                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+                self.cursor_click_to_move = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
             }
             "mouse-shift-capture" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
@@ -294,8 +296,7 @@ impl Config {
             }
             "mouse-reporting" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
-                self.mouse_reporting =
-                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+                self.mouse_reporting = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
             }
             "clipboard-paste-protection" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
@@ -304,12 +305,15 @@ impl Config {
             }
             "command" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
-                self.command = if v.is_empty() { None } else { Some(v.to_string()) };
+                self.command = if v.is_empty() {
+                    None
+                } else {
+                    Some(v.to_string())
+                };
             }
             "wait-after-command" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
-                self.wait_after_command =
-                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+                self.wait_after_command = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
             }
             "selection-clear-on-typing" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
@@ -318,8 +322,7 @@ impl Config {
             }
             "focus-follows-mouse" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
-                self.focus_follows_mouse =
-                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+                self.focus_follows_mouse = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
             }
             "selection-clear-on-copy" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
@@ -345,8 +348,7 @@ impl Config {
             }
             "palette-harmonious" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
-                self.palette_harmonious =
-                    parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
+                self.palette_harmonious = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
             }
             "unfocused-split-opacity" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
@@ -355,12 +357,12 @@ impl Config {
             }
             "background-image-opacity" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
-                self.background_image_opacity =
-                    v.parse().map_err(|_| ConfigError::InvalidValue)?;
+                self.background_image_opacity = v.parse().map_err(|_| ConfigError::InvalidValue)?;
             }
             "cursor-style-blink" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
-                self.cursor_style_blink = Some(parse_bool(v).map_err(|_| ConfigError::InvalidValue)?);
+                self.cursor_style_blink =
+                    Some(parse_bool(v).map_err(|_| ConfigError::InvalidValue)?);
             }
             "maximize" => {
                 let v = value.ok_or(ConfigError::ValueRequired)?;
@@ -494,8 +496,22 @@ mod tests {
             "/tmp/config.ghostty",
         );
         assert!(cfg.diagnostics().is_empty());
-        assert_eq!(cfg.background, RgbColor { r: 0x11, g: 0x22, b: 0x33 });
-        assert_eq!(cfg.foreground, RgbColor { r: 0xff, g: 0xff, b: 0xff });
+        assert_eq!(
+            cfg.background,
+            RgbColor {
+                r: 0x11,
+                g: 0x22,
+                b: 0x33
+            }
+        );
+        assert_eq!(
+            cfg.foreground,
+            RgbColor {
+                r: 0xff,
+                g: 0xff,
+                b: 0xff
+            }
+        );
     }
 
     #[test]
@@ -597,7 +613,10 @@ mod tests {
         assert!(cfg.diagnostics().is_empty(), "{:?}", cfg.diagnostics());
         assert_eq!(cfg.env.len(), 2);
         assert_eq!(cfg.env[0], ("EDITOR".to_string(), "nvim".to_string()));
-        assert_eq!(cfg.env[1], ("TERM".to_string(), "xterm-256color".to_string()));
+        assert_eq!(
+            cfg.env[1],
+            ("TERM".to_string(), "xterm-256color".to_string())
+        );
     }
 
     #[test]
@@ -615,13 +634,24 @@ mod tests {
     #[test]
     fn named_colors_expanded() {
         let mut cfg = Config::with_defaults();
-        cfg.load_from_str(
-            "background = navy\nforeground = orange\n",
-            "/tmp/config",
-        );
+        cfg.load_from_str("background = navy\nforeground = orange\n", "/tmp/config");
         assert!(cfg.diagnostics().is_empty(), "{:?}", cfg.diagnostics());
-        assert_eq!(cfg.background, RgbColor { r: 0, g: 0, b: 0x80 });
-        assert_eq!(cfg.foreground, RgbColor { r: 0xff, g: 0xa5, b: 0 });
+        assert_eq!(
+            cfg.background,
+            RgbColor {
+                r: 0,
+                g: 0,
+                b: 0x80
+            }
+        );
+        assert_eq!(
+            cfg.foreground,
+            RgbColor {
+                r: 0xff,
+                g: 0xa5,
+                b: 0
+            }
+        );
     }
 
     #[test]

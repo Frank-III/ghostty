@@ -2,12 +2,7 @@ use crate::constants::*;
 use crate::paste_bytes::*;
 use crate::simple::*;
 
-pub(crate) unsafe fn write_paste(
-    out: *mut u8,
-    data: *const u8,
-    data_len: usize,
-    bracketed: bool,
-) {
+pub(crate) unsafe fn write_paste(out: *mut u8, data: *const u8, data_len: usize, bracketed: bool) {
     let mut out_offset = 0usize;
     if bracketed {
         unsafe {

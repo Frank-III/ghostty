@@ -89,11 +89,7 @@ impl DiagnosticList {
         self.items.push(diagnostic);
     }
 
-    pub fn invalid_field(
-        &mut self,
-        key: impl Into<String>,
-        source: Option<SourceLocation>,
-    ) {
+    pub fn invalid_field(&mut self, key: impl Into<String>, source: Option<SourceLocation>) {
         self.push(Diagnostic {
             key: Some(key.into()),
             message: "invalid field".into(),

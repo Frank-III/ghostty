@@ -1,13 +1,13 @@
-//! Synchronous termio harness: mailbox → PTY writes, PTY reads → terminal sink.
+//! Synchronous termio harness for tests only (no background thread).
 //!
-//! Mirrors the Zig `termio.Thread` drain/pump shape for tests; no xev thread yet.
+//! Production code uses [`crate::TermioLoop`].
 
 use ghostty_foundation::FoundationResult;
 
 use crate::command::CommandSpec;
 #[cfg(unix)]
-use crate::exec::{ChildWatcher, ExecSpawn};
-use crate::pty::{PosixPty, PtyIoError};
+use crate::exec::ExecSpawn;
+use crate::stream::PtyStream;
 use crate::termio::{TermioMailbox, TermioMessage};
 use crate::winsize::Winsize;
 
@@ -25,25 +25,27 @@ impl TermioSink for Vec<u8> {
     fn resize_terminal(&mut self, _cols: u16, _rows: u16) {}
 }
 
-/// Minimal PTY-backed termio session for integration tests.
+/// Synchronous PTY harness for unit/integration tests.
 pub struct TermioHarness {
-    pty: PosixPty,
-    child: ChildWatcher,
+    stream: PtyStream,
+    #[cfg(unix)]
+    child: crate::exec::ChildWatcher,
     mailbox: TermioMailbox,
-    winsize: Winsize,
-    shutdown: bool,
 }
 
 impl TermioHarness {
-    pub fn spawn(spec: &CommandSpec, winsize: Winsize) -> Result<Self, crate::spawn::SpawnPtyError> {
+    pub fn spawn(
+        spec: &CommandSpec,
+        winsize: Winsize,
+    ) -> Result<Self, crate::spawn::SpawnPtyError> {
         let exec = ExecSpawn::spawn(spec, winsize)?;
-        exec.pty.set_nonblocking(true).map_err(|_| crate::spawn::SpawnPtyError::SpawnFailed)?;
+        exec.pty
+            .set_nonblocking(true)
+            .map_err(|_| crate::spawn::SpawnPtyError::SpawnFailed)?;
         Ok(Self {
-            pty: exec.pty,
+            stream: PtyStream::new(exec.pty, winsize),
             child: exec.child,
             mailbox: TermioMailbox::new(64),
-            winsize,
-            shutdown: false,
         })
     }
 
@@ -68,60 +70,34 @@ impl TermioHarness {
     }
 
     pub fn winsize(&self) -> Winsize {
-        self.winsize
+        self.stream.winsize()
     }
 
     pub fn is_shutdown(&self) -> bool {
-        self.shutdown
+        self.stream.is_shutdown()
     }
 
-    /// Process queued mailbox messages (Write → PTY, Resize → PTY + sink).
     pub fn drain_mailbox(&mut self, sink: &mut dyn TermioSink) -> FoundationResult<()> {
         while let Some(msg) = self.mailbox.pop() {
-            match msg {
-                TermioMessage::Write(data) => {
-                    self.pty
-                        .write(&data)
-                        .map_err(|_| ghostty_foundation::FoundationError::Unsupported)?;
-                }
-                TermioMessage::Resize { cols, rows } => {
-                    let size = Winsize {
-                        cols,
-                        rows,
-                        x_pixels: self.winsize.x_pixels,
-                        y_pixels: self.winsize.y_pixels,
-                    };
-                    self.pty
-                        .set_size(size)
-                        .map_err(|_| ghostty_foundation::FoundationError::Unsupported)?;
-                    self.winsize = size;
-                    sink.resize_terminal(cols, rows);
-                }
-                TermioMessage::Shutdown => {
-                    self.shutdown = true;
-                }
-                TermioMessage::RedrawRequested | TermioMessage::SetTitle(_) => {}
+            if matches!(msg, TermioMessage::SetTitle(_)) {
+                continue;
             }
+            if matches!(msg, TermioMessage::RedrawRequested) {
+                continue;
+            }
+            self.stream.apply_message(&msg, sink)?;
         }
         Ok(())
     }
 
-    /// Read available PTY output and forward to the terminal sink.
-    pub fn pump_pty(&mut self, sink: &mut dyn TermioSink) -> Result<usize, PtyIoError> {
-        let mut buf = [0u8; 4096];
-        let n = self.pty.read(&mut buf)?;
-        if n > 0 {
-            sink.write_terminal(&buf[..n]);
-        }
-        Ok(n)
+    pub fn pump_pty(&mut self, sink: &mut dyn TermioSink) -> Result<usize, crate::pty::PtyIoError> {
+        self.stream.pump_into(sink)
     }
 
-    /// Wait until the PTY has readable data or `timeout_ms` elapses.
-    pub fn poll_readable(&self, timeout_ms: i32) -> Result<bool, PtyIoError> {
-        self.pty.poll_readable(timeout_ms)
+    pub fn poll_readable(&self, timeout_ms: i32) -> Result<bool, crate::pty::PtyIoError> {
+        self.stream.poll_readable(timeout_ms)
     }
 
-    /// Poll PTY, pump reads, and drain mailbox until `deadline` or shutdown.
     pub fn run_until<F>(
         &mut self,
         sink: &mut dyn TermioSink,
@@ -131,7 +107,7 @@ impl TermioHarness {
     where
         F: FnMut(&mut Self, &mut dyn TermioSink) -> bool,
     {
-        while !self.shutdown {
+        while !self.is_shutdown() {
             self.drain_mailbox(sink)?;
             let _ = self
                 .pump_pty(sink)
@@ -145,7 +121,6 @@ impl TermioHarness {
             }
             let timeout_ms = remaining.as_millis().min(i32::MAX as u128) as i32;
             if !self
-                .pty
                 .poll_readable(timeout_ms)
                 .map_err(|_| ghostty_foundation::FoundationError::Unsupported)?
             {

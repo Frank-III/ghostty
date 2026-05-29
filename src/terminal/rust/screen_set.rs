@@ -1,11 +1,11 @@
+use crate::allocator::{alloc_alloc_impl, GhosttyAllocator};
+use crate::constants::*;
+use crate::early::*;
+use crate::screen_types::Screen;
+use crate::size_types::CellCountInt;
 use core::ffi::c_void;
 use core::mem;
 use core::ptr;
-use crate::allocator::{alloc_alloc_impl, GhosttyAllocator};
-use crate::early::*;
-use crate::constants::*;
-use crate::screen_types::Screen;
-use crate::size_types::CellCountInt;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

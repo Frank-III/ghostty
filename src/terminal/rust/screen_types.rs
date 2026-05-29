@@ -2,20 +2,20 @@
 
 use core::ffi::c_void;
 
-use crate::early::*;
-use crate::constants::*;
-use crate::size_types::*;
-use crate::page_types::*;
-use crate::page_list_types::PageList;
-use crate::style_types::*;
-use crate::cursor_style::*;
-use crate::charsets::*;
-use crate::kitty_key::*;
+use crate::allocator::GhosttyAllocator;
 use crate::ansi::*;
-use crate::selection_types::*;
+use crate::charsets::*;
+use crate::constants::*;
+use crate::cursor_style::*;
+use crate::early::*;
 use crate::highlight::Pin;
 use crate::hyperlink::*;
-use crate::allocator::GhosttyAllocator;
+use crate::kitty_key::*;
+use crate::page_list_types::PageList;
+use crate::page_types::*;
+use crate::selection_types::*;
+use crate::size_types::*;
+use crate::style_types::*;
 
 #[repr(C)]
 pub struct ScreenDirty {
@@ -310,11 +310,7 @@ pub struct ScreenSelectionString {
 impl Default for ScreenSelectionString {
     fn default() -> Self {
         Self {
-            sel: Selection::init(
-                Pin::default(),
-                Pin::default(),
-                false,
-            ),
+            sel: Selection::init(Pin::default(), Pin::default(), false),
             trim: true,
             map: core::ptr::null_mut(),
         }

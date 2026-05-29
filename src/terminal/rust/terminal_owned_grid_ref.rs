@@ -190,10 +190,7 @@ pub unsafe extern "C" fn ghostty_rust_terminal_owned_page_list_for_screen(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_rust_page_list_untrack_pin(
-    pages: *mut PageList,
-    pin: *mut Pin,
-) {
+pub unsafe extern "C" fn ghostty_rust_page_list_untrack_pin(pages: *mut PageList, pin: *mut Pin) {
     unsafe {
         if pages.is_null() || pin.is_null() {
             return;

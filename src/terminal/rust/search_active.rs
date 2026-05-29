@@ -1,19 +1,16 @@
 use core::ptr;
 
 use crate::allocator::GhosttyAllocator;
-use crate::page_list_types::{PageList, PageListNode};
 use crate::highlight::HighlightFlattened;
-use crate::search::search_sliding_window::{SlidingWindow, Direction};
+use crate::page_list_types::{PageList, PageListNode};
+use crate::search::search_sliding_window::{Direction, SlidingWindow};
 
 pub struct ActiveSearch {
     pub window: *mut SlidingWindow,
 }
 
 impl ActiveSearch {
-    pub unsafe fn init(
-        alloc: *const GhosttyAllocator,
-        needle: &[u8],
-    ) -> ActiveSearch {
+    pub unsafe fn init(alloc: *const GhosttyAllocator, needle: &[u8]) -> ActiveSearch {
         let window = unsafe { SlidingWindow::init(alloc, Direction::Forward, needle) };
         ActiveSearch { window }
     }
@@ -27,10 +24,7 @@ impl ActiveSearch {
         }
     }
 
-    pub unsafe fn update(
-        &mut self,
-        list: *const PageList,
-    ) -> *mut PageListNode {
+    pub unsafe fn update(&mut self, list: *const PageList) -> *mut PageListNode {
         if self.window.is_null() || list.is_null() {
             return ptr::null_mut();
         }
@@ -64,7 +58,11 @@ impl ActiveSearch {
                     let node_rows = (*node_ptr).data.size.rows as usize;
                     let last_row_idx = if node_rows > 0 { node_rows - 1 } else { 0 };
                     let row_ptr = (*node_ptr).data.get_row(last_row_idx);
-                    let wrap = if !row_ptr.is_null() { (*row_ptr).wrap() } else { false };
+                    let wrap = if !row_ptr.is_null() {
+                        (*row_ptr).wrap()
+                    } else {
+                        false
+                    };
                     if !wrap {
                         break;
                     }

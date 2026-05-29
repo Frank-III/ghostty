@@ -9,7 +9,7 @@ use core::ptr;
 
 use crate::allocator::{alloc_alloc_impl, alloc_free_impl, GhosttyAllocator};
 use crate::highlight::Pin;
-use crate::page_core::{Page, std_capacity, PAGE_SIZE_MIN};
+use crate::page_core::{std_capacity, Page, PAGE_SIZE_MIN};
 use crate::page_list_types::PageListNode;
 
 fn std_page_size() -> usize {
@@ -100,7 +100,10 @@ pub unsafe extern "C" fn ghostty_vt_pool_create_node(pool_ptr: *mut c_void) -> *
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_vt_pool_destroy_node(pool_ptr: *mut c_void, node_ptr: *mut c_void) {
+pub unsafe extern "C" fn ghostty_vt_pool_destroy_node(
+    pool_ptr: *mut c_void,
+    node_ptr: *mut c_void,
+) {
     unsafe {
         let Some(pool) = pool_ref(pool_ptr) else {
             return;
@@ -136,12 +139,7 @@ pub unsafe extern "C" fn ghostty_vt_pool_destroy_std_page(pool_ptr: *mut c_void,
         if page.is_null() {
             return;
         }
-        free_aligned(
-            &(*pool).alloc,
-            page,
-            std_page_size(),
-            PAGE_SIZE_MIN,
-        );
+        free_aligned(&(*pool).alloc, page, std_page_size(), PAGE_SIZE_MIN);
     }
 }
 

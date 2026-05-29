@@ -1,6 +1,6 @@
 use crate::constants::*;
-use crate::size_report_pixels::*;
 use crate::simple::*;
+use crate::size_report_pixels::*;
 
 pub(crate) unsafe fn write_size_report_2048(size: GhosttySizeReportSize, out: *mut u8) {
     let mut offset = 0usize;

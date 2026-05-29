@@ -23,7 +23,8 @@ pub enum DiscoveryError {
 
 /// Platform-neutral discovery API.
 pub trait Discover {
-    fn list_matching(&self, descriptor: &Descriptor) -> Result<Vec<DiscoveredFont>, DiscoveryError>;
+    fn list_matching(&self, descriptor: &Descriptor)
+        -> Result<Vec<DiscoveredFont>, DiscoveryError>;
 }
 
 /// Selects a discovery implementation for the given backend.
@@ -45,7 +46,10 @@ pub fn discover_for_backend(backend: Backend) -> Box<dyn Discover + Send + Sync>
 pub struct NoDiscovery;
 
 impl Discover for NoDiscovery {
-    fn list_matching(&self, _descriptor: &Descriptor) -> Result<Vec<DiscoveredFont>, DiscoveryError> {
+    fn list_matching(
+        &self,
+        _descriptor: &Descriptor,
+    ) -> Result<Vec<DiscoveredFont>, DiscoveryError> {
         Err(DiscoveryError::NoDiscovery)
     }
 }
@@ -55,9 +59,47 @@ impl Discover for NoDiscovery {
 struct StubDiscovery(Backend);
 
 impl Discover for StubDiscovery {
-    fn list_matching(&self, _descriptor: &Descriptor) -> Result<Vec<DiscoveredFont>, DiscoveryError> {
+    fn list_matching(
+        &self,
+        _descriptor: &Descriptor,
+    ) -> Result<Vec<DiscoveredFont>, DiscoveryError> {
         let _ = self.0;
         Err(DiscoveryError::BackendNotImplemented)
+    }
+}
+
+/// Known system monospace paths when platform FFI is not linked.
+fn platform_font_paths(descriptor: &Descriptor) -> Result<Vec<DiscoveredFont>, DiscoveryError> {
+    let family = descriptor
+        .family
+        .as_deref()
+        .unwrap_or("monospace")
+        .to_string();
+    let candidates: &[&str] = &[
+        #[cfg(target_os = "macos")]
+        "/System/Library/Fonts/Menlo.ttc",
+        #[cfg(target_os = "macos")]
+        "/System/Library/Fonts/SFNSMono.ttf",
+        #[cfg(all(unix, not(target_os = "macos")))]
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        #[cfg(all(unix, not(target_os = "macos")))]
+        "/usr/share/fonts/TTF/JetBrainsMono-Regular.ttf",
+    ];
+    let mut out = Vec::new();
+    for path in candidates {
+        if std::path::Path::new(path).is_file() {
+            out.push(DiscoveredFont {
+                family: family.clone(),
+                style: None,
+                path: Some((*path).to_string()),
+                face_index: 0,
+            });
+        }
+    }
+    if out.is_empty() {
+        Err(DiscoveryError::BackendNotImplemented)
+    } else {
+        Ok(out)
     }
 }
 
@@ -73,9 +115,9 @@ pub mod platform {
         impl Discover for CoreTextDiscovery {
             fn list_matching(
                 &self,
-                _descriptor: &Descriptor,
+                descriptor: &Descriptor,
             ) -> Result<Vec<DiscoveredFont>, DiscoveryError> {
-                Err(DiscoveryError::BackendNotImplemented)
+                platform_font_paths(descriptor)
             }
         }
     }
@@ -107,9 +149,9 @@ pub mod platform {
         impl Discover for FontconfigDiscovery {
             fn list_matching(
                 &self,
-                _descriptor: &Descriptor,
+                descriptor: &Descriptor,
             ) -> Result<Vec<DiscoveredFont>, DiscoveryError> {
-                Err(DiscoveryError::BackendNotImplemented)
+                platform_font_paths(descriptor)
             }
         }
     }

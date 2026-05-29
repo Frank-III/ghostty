@@ -62,7 +62,12 @@ impl Backend {
     pub const fn has_discovery(self) -> bool {
         matches!(
             self,
-            Self::FreetypeWindows | Self::FontconfigFreetype | Self::Coretext | Self::CoretextFreetype | Self::CoretextHarfbuzz | Self::CoretextNoshape
+            Self::FreetypeWindows
+                | Self::FontconfigFreetype
+                | Self::Coretext
+                | Self::CoretextFreetype
+                | Self::CoretextHarfbuzz
+                | Self::CoretextNoshape
         )
     }
 }

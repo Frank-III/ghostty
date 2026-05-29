@@ -1,14 +1,13 @@
-use crate::early::*;
-use crate::constants::*;
 use crate::allocator::*;
+use crate::constants::*;
+use crate::early::*;
 
 const UNIT_BITS: usize = 8;
 const PREALLOC_COLUMNS: usize = 512;
 const PREALLOC_COUNT: usize = PREALLOC_COLUMNS / UNIT_BITS;
 
 const MASKS: [u8; UNIT_BITS] = [
-    0b00000001, 0b00000010, 0b00000100, 0b00001000,
-    0b00010000, 0b00100000, 0b01000000, 0b10000000,
+    0b00000001, 0b00000010, 0b00000100, 0b00001000, 0b00010000, 0b00100000, 0b01000000, 0b10000000,
 ];
 
 #[repr(C)]
@@ -101,25 +100,19 @@ impl Tabstops {
 
     pub unsafe fn deinit(&mut self, alloc: *const GhosttyAllocator) {
         if self.dynamic_stops_len > 0 && !self.dynamic_stops_ptr.is_null() {
-            unsafe { alloc_free_impl(alloc, self.dynamic_stops_ptr, self.dynamic_stops_len); }
+            unsafe {
+                alloc_free_impl(alloc, self.dynamic_stops_ptr, self.dynamic_stops_len);
+            }
         }
         self.dynamic_stops_ptr = core::ptr::null_mut();
         self.dynamic_stops_len = 0;
     }
 
-    pub unsafe fn resize(
-        &mut self,
-        alloc: *const GhosttyAllocator,
-        cols: usize,
-    ) -> bool {
+    pub unsafe fn resize(&mut self, alloc: *const GhosttyAllocator, cols: usize) -> bool {
         unsafe { Self::resize_impl(self, alloc, cols) }
     }
 
-    unsafe fn resize_impl(
-        t: &mut Tabstops,
-        alloc: *const GhosttyAllocator,
-        cols: usize,
-    ) -> bool {
+    unsafe fn resize_impl(t: &mut Tabstops, alloc: *const GhosttyAllocator, cols: usize) -> bool {
         if cols <= PREALLOC_COLUMNS {
             t.cols = cols;
             return true;
@@ -133,7 +126,9 @@ impl Tabstops {
         if new.is_null() {
             return false;
         }
-        unsafe { core::ptr::write_bytes(new, 0, size); }
+        unsafe {
+            core::ptr::write_bytes(new, 0, size);
+        }
         if t.dynamic_stops_len > 0 && !t.dynamic_stops_ptr.is_null() {
             unsafe {
                 core::ptr::copy_nonoverlapping(t.dynamic_stops_ptr, new, t.dynamic_stops_len);

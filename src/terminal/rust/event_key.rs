@@ -13,13 +13,28 @@ pub unsafe extern "C" fn ghostty_rust_key_event_init(event: *mut c_void) {
 
 pub(crate) unsafe fn key_event_init_impl(event: *mut c_void) {
     unsafe {
-        ptr::write(key_event_field::<*const u8>(event, KEY_EVENT_UTF8_PTR_OFFSET), b"".as_ptr());
-        ptr::write(key_event_field::<usize>(event, KEY_EVENT_UTF8_LEN_OFFSET), 0);
+        ptr::write(
+            key_event_field::<*const u8>(event, KEY_EVENT_UTF8_PTR_OFFSET),
+            b"".as_ptr(),
+        );
+        ptr::write(
+            key_event_field::<usize>(event, KEY_EVENT_UTF8_LEN_OFFSET),
+            0,
+        );
         ptr::write(key_event_field::<c_int>(event, KEY_EVENT_ACTION_OFFSET), 1);
         ptr::write(key_event_field::<c_int>(event, KEY_EVENT_KEY_OFFSET), 0);
-        ptr::write(key_event_field::<u32>(event, KEY_EVENT_UNSHIFTED_CODEPOINT_OFFSET), 0);
+        ptr::write(
+            key_event_field::<u32>(event, KEY_EVENT_UNSHIFTED_CODEPOINT_OFFSET),
+            0,
+        );
         ptr::write(key_event_field::<u16>(event, KEY_EVENT_MODS_OFFSET), 0);
-        ptr::write(key_event_field::<u16>(event, KEY_EVENT_CONSUMED_MODS_OFFSET), 0);
-        ptr::write(key_event_field::<bool>(event, KEY_EVENT_COMPOSING_OFFSET), false);
+        ptr::write(
+            key_event_field::<u16>(event, KEY_EVENT_CONSUMED_MODS_OFFSET),
+            0,
+        );
+        ptr::write(
+            key_event_field::<bool>(event, KEY_EVENT_COMPOSING_OFFSET),
+            false,
+        );
     }
 }

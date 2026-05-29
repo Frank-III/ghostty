@@ -39,6 +39,13 @@ pub fn build(b: *std.Build) !void {
         file_version orelse app_zon_version,
         lib_version,
     );
+
+    if (b.option(bool, "rust-core-pilot", "Build ghostty-ffi staticlib via Cargo (Phase 7 pilot)") orelse false) {
+        const GhosttyRust = @import("src/build/GhosttyRust.zig");
+        const rust_core_build = GhosttyRust.coreStaticLibBuild(b, &config);
+        const rust_core_step = b.step("rust-core", "Build Rust core staticlib (libghostty_ffi.a)");
+        rust_core_step.dependOn(rust_core_build);
+    }
     const test_filters = b.option(
         [][]const u8,
         "test-filter",

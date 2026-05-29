@@ -1,13 +1,13 @@
-use crate::early::*;
 use crate::constants::*;
+use crate::early::*;
 
+use crate::ansi::{CursorStyle, ModifyKeyFormat, StatusDisplay};
 use crate::charsets::{ActiveSlot, CharsetId, CharsetSlot};
-use crate::mode_def::ModeTag;
-use crate::ansi::{CursorStyle, StatusDisplay, ModifyKeyFormat};
 use crate::csi::SizeReportStyle;
-use crate::vt_parser::ParserDcs;
 use crate::device_attributes::DeviceAttributeReq;
+use crate::mode_def::ModeTag;
 use crate::mouse_shape::MouseShape;
+use crate::vt_parser::ParserDcs;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

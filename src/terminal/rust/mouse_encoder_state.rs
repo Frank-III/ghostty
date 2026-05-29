@@ -1,6 +1,6 @@
-use core::ffi::c_int;
 use crate::mouse_last_cell::*;
 use crate::mouse_write::*;
+use core::ffi::c_int;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_mouse_encoder_from_terminal(
@@ -11,13 +11,7 @@ pub unsafe extern "C" fn ghostty_rust_mouse_encoder_from_terminal(
     last_cell_present: *mut bool,
 ) {
     unsafe {
-        mouse_encoder_from_terminal_state(
-            event,
-            format,
-            out_event,
-            out_format,
-            last_cell_present,
-        );
+        mouse_encoder_from_terminal_state(event, format, out_event, out_format, last_cell_present);
     }
 }
 

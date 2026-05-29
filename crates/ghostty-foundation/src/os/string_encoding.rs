@@ -108,10 +108,7 @@ mod tests {
 
     #[test]
     fn printf_q_backslash_space() {
-        assert_eq!(
-            printf_q_decode("bobr\\ kurwa").unwrap(),
-            "bobr kurwa"
-        );
+        assert_eq!(printf_q_decode("bobr\\ kurwa").unwrap(), "bobr kurwa");
     }
 
     #[test]
@@ -131,10 +128,7 @@ mod tests {
 
     #[test]
     fn printf_q_dollar_quote() {
-        assert_eq!(
-            printf_q_decode("$'bobr kurwa'").unwrap(),
-            "bobr kurwa"
-        );
+        assert_eq!(printf_q_decode("$'bobr kurwa'").unwrap(), "bobr kurwa");
     }
 
     #[test]
@@ -217,9 +211,6 @@ mod tests {
     fn url_percent_encode_roundtrip_printable() {
         let sample = "bobr kurwa;foo=bar";
         let encoded = url_percent_encode(sample);
-        assert_eq!(
-            url_percent_decode(&encoded).unwrap(),
-            sample.as_bytes()
-        );
+        assert_eq!(url_percent_decode(&encoded).unwrap(), sample.as_bytes());
     }
 }

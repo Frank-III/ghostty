@@ -118,13 +118,14 @@ pub fn validate_config_path(path: &Path) -> Result<(), LoadError> {
 /// Resolve a `config-file` path relative to the including file's directory.
 pub fn resolve_config_file_path(base_file: &Path, entry: &str) -> PathBuf {
     let trimmed = entry.trim();
-    if trimmed.starts_with('/') {
-        return PathBuf::from(trimmed);
+    let expanded = crate::path::expand_tilde(trimmed);
+    if expanded.is_absolute() {
+        return expanded;
     }
     base_file
         .parent()
-        .map(|dir| dir.join(trimmed))
-        .unwrap_or_else(|| PathBuf::from(trimmed))
+        .map(|dir| dir.join(&expanded))
+        .unwrap_or(expanded)
 }
 
 /// Load a config file and any nested `config-file` entries (cycle-safe).
@@ -138,8 +139,7 @@ pub fn load_recursive(
         return Ok(());
     }
     validate_config_path(&canonical)?;
-    let content =
-        std::fs::read_to_string(&canonical).map_err(|_| LoadError::FileOpenFailed)?;
+    let content = std::fs::read_to_string(&canonical).map_err(|_| LoadError::FileOpenFailed)?;
     let includes = config.load_from_str_collect_includes(&content, &canonical.to_string_lossy());
     for include in includes {
         let resolved = resolve_config_file_path(&canonical, &include);

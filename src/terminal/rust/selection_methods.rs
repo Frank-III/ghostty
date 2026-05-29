@@ -6,12 +6,12 @@ use crate::highlight::Pin;
 use crate::page_list_methods::cell_iterator_at_pin;
 use crate::page_list_types::{PageList, PageListDirection};
 use crate::page_types::Cell;
+use crate::point::PointC;
 use crate::point::PointTag;
 use crate::screen_types::Screen;
+use crate::selection::{selection_write_bool_impl, selection_write_order_impl, GhosttySelection};
 use crate::selection_copy::{copy_selection, selection_from_ghostty, selection_to_ghostty};
 use crate::selection_types::{Selection, SelectionAdjustment, SelectionOrder};
-use crate::selection::{selection_write_bool_impl, selection_write_order_impl, GhosttySelection};
-use crate::point::PointC;
 
 fn pages_from_screen(screen: &Screen) -> Option<&PageList> {
     if screen.pages.is_null() {
@@ -112,7 +112,11 @@ impl Selection {
             None => return None,
         };
         if order == desired {
-            return Some(Selection::init(self.start(), self.end_pin(), self.rectangle));
+            return Some(Selection::init(
+                self.start(),
+                self.end_pin(),
+                self.rectangle,
+            ));
         }
 
         let tl = match self.top_left(screen) {
@@ -215,8 +219,7 @@ impl Selection {
                     }
                 }
                 SelectionAdjustment::Left => {
-                    let mut it =
-                        cell_iterator_at_pin(*end_pin, PageListDirection::LeftUp, None);
+                    let mut it = cell_iterator_at_pin(*end_pin, PageListDirection::LeftUp, None);
                     let _ = it.next();
                     while let Some(next) = it.next() {
                         let (_row, cell) = next.row_and_cell_ptr();
@@ -227,8 +230,7 @@ impl Selection {
                     }
                 }
                 SelectionAdjustment::Right => {
-                    let mut it =
-                        cell_iterator_at_pin(*end_pin, PageListDirection::RightDown, None);
+                    let mut it = cell_iterator_at_pin(*end_pin, PageListDirection::RightDown, None);
                     let _ = it.next();
                     while let Some(next) = it.next() {
                         let (_row, cell) = next.row_and_cell_ptr();
@@ -427,12 +429,5 @@ pub(crate) fn terminal_owned_selection_contains_from_point_impl(
     out: *mut bool,
 ) -> c_int {
     let coord = crate::point::Point::from_c(pt).coord();
-    terminal_owned_selection_contains_impl(
-        screen,
-        selection,
-        pt.tag as u8,
-        coord.x,
-        coord.y,
-        out,
-    )
+    terminal_owned_selection_contains_impl(screen, selection, pt.tag as u8, coord.x, coord.y, out)
 }

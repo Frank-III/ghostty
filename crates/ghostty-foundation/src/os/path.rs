@@ -76,7 +76,11 @@ mod tests {
 
     #[test]
     fn expand_finds_hostname_or_uname() {
-        let cmd = if cfg!(windows) { "hostname.exe" } else { "uname" };
+        let cmd = if cfg!(windows) {
+            "hostname.exe"
+        } else {
+            "uname"
+        };
         let path = expand(cmd).unwrap().expect("executable in PATH");
         assert!(path.as_os_str().len() > cmd.len());
     }

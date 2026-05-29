@@ -151,9 +151,7 @@ fn os_to_cstring(value: &OsStr) -> Result<CString, SpawnError> {
 
 #[cfg(unix)]
 fn build_argv(args: &[OsString]) -> Result<Vec<CString>, SpawnError> {
-    args.iter()
-        .map(|arg| os_to_cstring(arg))
-        .collect()
+    args.iter().map(|arg| os_to_cstring(arg)).collect()
 }
 
 #[cfg(unix)]
@@ -164,12 +162,12 @@ fn build_envp(env: Option<&BTreeMap<OsString, OsString>>) -> Result<Vec<CString>
     };
 
     iter.map(|(k, v)| {
-            let mut pair = k.as_encoded_bytes().to_vec();
-            pair.push(b'=');
-            pair.extend_from_slice(v.as_encoded_bytes());
-            CString::new(pair).map_err(|_| SpawnError::InvalidArgument)
-        })
-        .collect()
+        let mut pair = k.as_encoded_bytes().to_vec();
+        pair.push(b'=');
+        pair.extend_from_slice(v.as_encoded_bytes());
+        CString::new(pair).map_err(|_| SpawnError::InvalidArgument)
+    })
+    .collect()
 }
 
 #[cfg(unix)]

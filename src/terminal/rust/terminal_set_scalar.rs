@@ -12,10 +12,7 @@ pub unsafe extern "C" fn ghostty_rust_terminal_set_u64_zero(
     unsafe { terminal_set_u64_zero_impl(value, out_value) }
 }
 
-pub(crate) unsafe fn terminal_set_u64_zero_impl(
-    value: *const u64,
-    out_value: *mut u64,
-) -> c_int {
+pub(crate) unsafe fn terminal_set_u64_zero_impl(value: *const u64, out_value: *mut u64) -> c_int {
     if out_value.is_null() {
         return GHOSTTY_INVALID_VALUE;
     }

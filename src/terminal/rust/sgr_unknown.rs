@@ -36,7 +36,13 @@ pub(crate) unsafe fn write_sgr_unknown_rest(
 ) -> bool {
     unsafe {
         ptr::write(idx, params_len);
-        write_sgr_unknown(result, params, params_len, params.add(start), params_len - start);
+        write_sgr_unknown(
+            result,
+            params,
+            params_len,
+            params.add(start),
+            params_len - start,
+        );
     }
     true
 }

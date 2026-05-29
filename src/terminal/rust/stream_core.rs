@@ -1,14 +1,14 @@
 #![allow(unused)]
-use crate::bytes_util::{is_valid_utf8, subslice, subslice_from, subslice_len};
-use crate::early::*;
-use crate::constants::*;
 use crate::ansi::*;
+use crate::bytes_util::{is_valid_utf8, subslice, subslice_from, subslice_len};
+use crate::charsets::*;
+use crate::constants::*;
+use crate::early::*;
+use crate::mode_def::*;
 use crate::stream_handler::*;
 use crate::stream_types::*;
-use crate::vt_parser::*;
 use crate::utf8_decoder::*;
-use crate::charsets::*;
-use crate::mode_def::*;
+use crate::vt_parser::*;
 
 pub struct Stream<H: StreamHandler> {
     pub(crate) handler: H,
@@ -77,13 +77,20 @@ impl<H: StreamHandler> Stream<H> {
 
         if self.parser.state == State::CsiParam {
             let handled = match c {
-                0x00..=0x0F => { self.execute(c); true }
+                0x00..=0x0F => {
+                    self.execute(c);
+                    true
+                }
                 0x10..=0x17 | 0x19 | 0x1C..=0x1F => true,
-                0x18 | 0x1A => { self.parser.state = State::Ground; true }
+                0x18 | 0x1A => {
+                    self.parser.state = State::Ground;
+                    true
+                }
                 b'0'..=b'9' => {
                     if (self.parser.params_idx as usize) < MAX_PARAMS {
                         self.parser.param_acc = self.parser.param_acc.saturating_mul(10);
-                        self.parser.param_acc = self.parser.param_acc.saturating_add((c - b'0') as u16);
+                        self.parser.param_acc =
+                            self.parser.param_acc.saturating_add((c - b'0') as u16);
                         self.parser.param_acc_idx |= 1;
                     }
                     true
@@ -189,7 +196,9 @@ impl<H: StreamHandler> Stream<H> {
         if len > 0 {
             let data = subslice_len(&osc.data, len);
             if let Some(semi) = find_semicolon(data) {
-                if let Some(num) = crate::stream_osc_parse::parse_osc_number(subslice(data, 0, semi)) {
+                if let Some(num) =
+                    crate::stream_osc_parse::parse_osc_number(subslice(data, 0, semi))
+                {
                     if num == 0 || num == 2 {
                         let payload = subslice_from(data, semi + 1);
                         let title = if is_valid_utf8(payload) {
