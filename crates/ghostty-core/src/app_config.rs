@@ -32,7 +32,6 @@ impl AppConfig {
         let mut cfg = Config::with_defaults();
         let expanded = ghostty_config::expand_path(path.to_string_lossy().as_ref());
         cfg.load_file(&expanded)?;
-        cfg.finalize();
         Ok(Self::new(cfg))
     }
 

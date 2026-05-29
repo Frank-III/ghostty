@@ -40,6 +40,7 @@ fn runtime_from_c(cfg: *const GhosttyRuntimeConfig) -> RuntimeConfig {
     RuntimeConfig {
         userdata: cfg.userdata,
         supports_selection_clipboard: cfg.supports_selection_clipboard,
+        resources_dir: std::env::var_os("GHOSTTY_RESOURCES_DIR").map(std::path::PathBuf::from),
     }
 }
 
@@ -97,6 +98,62 @@ pub unsafe extern "C" fn ghostty_app_userdata(app: *mut GhosttyApp) -> *mut c_vo
     app_from_ptr(app)
         .map(|a| a.runtime().userdata)
         .unwrap_or(ptr::null_mut())
+}
+
+/// Set the Ghostty resources directory before creating surfaces.
+///
+/// `path` must be UTF-8. Reloads theme overlay when a theme is configured.
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_app_set_resources_dir(
+    app: *mut GhosttyApp,
+    path: *const c_char,
+) -> bool {
+    let Some(app) = app_from_ptr(app) else {
+        return false;
+    };
+    if path.is_null() {
+        return false;
+    }
+    let Ok(path) = CStr::from_ptr(path).to_str() else {
+        return false;
+    };
+    app.set_resources_dir(std::path::PathBuf::from(path));
+    true
+}
+
+/// Prepare a draw frame for a surface; returns populated cell count or `usize::MAX` on error.
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_app_surface_prepare_draw(
+    app: *mut GhosttyApp,
+    id: GhosttySurfaceId,
+) -> usize {
+    let Some(app) = app_from_ptr(app) else {
+        return usize::MAX;
+    };
+    let Some(sid) = ghostty_core::SurfaceId::from_raw(id.raw) else {
+        return usize::MAX;
+    };
+    let Some(surface) = app.find_surface_mut(sid) else {
+        return usize::MAX;
+    };
+    surface.prepare_draw().unwrap_or(usize::MAX)
+}
+
+/// Mark the last prepared draw frame as presented.
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_app_surface_finish_draw(
+    app: *mut GhosttyApp,
+    id: GhosttySurfaceId,
+) {
+    let Some(app) = app_from_ptr(app) else {
+        return;
+    };
+    let Some(sid) = ghostty_core::SurfaceId::from_raw(id.raw) else {
+        return;
+    };
+    if let Some(surface) = app.find_surface_mut(sid) {
+        surface.finish_draw();
+    }
 }
 
 /// Returns the Rust port milestone string for embedders (bootstrap ABI).

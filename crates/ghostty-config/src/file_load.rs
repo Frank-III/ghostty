@@ -66,7 +66,8 @@ fn preferred_xdg_path() -> PathBuf {
     xdg
 }
 
-fn xdg_config_dir() -> PathBuf {
+/// XDG config directory (`$XDG_CONFIG_HOME` or `~/.config`).
+pub fn xdg_config_dir() -> PathBuf {
     if let Some(dir) = std::env::var_os("XDG_CONFIG_HOME") {
         if !dir.is_empty() {
             return PathBuf::from(dir);

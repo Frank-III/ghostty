@@ -15,6 +15,7 @@ pub mod file_load;
 pub mod parse;
 pub mod path;
 pub mod string_literal;
+pub mod theme;
 pub mod types;
 
 pub use cli::CliArgs;
@@ -33,6 +34,7 @@ pub use ghostty_foundation::{FoundationError, FoundationResult};
 pub use parse::{strip_utf8_bom, ConfigLine, LineIter};
 pub use path::{expand_path, expand_tilde, resolve_relative};
 pub use string_literal::parse as parse_string_literal;
+pub use theme::{resolve_theme_path, theme_search_dirs, user_themes_dir, ThemeResolveError};
 pub use types::{
     ConfigPath, CursorStyle, MouseShiftCapture, ReadableIo, RgbColor, ShellIntegration,
     WindowPadding,

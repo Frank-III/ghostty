@@ -22,9 +22,11 @@ use ghostty_font::metrics::{calc, FaceMetrics};
 #[cfg(feature = "rust-vt")]
 use ghostty_font::{descriptor_from_font_family, select_primary, DiscoveryError};
 #[cfg(feature = "rust-vt")]
-use ghostty_renderer::cells::{rebuild_cells, CellSnapshot};
+use ghostty_renderer::cells::CellSnapshot;
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::damage::{DamageRect, DamageState};
+#[cfg(feature = "rust-vt")]
+use ghostty_renderer::frame::{finish_draw_frame, prepare_draw_frame, FramePrep};
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::size::GridSize;
 
@@ -95,6 +97,8 @@ pub struct SurfaceSession {
     cell_height_px: u32,
     #[cfg(feature = "rust-vt")]
     damage: DamageState,
+    #[cfg(feature = "rust-vt")]
+    last_frame: Option<FramePrep>,
     pending_title: Option<String>,
     pending_redraw: bool,
 }
@@ -126,6 +130,8 @@ impl SurfaceSession {
             cell_width_px,
             cell_height_px,
             damage: DamageState::default(),
+            #[cfg(feature = "rust-vt")]
+            last_frame: None,
             pending_title: None,
             pending_redraw: false,
         })
@@ -192,9 +198,30 @@ impl SurfaceSession {
                 rows: ws.rows,
             };
             self.damage.mark_rect(DamageRect::full_screen(size));
-            self.rebuild_render_cells();
         }
         Ok(drain.pty_bytes)
+    }
+
+    /// Prepare a draw frame from the current terminal grid (CPU path until GPU lands).
+    #[cfg(feature = "rust-vt")]
+    pub fn prepare_draw(&mut self) -> FramePrep {
+        let snap = self.cell_snapshot();
+        let prep = prepare_draw_frame(&snap, &mut self.damage);
+        self.last_frame = Some(prep.clone());
+        prep
+    }
+
+    /// Mark the last prepared frame as presented.
+    #[cfg(feature = "rust-vt")]
+    pub fn finish_draw(&mut self) {
+        finish_draw_frame(&mut self.damage);
+        self.last_frame = None;
+    }
+
+    /// Last frame prep from the most recent [`prepare_draw`](Self::prepare_draw).
+    #[cfg(feature = "rust-vt")]
+    pub fn last_frame_prep(&self) -> Option<&FramePrep> {
+        self.last_frame.as_ref()
     }
 
     /// Read the visible VT grid into a renderer cell snapshot.
@@ -222,11 +249,10 @@ impl SurfaceSession {
         self.cell_snapshot()
     }
 
-    /// Apply the current grid snapshot to renderer damage state.
+    /// Apply the current grid snapshot to renderer damage state (legacy; prefer [`prepare_draw`](Self::prepare_draw)).
     #[cfg(feature = "rust-vt")]
     pub fn rebuild_render_cells(&mut self) {
-        let snap = self.cell_snapshot();
-        rebuild_cells(&snap, &mut self.damage);
+        let _ = self.prepare_draw();
     }
 
     /// Resolve a primary font from config (discovery path or metadata-only fallback).

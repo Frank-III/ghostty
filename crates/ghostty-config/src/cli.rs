@@ -38,14 +38,14 @@ impl CliArgs {
         let mut cfg = crate::Config::with_defaults();
         if self.config_files.is_empty() {
             cfg.load_default_files();
-            cfg.finalize();
+            cfg.finalize(None);
             return Ok(cfg);
         }
         for path in &self.config_files {
             let expanded = crate::path::expand_path(path.to_string_lossy().as_ref());
             cfg.load_file(&expanded)?;
         }
-        cfg.finalize();
+        cfg.finalize(None);
         Ok(cfg)
     }
 }

@@ -25,7 +25,14 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(config: AppConfig, runtime: RuntimeConfig) -> Self {
+    pub fn new(mut config: AppConfig, mut runtime: RuntimeConfig) -> Self {
+        if runtime.resources_dir.is_none() {
+            runtime.resources_dir =
+                std::env::var_os("GHOSTTY_RESOURCES_DIR").map(std::path::PathBuf::from);
+        }
+        config
+            .config_mut()
+            .finalize(runtime.resources_dir.as_deref());
         Self {
             config,
             runtime,
@@ -53,6 +60,18 @@ impl App {
 
     pub fn runtime(&self) -> &RuntimeConfig {
         &self.runtime
+    }
+
+    pub fn runtime_mut(&mut self) -> &mut RuntimeConfig {
+        &mut self.runtime
+    }
+
+    /// Set the Ghostty resources directory (shell integration, theme search).
+    pub fn set_resources_dir(&mut self, dir: std::path::PathBuf) {
+        self.runtime.resources_dir = Some(dir);
+        self.config
+            .config_mut()
+            .finalize(self.runtime.resources_dir.as_deref());
     }
 
     pub fn focused(&self) -> bool {

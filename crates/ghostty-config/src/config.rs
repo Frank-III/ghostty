@@ -134,11 +134,18 @@ impl Config {
     }
 
     /// Load palette/color keys from the `theme` path after primary config (`theme.zig` overlay).
-    pub fn load_theme_overlay(&mut self) {
+    pub fn load_theme_overlay(&mut self, resources_dir: Option<&Path>) {
         let Some(theme) = self.theme.clone() else {
             return;
         };
-        let path = crate::expand_path(&theme);
+        let path = match crate::theme::resolve_theme_path(&theme, resources_dir) {
+            Ok(path) => path,
+            Err(err) => {
+                self.diagnostics
+                    .invalid_value("theme", err.to_string(), None);
+                return;
+            }
+        };
         match std::fs::read_to_string(&path) {
             Ok(content) => {
                 self.load_from_str(&content, path.to_string_lossy().as_ref());
@@ -154,8 +161,8 @@ impl Config {
     }
 
     /// Post-load hooks (theme overlay).
-    pub fn finalize(&mut self) {
-        self.load_theme_overlay();
+    pub fn finalize(&mut self, resources_dir: Option<&Path>) {
+        self.load_theme_overlay(resources_dir);
     }
 
     pub fn diagnostics(&self) -> &DiagnosticList {
@@ -803,7 +810,7 @@ mod tests {
         std::fs::write(&theme, "background = #010203\nforeground = #040506\n").unwrap();
         let mut cfg = Config::with_defaults();
         cfg.theme = Some(theme.to_string_lossy().into_owned());
-        cfg.finalize();
+        cfg.finalize(None);
         assert!(cfg.diagnostics().is_empty(), "{:?}", cfg.diagnostics());
         assert_eq!(cfg.background, RgbColor { r: 1, g: 2, b: 3 });
         assert_eq!(cfg.foreground, RgbColor { r: 4, g: 5, b: 6 });

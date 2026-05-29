@@ -161,6 +161,22 @@ impl Surface {
     pub fn render_damage(&self) -> Option<&ghostty_renderer::damage::DamageState> {
         self.session.as_ref().map(|s| s.damage())
     }
+
+    /// Prepare a CPU draw frame; returns populated cell count.
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn prepare_draw(&mut self) -> Option<usize> {
+        self.session
+            .as_mut()
+            .map(|s| s.prepare_draw().populated_cells)
+    }
+
+    /// Mark the last prepared frame as presented.
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn finish_draw(&mut self) {
+        if let Some(session) = self.session.as_mut() {
+            session.finish_draw();
+        }
+    }
 }
 
 #[cfg(test)]
