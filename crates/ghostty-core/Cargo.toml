@@ -6,7 +6,15 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+# Headless SurfaceSession with Rust-owned VT (unix integration tests).
+rust-vt = ["dep:ghostty-termio", "dep:ghostty-foundation", "ghostty-termio/rust-vt"]
+
 [dependencies]
 ghostty-config = { path = "../ghostty-config" }
-# Phase 6+ wiring (not used by bootstrap skeleton yet):
-# ghostty-input, ghostty-termio, ghostty-font, ghostty-renderer, ghostty-vt
+ghostty-foundation = { path = "../ghostty-foundation", optional = true }
+ghostty-termio = { path = "../ghostty-termio", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

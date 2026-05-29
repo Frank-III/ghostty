@@ -84,10 +84,10 @@ pub mod rust_owned {
     }
 
     impl RustOwnedTerminalSink {
-        pub fn new(cols: u16, rows: u16) -> Option<Self> {
+        pub fn new(cols: u16, rows: u16, max_scrollback: usize) -> Option<Self> {
             let alloc = test_allocator();
             unsafe {
-                let handle = ghostty_rust_terminal_create(&alloc, cols, rows, 10_000);
+                let handle = ghostty_rust_terminal_create(&alloc, cols, rows, max_scrollback);
                 if handle.is_null() {
                     return None;
                 }
@@ -215,7 +215,7 @@ mod rust_vt_tests {
 
     #[test]
     fn direct_write_updates_grid() {
-        let mut sink = RustOwnedTerminalSink::new(80, 24).expect("terminal");
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
         sink.write_terminal(b"vt-e2e");
         assert!(sink.contains_text("vt-e2e"));
     }
@@ -238,7 +238,7 @@ mod rust_vt_tests {
         };
 
         let mut harness = TermioHarness::spawn(&spec, winsize).expect("spawn");
-        let mut sink = RustOwnedTerminalSink::new(80, 24).expect("terminal");
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
         let deadline = Instant::now() + Duration::from_secs(3);
         while Instant::now() < deadline {
             harness.drain_mailbox(&mut sink).expect("drain");

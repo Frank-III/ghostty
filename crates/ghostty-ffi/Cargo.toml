@@ -12,5 +12,12 @@ crate-type = ["staticlib", "cdylib"]
 [dependencies]
 ghostty-core = { path = "../ghostty-core" }
 
+[features]
+default = []
+rust-vt = ["ghostty-core/rust-vt"]
+
 [build-dependencies]
 cbindgen = "0.28"
+
+[dev-dependencies]
+ghostty-termio = { path = "../ghostty-termio" }

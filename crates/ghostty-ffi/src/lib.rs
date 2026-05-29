@@ -91,8 +91,127 @@ pub unsafe extern "C" fn ghostty_app_userdata(app: *mut GhosttyApp) -> *mut c_vo
 /// Returns the Rust port milestone string for embedders (bootstrap ABI).
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_port_milestone() -> *const u8 {
-    b"phase6-core-ffi-bootstrap\0".as_ptr()
+    b"phase6-surface-session\0".as_ptr()
 }
+
+#[cfg(all(unix, feature = "rust-vt"))]
+mod surface_session_ffi {
+    use core::ffi::{c_char, c_void};
+    use core::ptr;
+    use std::time::{Duration, Instant};
+
+    use ghostty_core::SurfaceSession;
+
+    /// Opaque headless surface session (`ghostty_surface_session_t` bootstrap).
+    pub type GhosttySurfaceSession = c_void;
+
+    fn session_from_ptr(ptr: *mut GhosttySurfaceSession) -> Option<&'static mut SurfaceSession> {
+        if ptr.is_null() {
+            return None;
+        }
+        Some(unsafe { &mut *(ptr as *mut SurfaceSession) })
+    }
+
+    /// Spawn a default headless session (config defaults + `/bin/sh`).
+    #[no_mangle]
+    pub unsafe extern "C" fn ghostty_surface_session_spawn_default(
+    ) -> *mut GhosttySurfaceSession {
+        match SurfaceSession::from_defaults() {
+            Ok(session) => Box::into_raw(Box::new(session)) as *mut GhosttySurfaceSession,
+            Err(_) => ptr::null_mut(),
+        }
+    }
+
+    /// Release a session created by `ghostty_surface_session_spawn_default`.
+    #[no_mangle]
+    pub unsafe extern "C" fn ghostty_surface_session_free(session: *mut GhosttySurfaceSession) {
+        if session.is_null() {
+            return;
+        }
+        drop(Box::from_raw(session as *mut SurfaceSession));
+    }
+
+    /// Write bytes to the PTY (returns 0 on success, -1 on error).
+    #[no_mangle]
+    pub unsafe extern "C" fn ghostty_surface_session_write(
+        session: *mut GhosttySurfaceSession,
+        data: *const u8,
+        len: usize,
+    ) -> i32 {
+        let Some(session) = session_from_ptr(session) else {
+            return -1;
+        };
+        if data.is_null() || len == 0 {
+            return 0;
+        }
+        let bytes = core::slice::from_raw_parts(data, len);
+        match session.write(bytes) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// Pump PTY output into terminal state (returns bytes read, or -1 on error).
+    #[no_mangle]
+    pub unsafe extern "C" fn ghostty_surface_session_tick(
+        session: *mut GhosttySurfaceSession,
+    ) -> isize {
+        let Some(session) = session_from_ptr(session) else {
+            return -1;
+        };
+        match session.tick() {
+            Ok(n) => n as isize,
+            Err(_) => -1,
+        }
+    }
+
+    /// Returns 1 if active row 0 starts with `needle` (ASCII test helper).
+    #[no_mangle]
+    pub unsafe extern "C" fn ghostty_surface_session_contains_text(
+        session: *mut GhosttySurfaceSession,
+        needle: *const c_char,
+    ) -> i32 {
+        let Some(session) = session_from_ptr(session) else {
+            return 0;
+        };
+        if needle.is_null() {
+            return 0;
+        }
+        let cstr = unsafe { core::ffi::CStr::from_ptr(needle) };
+        let Ok(s) = cstr.to_str() else {
+            return 0;
+        };
+        i32::from(session.contains_text(s))
+    }
+
+    /// Run the session loop until `needle` appears or timeout_ms elapses.
+    #[no_mangle]
+    pub unsafe extern "C" fn ghostty_surface_session_run_until_text(
+        session: *mut GhosttySurfaceSession,
+        needle: *const c_char,
+        timeout_ms: u32,
+    ) -> i32 {
+        let Some(session) = session_from_ptr(session) else {
+            return 0;
+        };
+        if needle.is_null() {
+            return 0;
+        }
+        let cstr = unsafe { core::ffi::CStr::from_ptr(needle) };
+        let Ok(needle_str) = cstr.to_str() else {
+            return 0;
+        };
+        let deadline = Instant::now() + Duration::from_millis(timeout_ms as u64);
+        let found = session
+            .run_until(deadline, |s| s.contains_text(needle_str))
+            .is_ok()
+            && session.contains_text(needle_str);
+        i32::from(found)
+    }
+}
+
+#[cfg(all(unix, feature = "rust-vt"))]
+pub use surface_session_ffi::*;
 
 #[cfg(test)]
 mod tests {
@@ -111,5 +230,76 @@ mod tests {
     #[test]
     fn null_app_tick_is_noop() {
         unsafe { ghostty_app_tick(ptr::null_mut()) };
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    mod surface_session {
+        use super::*;
+        use ghostty_termio::{CommandBuilder, CommandSpec};
+        use ghostty_core::{AppConfig, SurfaceSession, SurfaceSessionOptions};
+
+        #[test]
+        fn ffi_spawn_tick_contains_text() {
+            let spec: CommandSpec = CommandBuilder::new()
+                .path("/bin/sh")
+                .arg("sh")
+                .arg("-c")
+                .arg("printf 'ffi-vt'")
+                .build()
+                .expect("spec");
+
+            let mut session = SurfaceSession::spawn(
+                AppConfig::default(),
+                SurfaceSessionOptions {
+                    command: Some(spec),
+                    ..Default::default()
+                },
+            )
+            .expect("spawn");
+
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+            session
+                .run_until(deadline, |s| s.contains_text("ffi-vt"))
+                .expect("run");
+            assert!(session.contains_text("ffi-vt"));
+        }
+
+        #[test]
+        fn ffi_c_api_round_trip() {
+            let spec = CommandBuilder::new()
+                .path("/bin/sh")
+                .arg("sh")
+                .arg("-c")
+                .arg("cat")
+                .build()
+                .expect("spec");
+
+            let session = SurfaceSession::spawn(
+                AppConfig::default(),
+                SurfaceSessionOptions {
+                    command: Some(spec),
+                    ..Default::default()
+                },
+            )
+            .expect("spawn");
+
+            let raw = Box::into_raw(Box::new(session)) as *mut GhosttySurfaceSession;
+            assert_eq!(
+                unsafe { ghostty_surface_session_write(raw, b"ffi\n".as_ptr(), 4) },
+                0
+            );
+            let found = unsafe {
+                ghostty_surface_session_run_until_text(raw, c"ffi".as_ptr(), 3000)
+            };
+            assert_eq!(found, 1);
+            unsafe { ghostty_surface_session_free(raw) };
+        }
+
+        #[test]
+        fn ffi_spawn_default_not_null() {
+            let session = unsafe { ghostty_surface_session_spawn_default() };
+            assert!(!session.is_null());
+            unsafe { ghostty_surface_session_free(session) };
+        }
     }
 }

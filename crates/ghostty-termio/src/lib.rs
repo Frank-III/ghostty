@@ -30,6 +30,9 @@ pub use ghostty_foundation::{FoundationError, FoundationResult};
 #[cfg(unix)]
 pub use spawn::{spawn_on_pty, spawn_pty_command, SpawnError, SpawnPtyError};
 
+#[cfg(feature = "rust-vt")]
+pub use vt_sink::rust_owned::RustOwnedTerminalSink;
+
 #[cfg(unix)]
 pub use pty::{PosixPty, PtyOpenError};
 

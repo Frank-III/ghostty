@@ -106,6 +106,11 @@ impl TermioHarness {
         Ok(n)
     }
 
+    /// Wait until the PTY has readable data or `timeout_ms` elapses.
+    pub fn poll_readable(&self, timeout_ms: i32) -> Result<bool, PtyIoError> {
+        self.pty.poll_readable(timeout_ms)
+    }
+
     /// Poll PTY, pump reads, and drain mailbox until `deadline` or shutdown.
     pub fn run_until<F>(
         &mut self,

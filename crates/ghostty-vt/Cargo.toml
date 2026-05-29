@@ -16,3 +16,5 @@ default = []
 terminal-owned = []
 # Skip `#![no_std]` panic handler when linked into a `std` test/binary crate.
 std = []
+# Reserved for in-crate tmux viewer tests (integration tests use ghostty-vt-tmux-tests).
+tmux-tests = []
