@@ -1,0 +1,68 @@
+crates/ghostty-config/src/theme.rs
+  s_6cee157524a3f1::t_6d4368a3ea8f3e 42-44,61-80
+crates/ghostty-core/src/surface_session.rs
+  s_6cee157524a3f1::t_1b73dd645213b0 32-33
+  s_6cee157524a3f1::t_6a693d87d7dea8 104-105
+  s_6cee157524a3f1::t_00349dace4661c 217-223
+  s_6cee157524a3f1::t_66b5e9d816a71b 340-353
+  s_6cee157524a3f1::t_921d4c7bb30adc 129-130,141-142
+docs/PORTING_STATUS.tsv
+  s_6cee157524a3f1::t_2173ca1e476b65 80-82
+  s_6cee157524a3f1::t_19c0a7aa1ece64 47
+crates/ghostty-config/src/lib.rs
+  ai_agent 37-39
+crates/ghostty-renderer/src/generic.rs
+  s_6cee157524a3f1::t_753f093442c3db 52
+  s_6cee157524a3f1::t_b0ce60c1923493 59
+crates/ghostty-termio/src/shell_integration.rs
+  s_6cee157524a3f1::t_c4fc08ec12c1a5 17,58-60,126,129-172,174-177,182-192,194-237,252,255-257,260-263,289-295,321-340
+  s_6cee157524a3f1::t_4af647827df7fb 278
+crates/ghostty-renderer/src/host.rs
+  s_6cee157524a3f1::t_60f2cf1998947d 27-29
+  s_6cee157524a3f1::t_7eed5cb06538ed 1-26,30-56,58,73-74,76-80,82-87
+  s_6cee157524a3f1::t_894a57b7cd6a2f 57,59-72,75,81
+docs/CI_RUST.md
+  s_6cee157524a3f1::t_384996004d4e23 66-68,76
+  s_6cee157524a3f1::t_b0ea1ad52010ca 25
+crates/ghostty-renderer/src/lib.rs
+  s_6cee157524a3f1::t_6d600c135ac9cc 43,48-50
+  s_6cee157524a3f1::t_a6a6c5b66bc1a0 11-12,20,23-25,28
+  ai_agent 56
+crates/ghostty-renderer/src/opengl.rs
+  s_6cee157524a3f1::t_8ef1b6255025eb 34
+  s_6cee157524a3f1::t_1efd4c85a87aa3 1-33,35-37
+crates/ghostty-renderer/src/backend.rs
+  s_6cee157524a3f1::t_ea14b685b03bf2 24-28
+crates/ghostty-renderer/src/webgl.rs
+  s_6cee157524a3f1::t_318d62c617bff7 1-33,35-37
+  s_6cee157524a3f1::t_b9b0696198d28c 34
+crates/ghostty-renderer/src/draw_backend.rs
+  s_6cee157524a3f1::t_90f7cdec436e9f 1-84,86,101-110,112-116
+  s_6cee157524a3f1::t_53b4b52a81d382 85,87-100,111
+src/terminal/rust/cargo_link_stubs.rs
+  s_6cee157524a3f1::t_88724a1d73d6c1 3,5,7-8
+  s_6cee157524a3f1::t_b3f44dbb434e58 70-133
+crates/ghostty-renderer/src/metal.rs
+  s_6cee157524a3f1::t_70c418bc48339b 42
+  s_6cee157524a3f1::t_36478a776aaa65 34
+  s_6cee157524a3f1::t_720bbd97f48415 44,46-59
+  s_6cee157524a3f1::t_79bf0ff896d210 68
+  s_6cee157524a3f1::t_52ec32eb73a786 1-4,6-33,35-41,43,45,60-67,69-72
+  s_6cee157524a3f1::t_5b41346ef977c0 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b22b4c3e72c44b7c28eb7d6e2c1a8d0ad297eba6",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
