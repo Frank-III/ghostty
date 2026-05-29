@@ -24,6 +24,9 @@ pub mod exec_config;
 pub mod r#loop;
 
 #[cfg(unix)]
+pub mod shell_integration;
+
+#[cfg(unix)]
 pub mod spawn;
 
 #[cfg(unix)]
@@ -54,6 +57,10 @@ pub use stream::PtyStream;
 #[cfg(unix)]
 pub use thread::{TermioThreadEvent, TermioThreadHandle};
 
+#[cfg(unix)]
+pub use shell_integration::{
+    apply_shell_integration, detect_shell, IntegratedShell, ShellIntegrationContext,
+};
 #[cfg(unix)]
 pub use spawn::{spawn_on_pty, spawn_pty_command, SpawnError, SpawnPtyError};
 

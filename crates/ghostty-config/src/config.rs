@@ -128,9 +128,34 @@ impl Config {
         }
     }
 
-    /// Resolved theme file path if set (loading palette deferred).
+    /// Resolved theme file path if set.
     pub fn theme_path(&self) -> Option<&Path> {
         self.theme.as_deref().map(Path::new)
+    }
+
+    /// Load palette/color keys from the `theme` path after primary config (`theme.zig` overlay).
+    pub fn load_theme_overlay(&mut self) {
+        let Some(theme) = self.theme.clone() else {
+            return;
+        };
+        let path = crate::expand_path(&theme);
+        match std::fs::read_to_string(&path) {
+            Ok(content) => {
+                self.load_from_str(&content, path.to_string_lossy().as_ref());
+            }
+            Err(err) => {
+                self.diagnostics.invalid_value(
+                    "theme",
+                    format!("failed to load theme from \"{}\": {err}", path.display()),
+                    None,
+                );
+            }
+        }
+    }
+
+    /// Post-load hooks (theme overlay).
+    pub fn finalize(&mut self) {
+        self.load_theme_overlay();
     }
 
     pub fn diagnostics(&self) -> &DiagnosticList {
@@ -768,6 +793,21 @@ mod tests {
         cfg.load_from_str("working-directory = /var/tmp\n", "/tmp/config");
         assert_eq!(cfg.working_directory.as_deref(), Some("/var/tmp"));
         assert!(cfg.diagnostics().is_empty());
+    }
+
+    #[test]
+    fn theme_overlay_applies_colors() {
+        let dir = std::env::temp_dir().join(format!("ghostty-theme-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let theme = dir.join("theme.ghostty");
+        std::fs::write(&theme, "background = #010203\nforeground = #040506\n").unwrap();
+        let mut cfg = Config::with_defaults();
+        cfg.theme = Some(theme.to_string_lossy().into_owned());
+        cfg.finalize();
+        assert!(cfg.diagnostics().is_empty(), "{:?}", cfg.diagnostics());
+        assert_eq!(cfg.background, RgbColor { r: 1, g: 2, b: 3 });
+        assert_eq!(cfg.foreground, RgbColor { r: 4, g: 5, b: 6 });
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

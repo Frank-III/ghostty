@@ -17,6 +17,7 @@ pub mod cells;
 pub mod color;
 pub mod cursor;
 pub mod damage;
+pub mod frame;
 pub mod generic;
 pub mod size;
 pub mod state;
@@ -34,6 +35,7 @@ pub use cursor::{
     resolve_style, CursorStyle, CursorStyleOptions, RenderCursorState, TerminalCursorStyle,
 };
 pub use damage::{DamageRect, DamageState};
+pub use frame::{finish_draw_frame, prepare_draw_frame, FramePrep};
 pub use generic::{
     GenericRenderer, GenericRendererStub, GraphicsApi, GraphicsError, StubGraphicsApi,
 };

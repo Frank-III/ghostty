@@ -4,12 +4,15 @@
 //! the FFI layer grows beyond the bootstrap `ghostty_app_*` stubs.
 
 use core::ffi::c_void;
+use std::path::PathBuf;
 
 /// Host-provided runtime hooks for the embedded apprt (skeleton).
 #[derive(Debug, Clone, Default)]
 pub struct RuntimeConfig {
     pub userdata: *mut c_void,
     pub supports_selection_clipboard: bool,
+    /// Ghostty resources directory for shell integration (`global_state.resources_dir`).
+    pub resources_dir: Option<PathBuf>,
 }
 
 impl RuntimeConfig {
@@ -17,6 +20,7 @@ impl RuntimeConfig {
         Self {
             userdata: core::ptr::null_mut(),
             supports_selection_clipboard: false,
+            resources_dir: None,
         }
     }
 }

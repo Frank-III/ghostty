@@ -214,16 +214,58 @@ pub mod platform {
     #[cfg(all(unix, not(target_os = "macos")))]
     pub mod fontconfig {
         use super::super::*;
+        use std::process::Command;
 
-        /// Fontconfig discovery via known paths (FcFontMatch FFI deferred).
+        /// Fontconfig discovery via `fc-match` when available, else known paths.
         #[derive(Debug, Clone, Copy, Default)]
         pub struct FontconfigDiscovery;
+
+        fn fc_match(descriptor: &Descriptor) -> Option<DiscoveredFont> {
+            let family = descriptor.family.as_deref().unwrap_or("monospace");
+            let pattern = format!("{family}:spacing=mono");
+            let output = Command::new("fc-match")
+                .arg("-f")
+                .arg("%{family}\n%{file}\n")
+                .arg(&pattern)
+                .output()
+                .ok()?;
+            if !output.status.success() {
+                return None;
+            }
+            let text = String::from_utf8_lossy(&output.stdout);
+            let mut lines = text.lines();
+            let family_name = lines.next()?.trim();
+            let path = lines.next()?.trim();
+            if family_name.is_empty() {
+                return None;
+            }
+            let path = if path.is_empty() {
+                None
+            } else {
+                Some(path.to_string())
+            };
+            Some(DiscoveredFont {
+                family: family_name.to_string(),
+                style: None,
+                path,
+                face_index: 0,
+            })
+        }
 
         impl Discover for FontconfigDiscovery {
             fn list_matching(
                 &self,
                 descriptor: &Descriptor,
             ) -> Result<Vec<DiscoveredFont>, DiscoveryError> {
+                if let Some(font) = fc_match(descriptor) {
+                    if font
+                        .path
+                        .as_deref()
+                        .is_some_and(|p| std::path::Path::new(p).is_file())
+                    {
+                        return Ok(vec![font]);
+                    }
+                }
                 platform_font_paths(descriptor)
             }
         }

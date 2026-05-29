@@ -139,6 +139,9 @@ impl App {
     ) -> Option<SurfaceId> {
         let id = opts.id.take().or_else(|| self.allocate_surface_id())?;
         opts.id = Some(id);
+        if opts.resources_dir.is_none() {
+            opts.resources_dir = self.runtime.resources_dir.clone();
+        }
         let session = SurfaceSession::spawn(self.config.clone(), opts).ok()?;
         self.register_surface(id, Surface::with_session(id, session));
         Some(id)

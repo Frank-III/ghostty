@@ -37,6 +37,7 @@ pub struct SurfaceSessionOptions {
     pub id: Option<SurfaceId>,
     pub winsize: Winsize,
     pub command: Option<CommandSpec>,
+    pub resources_dir: Option<std::path::PathBuf>,
 }
 
 impl Default for SurfaceSessionOptions {
@@ -50,6 +51,7 @@ impl Default for SurfaceSessionOptions {
                 y_pixels: 0,
             },
             command: None,
+            resources_dir: None,
         }
     }
 }
@@ -106,9 +108,10 @@ impl SurfaceSession {
             .id
             .unwrap_or_else(|| SurfaceId::from_raw(1).expect("non-zero id"));
         let winsize = opts.winsize;
-        let spec = opts
-            .command
-            .unwrap_or_else(|| command_from_config(config.config()).expect("command spec"));
+        let spec = opts.command.unwrap_or_else(|| {
+            command_from_config(config.config(), opts.resources_dir.as_deref())
+                .expect("command spec")
+        });
         let scrollback = config.config().scrollback_limit;
         let (cell_width_px, cell_height_px) = cell_size_from_config(config.config());
         let mut termio = TermioLoop::spawn(&spec, winsize)?;
