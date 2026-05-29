@@ -8,3 +8,7 @@ repository.workspace = true
 
 [dependencies]
 # Config font-family keys will wire here in a later phase.
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"
+core-text = "21.0"

@@ -179,16 +179,60 @@ pub mod platform {
     #[cfg(target_os = "macos")]
     pub mod coretext {
         use super::super::*;
+        use core_text::font;
 
-        /// CoreText discovery via system monospace paths (CTFontCreateWithName FFI deferred).
+        /// CoreText discovery via `CTFontCreateWithName`, with known-path fallback.
         #[derive(Debug, Clone, Copy, Default)]
         pub struct CoreTextDiscovery;
+
+        fn ct_match(descriptor: &Descriptor) -> Option<DiscoveredFont> {
+            let mut names: Vec<&str> = Vec::new();
+            if let Some(family) = descriptor.family.as_deref() {
+                names.push(family);
+            }
+            names.extend(["Menlo", "SF Mono", ".AppleSystemUIFontMonospaced-Regular"]);
+
+            let size = f64::from(descriptor.size.max(1.0));
+            for name in names {
+                let Ok(font) = font::new_from_name(name, size) else {
+                    continue;
+                };
+                let family = font.family_name();
+                let path = font
+                    .copy_descriptor()
+                    .font_path()
+                    .map(|p| p.to_string_lossy().into_owned());
+                if path
+                    .as_deref()
+                    .is_some_and(|p| std::path::Path::new(p).is_file())
+                {
+                    return Some(DiscoveredFont {
+                        family,
+                        style: None,
+                        path,
+                        face_index: 0,
+                    });
+                }
+                if path.is_some() || !family.is_empty() {
+                    return Some(DiscoveredFont {
+                        family,
+                        style: None,
+                        path,
+                        face_index: 0,
+                    });
+                }
+            }
+            None
+        }
 
         impl Discover for CoreTextDiscovery {
             fn list_matching(
                 &self,
                 descriptor: &Descriptor,
             ) -> Result<Vec<DiscoveredFont>, DiscoveryError> {
+                if let Some(font) = ct_match(descriptor) {
+                    return Ok(vec![font]);
+                }
                 platform_font_paths(descriptor)
             }
         }
