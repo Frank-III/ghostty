@@ -23,6 +23,9 @@ pub mod exec_config;
 #[cfg(unix)]
 pub mod r#loop;
 
+#[cfg(feature = "rust-vt")]
+pub mod vt_effects;
+
 #[cfg(unix)]
 pub mod stream_handler;
 
@@ -69,7 +72,7 @@ pub use thread::{TermioThreadEvent, TermioThreadHandle};
 #[cfg(unix)]
 pub use stream_handler::StreamHandler;
 #[cfg(unix)]
-pub use surface_mailbox::{SurfaceMailbox, SurfaceMessage};
+pub use surface_mailbox::{ClipboardKind, SurfaceMailbox, SurfaceMessage};
 #[cfg(unix)]
 pub use renderer_mailbox::{RendererMailbox, RendererMessage};
 #[cfg(unix)]

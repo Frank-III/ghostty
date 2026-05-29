@@ -4,45 +4,97 @@ use core::ffi::{c_int, c_void};
 
 use crate::allocator::GhosttyAllocator;
 use crate::constants::GhosttySizeReportSize;
+use crate::effects_wrapper::GhosttyVtEffectWrapper;
 use crate::style::GhosttyColorRgb;
 use crate::style::GhosttyStyle;
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_terminal_wrapper_write_pty(
-    _wrapper: *mut c_void,
-    _ptr: *const u8,
-    _len: usize,
+    wrapper: *mut c_void,
+    ptr: *const u8,
+    len: usize,
 ) {
+    unsafe {
+        if wrapper.is_null() || ptr.is_null() || len == 0 {
+            return;
+        }
+        let data = core::slice::from_raw_parts(ptr, len);
+        GhosttyVtEffectWrapper::dispatch_write_pty(wrapper, data);
+    }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_terminal_wrapper_bell(_wrapper: *mut c_void) {}
+pub unsafe extern "C" fn ghostty_terminal_wrapper_bell(wrapper: *mut c_void) {
+    unsafe {
+        GhosttyVtEffectWrapper::dispatch_bell(wrapper);
+    }
+}
 
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_terminal_wrapper_title_changed(_wrapper: *mut c_void) {}
+pub unsafe extern "C" fn ghostty_terminal_wrapper_title_changed(wrapper: *mut c_void) {
+    unsafe {
+        GhosttyVtEffectWrapper::dispatch_title_changed(wrapper);
+    }
+}
 
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_terminal_wrapper_report_enquiry(_wrapper: *mut c_void) {}
+pub unsafe extern "C" fn ghostty_terminal_wrapper_report_enquiry(wrapper: *mut c_void) {
+    unsafe {
+        GhosttyVtEffectWrapper::dispatch_report_enquiry(wrapper);
+    }
+}
 
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_terminal_wrapper_report_xtversion(_wrapper: *mut c_void) {}
+pub unsafe extern "C" fn ghostty_terminal_wrapper_report_xtversion(wrapper: *mut c_void) {
+    unsafe {
+        GhosttyVtEffectWrapper::dispatch_report_xtversion(wrapper);
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_terminal_wrapper_report_device_attributes(
-    _wrapper: *mut c_void,
-    _req: u8,
+    wrapper: *mut c_void,
+    req: u8,
 ) {
+    unsafe {
+        GhosttyVtEffectWrapper::dispatch_report_device_attributes(wrapper, req);
+    }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ghostty_terminal_wrapper_report_color_scheme(_wrapper: *mut c_void) {}
+pub unsafe extern "C" fn ghostty_terminal_wrapper_report_color_scheme(wrapper: *mut c_void) {
+    unsafe {
+        GhosttyVtEffectWrapper::dispatch_report_color_scheme(wrapper);
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_terminal_wrapper_query_size(
-    _wrapper: *mut c_void,
-    _out: *mut GhosttySizeReportSize,
+    wrapper: *mut c_void,
+    out: *mut GhosttySizeReportSize,
 ) -> bool {
-    false
+    unsafe {
+        if out.is_null() {
+            return false;
+        }
+        GhosttyVtEffectWrapper::dispatch_query_size(wrapper, &mut *out)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_terminal_wrapper_clipboard_contents(
+    wrapper: *mut c_void,
+    kind: u8,
+    ptr: *const u8,
+    len: usize,
+) {
+    unsafe {
+        if ptr.is_null() {
+            return;
+        }
+        let data = core::slice::from_raw_parts(ptr, len);
+        GhosttyVtEffectWrapper::dispatch_clipboard_contents(wrapper, kind, data);
+    }
 }
 
 #[no_mangle]

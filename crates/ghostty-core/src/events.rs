@@ -50,6 +50,13 @@ pub enum SurfaceEvent {
     PresentSurface,
     RedrawRequested,
     RingBell,
+    ClipboardRead {
+        clipboard: crate::RuntimeClipboard,
+    },
+    ClipboardWrite {
+        clipboard: crate::RuntimeClipboard,
+        data: Vec<u8>,
+    },
 }
 
 #[cfg(test)]

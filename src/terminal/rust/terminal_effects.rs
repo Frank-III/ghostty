@@ -15,6 +15,12 @@ extern "C" {
         out: *mut crate::constants::GhosttySizeReportSize,
     ) -> bool;
     fn ghostty_terminal_wrapper_report_color_scheme(wrapper: *mut c_void);
+    fn ghostty_terminal_wrapper_clipboard_contents(
+        wrapper: *mut c_void,
+        kind: u8,
+        ptr: *const u8,
+        len: usize,
+    );
 }
 
 #[cfg(ghostty_vt_terminal_owned)]
@@ -95,5 +101,15 @@ pub(crate) unsafe fn report_color_scheme(wrapper: *mut c_void) {
     }
     unsafe {
         ghostty_terminal_wrapper_report_color_scheme(wrapper);
+    }
+}
+
+#[cfg(ghostty_vt_terminal_owned)]
+pub(crate) unsafe fn clipboard_contents(wrapper: *mut c_void, kind: u8, data: &[u8]) {
+    if wrapper.is_null() || data.is_empty() {
+        return;
+    }
+    unsafe {
+        ghostty_terminal_wrapper_clipboard_contents(wrapper, kind, data.as_ptr(), data.len());
     }
 }

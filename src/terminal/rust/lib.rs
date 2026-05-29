@@ -15,6 +15,7 @@ mod build_info;
 mod bytes_util;
 #[cfg(all(feature = "std", ghostty_vt_terminal_owned))]
 mod cargo_link_stubs;
+mod effects_wrapper;
 mod cell;
 mod charsets;
 mod color;
@@ -484,6 +485,8 @@ pub use selection::GhosttyGridRef;
 pub use terminal_types::Terminal;
 #[cfg(feature = "std")]
 pub use test_support::{terminal_cell_codepoint, test_allocator};
+#[cfg(all(feature = "std", ghostty_vt_terminal_owned))]
+pub use effects_wrapper::GhosttyVtEffectWrapper;
 #[cfg(feature = "std")]
 pub use tmux::control::{Notification, NotificationTag};
 #[cfg(feature = "std")]

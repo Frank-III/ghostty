@@ -6,7 +6,7 @@ use ghostty_config::DerivedStreamConfig;
 use ghostty_foundation::FoundationResult;
 
 use crate::renderer_mailbox::{RendererMailbox, RendererMessage};
-use crate::surface_mailbox::{SurfaceMailbox, SurfaceMessage};
+use crate::surface_mailbox::{ClipboardKind, SurfaceMailbox, SurfaceMessage};
 use crate::termio::{TermioMailbox, TermioMessage};
 
 /// Bridges escape-parser side effects to apprt/renderer mailboxes.
@@ -82,6 +82,24 @@ impl StreamHandler {
         self.send_renderer(RendererMessage::Redraw)
     }
 
+    pub fn on_bell(&mut self) -> FoundationResult<()> {
+        self.send_surface(SurfaceMessage::RingBell)
+    }
+
+    pub fn on_clipboard_contents(&mut self, kind: u8, data: &[u8]) -> FoundationResult<()> {
+        let clipboard = ClipboardKind::from_osc(kind);
+        if data.len() == 1 && data[0] == b'?' {
+            return self.send_surface(SurfaceMessage::ClipboardRead { clipboard });
+        }
+        if !self.clipboard_write_allowed() {
+            return Ok(());
+        }
+        self.send_surface(SurfaceMessage::ClipboardWrite {
+            clipboard,
+            data: data.to_vec(),
+        })
+    }
+
     pub fn clipboard_write_allowed(&self) -> bool {
         !matches!(self.config.clipboard_write, ghostty_config::ClipboardAccess::Deny)
     }
@@ -118,5 +136,24 @@ mod tests {
         cfg.clipboard_write = ghostty_config::ClipboardAccess::Allow;
         handler.change_config((&cfg).into());
         assert!(handler.clipboard_write_allowed());
+    }
+
+    #[test]
+    fn clipboard_read_reaches_surface_mailbox() {
+        let mut handler = StreamHandler::new((&Config::with_defaults()).into());
+        handler.on_clipboard_contents(b'c', b"?").unwrap();
+        assert!(matches!(
+            handler.surface_mailbox.pop(),
+            Some(SurfaceMessage::ClipboardRead { .. })
+        ));
+    }
+
+    #[test]
+    fn clipboard_write_respects_deny_policy() {
+        let mut cfg = Config::with_defaults();
+        cfg.clipboard_write = ghostty_config::ClipboardAccess::Deny;
+        let mut handler = StreamHandler::new((&cfg).into());
+        handler.on_clipboard_contents(b'c', b"data").unwrap();
+        assert!(handler.surface_mailbox.pop().is_none());
     }
 }

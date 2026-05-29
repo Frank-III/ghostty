@@ -1015,7 +1015,11 @@ impl StreamHandler for StreamTerminal {
     fn on_report_pwd(&mut self, _v: ReportPwd<'_>) {}
     fn on_show_desktop_notification(&mut self, _v: ShowDesktopNotification<'_>) {}
     fn on_progress_report(&mut self, _v: ProgressReport) {}
-    fn on_clipboard_contents(&mut self, _v: ClipboardContents<'_>) {}
+    fn on_clipboard_contents(&mut self, v: ClipboardContents<'_>) {
+        unsafe {
+            terminal_effects::clipboard_contents(self.effects_wrapper(), v.kind, v.data);
+        }
+    }
 
     fn on_start_hyperlink(&mut self, v: StartHyperlink<'_>) {
         let screen = self.term_mut().active();

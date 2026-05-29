@@ -6,12 +6,13 @@ use std::time::Instant;
 
 use ghostty_foundation::{FoundationError, FoundationResult};
 use ghostty_termio::{
-    CommandBuildError, CommandSpec, RustOwnedTerminalSink, SpawnPtyError, SurfaceMessage,
-    TermioLoop, TermioMessage, Winsize,
+    ClipboardKind, CommandBuildError, CommandSpec, RustOwnedTerminalSink, SpawnPtyError,
+    SurfaceMessage, TermioLoop, TermioMessage, Winsize,
 };
 
 use crate::app_config::AppConfig;
 use crate::events::SurfaceEvent;
+use crate::runtime::RuntimeClipboard;
 use crate::session_command::command_from_config;
 use crate::surface_id::SurfaceId;
 
@@ -126,6 +127,7 @@ impl SurfaceSession {
         let mut termio = TermioLoop::spawn(&spec, winsize, stream_config)?;
         let mut terminal = RustOwnedTerminalSink::new(winsize.cols, winsize.rows, scrollback)
             .ok_or(SurfaceSessionError::Terminal)?;
+        terminal.bind_stream_handler(termio.stream_handler_mut());
         termio.tick(&mut terminal)?;
         let host_renderer =
             HostRenderer::for_host(renderer_size(winsize, cell_width_px, cell_height_px)).ok();
@@ -192,6 +194,8 @@ impl SurfaceSession {
 
     /// One iteration: drain thread events into terminal state.
     pub fn tick(&mut self) -> FoundationResult<usize> {
+        self.terminal
+            .bind_stream_handler(self.termio.stream_handler_mut());
         let drain = self.termio.tick(&mut self.terminal)?;
         if let Some(title) = drain.set_title {
             self.pending_title = Some(title);
@@ -302,6 +306,18 @@ impl SurfaceSession {
                     events.push(SurfaceEvent::ChildExited { exit_code });
                 }
                 SurfaceMessage::ReportTitle => events.push(SurfaceEvent::SetTitle),
+                SurfaceMessage::RingBell => events.push(SurfaceEvent::RingBell),
+                SurfaceMessage::ClipboardRead { clipboard } => {
+                    events.push(SurfaceEvent::ClipboardRead {
+                        clipboard: runtime_clipboard(clipboard),
+                    });
+                }
+                SurfaceMessage::ClipboardWrite { clipboard, data } => {
+                    events.push(SurfaceEvent::ClipboardWrite {
+                        clipboard: runtime_clipboard(clipboard),
+                        data,
+                    });
+                }
             }
         }
         events
@@ -349,6 +365,13 @@ impl SurfaceSession {
 
     pub fn contains_text(&self, needle: &str) -> bool {
         self.terminal.contains_text(needle)
+    }
+}
+
+fn runtime_clipboard(kind: ClipboardKind) -> RuntimeClipboard {
+    match kind {
+        ClipboardKind::Standard | ClipboardKind::Primary => RuntimeClipboard::Standard,
+        ClipboardKind::Selection => RuntimeClipboard::Selection,
     }
 }
 

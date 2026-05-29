@@ -66,6 +66,7 @@ pub mod rust_owned {
             handle: *mut c_void,
         );
         fn ghostty_rust_terminal_write(handle: *mut c_void, ptr: *const u8, len: usize);
+        fn ghostty_rust_terminal_owned_set_wrapper(handle: *mut c_void, wrapper: *mut c_void);
         fn ghostty_rust_terminal_owned_resize(
             handle: *mut c_void,
             alloc: *const ghostty_vt::GhosttyAllocator,
@@ -81,6 +82,8 @@ pub mod rust_owned {
     pub struct RustOwnedTerminalSink {
         handle: *mut c_void,
         alloc: ghostty_vt::GhosttyAllocator,
+        #[cfg(feature = "rust-vt")]
+        bridge: Option<Box<crate::vt_effects::TermioVtBridge>>,
     }
 
     impl RustOwnedTerminalSink {
@@ -91,8 +94,27 @@ pub mod rust_owned {
                 if handle.is_null() {
                     return None;
                 }
-                Some(Self { handle, alloc })
+                Some(Self {
+                    handle,
+                    alloc,
+                    bridge: None,
+                })
             }
+        }
+
+        /// Attach stream-handler side effects to VT parser callbacks for this sink.
+        pub fn bind_stream_handler(&mut self, stream: &mut crate::StreamHandler) {
+            if self.bridge.is_none() {
+                let mut bridge = crate::vt_effects::TermioVtBridge::new(self.handle);
+                unsafe {
+                    ghostty_rust_terminal_owned_set_wrapper(self.handle, bridge.effects_ptr());
+                }
+                self.bridge = Some(bridge);
+            }
+            self.bridge
+                .as_mut()
+                .expect("bridge")
+                .bind_stream(stream);
         }
 
         pub fn cell_codepoint(&self, x: u16, y: u16) -> Option<u32> {
@@ -218,6 +240,21 @@ mod rust_vt_tests {
         let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
         sink.write_terminal(b"vt-e2e");
         assert!(sink.contains_text("vt-e2e"));
+    }
+
+    #[test]
+    fn osc_title_reaches_stream_handler() {
+        use crate::StreamHandler;
+        use ghostty_config::Config;
+
+        let mut stream = StreamHandler::new((&Config::with_defaults()).into());
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
+        sink.bind_stream_handler(&mut stream);
+        sink.write_terminal(b"\x1b]0;direct-title\x07");
+        assert!(matches!(
+            stream.surface_mailbox().pop(),
+            Some(crate::SurfaceMessage::SetTitle(title)) if title == "direct-title"
+        ));
     }
 
     #[test]

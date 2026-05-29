@@ -2,6 +2,24 @@
 
 use ghostty_foundation::{FoundationError, FoundationResult};
 
+/// OSC 52 clipboard target (`apprt.Clipboard` subset).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClipboardKind {
+    Standard,
+    Selection,
+    Primary,
+}
+
+impl ClipboardKind {
+    pub fn from_osc(kind: u8) -> Self {
+        match kind {
+            b's' => Self::Selection,
+            b'p' => Self::Primary,
+            _ => Self::Standard,
+        }
+    }
+}
+
 /// Messages delivered to the surface / apprt thread.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SurfaceMessage {
@@ -10,6 +28,12 @@ pub enum SurfaceMessage {
     Close,
     ChildExited { exit_code: u32 },
     ReportTitle,
+    RingBell,
+    ClipboardRead { clipboard: ClipboardKind },
+    ClipboardWrite {
+        clipboard: ClipboardKind,
+        data: Vec<u8>,
+    },
 }
 
 /// Fixed-capacity mailbox for surface messages.

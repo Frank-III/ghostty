@@ -66,6 +66,38 @@ impl App {
         &mut self.runtime
     }
 
+    fn dispatch_runtime_surface_effect(runtime: &RuntimeConfig, event: &SurfaceEvent) {
+        match event {
+            SurfaceEvent::ClipboardRead { clipboard } => {
+                if let Some(cb) = runtime.read_clipboard_cb {
+                    // SAFETY: embedder-provided callback; userdata valid for app lifetime.
+                    unsafe {
+                        cb(runtime.userdata, *clipboard, core::ptr::null_mut());
+                    }
+                }
+            }
+            SurfaceEvent::ClipboardWrite { clipboard, data } => {
+                if let Some(cb) = runtime.write_clipboard_cb {
+                    let text = String::from_utf8_lossy(data);
+                    let Ok(payload) = std::ffi::CString::new(text.as_ref()) else {
+                        return;
+                    };
+                    let mime =
+                        std::ffi::CStr::from_bytes_with_nul(b"text/plain\0").expect("mime");
+                    let content = crate::RuntimeClipboardContent {
+                        mime: mime.as_ptr(),
+                        data: payload.as_ptr(),
+                    };
+                    // SAFETY: CString/mime live for the duration of the callback.
+                    unsafe {
+                        cb(runtime.userdata, *clipboard, &content, 1, false);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// Set the Ghostty resources directory (shell integration, theme search).
     pub fn set_resources_dir(&mut self, dir: std::path::PathBuf) {
         self.runtime.resources_dir = Some(dir);
@@ -205,9 +237,11 @@ impl App {
 
         #[cfg(all(unix, feature = "rust-vt"))]
         {
+            let runtime = self.runtime.clone();
             for surface in &mut self.surfaces {
                 let _ = surface.tick();
                 for event in surface.drain_session_events() {
+                    Self::dispatch_runtime_surface_effect(&runtime, &event);
                     events.push(AppEvent::Surface {
                         id: surface.id(),
                         event,
