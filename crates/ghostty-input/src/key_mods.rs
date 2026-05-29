@@ -221,6 +221,22 @@ impl Mods {
     }
 }
 
+#[cfg(target_os = "macos")]
+pub fn ctrl_or_super(mods: Mods) -> Mods {
+    Mods {
+        super_key: true,
+        ..mods
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn ctrl_or_super(mods: Mods) -> Mods {
+    Mods {
+        ctrl: true,
+        ..mods
+    }
+}
+
 impl ModKeys {
     pub fn int(self) -> u8 {
         let mut v: u8 = 0;

@@ -45,6 +45,31 @@ impl KittyMods {
         v
     }
 
+    pub fn from_input(
+        _action: crate::key::Action,
+        _key: crate::key::Key,
+        mods: crate::Mods,
+    ) -> Self {
+        Self {
+            shift: mods.shift,
+            alt: mods.alt,
+            ctrl: mods.ctrl,
+            super_key: mods.super_key,
+            caps_lock: mods.caps_lock,
+            num_lock: mods.num_lock,
+            hyper: false,
+            meta: false,
+        }
+    }
+
+    pub fn prevents_text(self, alt_prevents_text: bool) -> bool {
+        (self.alt && alt_prevents_text)
+            || self.ctrl
+            || self.super_key
+            || self.hyper
+            || self.meta
+    }
+
     /// Spec modifier parameter (`bitmask + 1`).
     pub fn seq_int(self) -> u16 {
         u16::from(self.int()) + 1
@@ -356,6 +381,53 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(mods_and_event.encode_to_string(), "\x1b[1;2:3A");
+    }
+
+    #[test]
+    fn kitty_sequence_shift_editing_keys() {
+        let shift_enter = KittySequence {
+            key: 13,
+            final_byte: b'u',
+            mods: KittyMods {
+                shift: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert_eq!(shift_enter.encode_to_string(), "\x1b[13;2u");
+
+        let shift_tab = KittySequence {
+            key: 9,
+            final_byte: b'u',
+            mods: KittyMods {
+                shift: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert_eq!(shift_tab.encode_to_string(), "\x1b[9;2u");
+
+        let delete = KittySequence {
+            key: 127,
+            final_byte: b'~',
+            ..Default::default()
+        };
+        assert_eq!(delete.encode_to_string(), "\x1b[127~");
+    }
+
+    #[test]
+    fn kitty_sequence_ctrl_release() {
+        let seq = KittySequence {
+            key: 97,
+            final_byte: b'u',
+            event: KittyEvent::Release,
+            mods: KittyMods {
+                ctrl: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert_eq!(seq.encode_to_string(), "\x1b[97;5:3u");
     }
 }
 
