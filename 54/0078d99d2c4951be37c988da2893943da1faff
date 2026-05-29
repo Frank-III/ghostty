@@ -1,0 +1,62 @@
+docs/CI_RUST.md
+  s_6cee157524a3f1::t_5a6eecdcc34c1a 26-28
+crates/ghostty-input/src/kitty_sequence.rs
+  s_6cee157524a3f1::t_72d78d3493e76c 432-452
+crates/ghostty-config/Cargo.toml
+  s_0eb04ab4e18c34::t_fa7b4b38339897 9-12
+crates/ghostty-vt-tmux-tests/Cargo.toml
+  s_6cee157524a3f1::t_018af9a88f4efa 1-9
+src/terminal/rust/tmux_viewer.rs
+  s_6cee157524a3f1::t_41bbd6e72dcb30 26
+  s_6cee157524a3f1::t_782635f1d3b2a4 1277
+  s_6cee157524a3f1::t_ef863b4022033f 79
+  s_0eb04ab4e18c34::t_c9d4591e5efe8b 1522,1524,1526-1531,1533-1535,1537-1539,1541-1549
+  s_6cee157524a3f1::t_c1cb00c6baf03e 1326-1357
+  s_6cee157524a3f1::t_fd484149afbe00 189-192
+  s_0eb04ab4e18c34::t_d21dfe837c27e7 1523,1525
+  s_0eb04ab4e18c34::t_ab880b0b3a7fed 1097-1109,1120-1128,1130-1141,1147-1155,1157,1160-1164,1167-1174,1191
+  s_6cee157524a3f1::t_6bb43730b671d9 1165-1166
+  s_0eb04ab4e18c34::t_03ce8b7f06331e 500
+  s_0eb04ab4e18c34::t_8cba0eb3965825 1532,1536,1540
+  s_6cee157524a3f1::t_1a639060ce560a 1129,1142-1146,1156,1158-1159
+  s_6cee157524a3f1::t_1fa9d98f0a9853 17
+src/terminal/rust/tmux_layout.rs
+  s_6cee157524a3f1::t_b671236ef0fd0e 830
+  s_6cee157524a3f1::t_b8692b01194805 854
+crates/ghostty-vt-tmux-tests/tests/viewer.rs
+  s_6cee157524a3f1::t_5998aca9b0536b 1,3-216
+  s_6cee157524a3f1::t_fffddf5ccdfb59 2
+src/terminal/rust/lib.rs
+  s_0eb04ab4e18c34::t_81bfd69390994b 492-493
+  s_6cee157524a3f1::t_9b25085747ff44 486
+  s_6cee157524a3f1::t_c6ef62a1680bf7 487-491
+src/terminal/rust/tmux_control.rs
+  s_6cee157524a3f1::t_ac81778aba610c 24
+  s_0eb04ab4e18c34::t_c23eaa4bbd69b9 64
+Cargo.toml
+  s_6cee157524a3f1::t_bd9c511ffde8a2 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "540078d99d2c4951be37c988da2893943da1faff",
+  "prompts": {},
+  "sessions": {
+    "s_0eb04ab4e18c34": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dce88ee6-9910-460d-bb7f-be993e29d3c9",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    },
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
