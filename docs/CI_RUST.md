@@ -23,6 +23,9 @@ RUSTDOC=$HOME/.rustup/toolchains/1.95.0-aarch64-apple-darwin/bin/rustdoc \
 
 # PTY bytes → Rust-owned terminal (requires ghostty-vt std pool stubs)
 cargo test -p ghostty-termio --features rust-vt
+
+# Rust tmux viewer behavioral tests (pane capture, session reset, live output)
+RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-vt-tmux-tests
 ```
 
 ## App-owned pilot (opt-in)

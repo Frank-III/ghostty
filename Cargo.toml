@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/ghostty-vt",
+    "crates/ghostty-vt-tmux-tests",
     "crates/ghostty-foundation",
     "crates/ghostty-config",
     "crates/ghostty-input",

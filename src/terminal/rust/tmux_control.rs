@@ -21,6 +21,7 @@ pub struct ControlParser {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum NotificationTag {
     None = 0,
     Enter = 1,
@@ -60,7 +61,7 @@ pub struct Notification {
 }
 
 impl Notification {
-    fn empty() -> Notification {
+    pub(crate) fn empty() -> Notification {
         Notification {
             tag: NotificationTag::None,
             pane_id: 0,

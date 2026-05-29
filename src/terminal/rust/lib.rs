@@ -483,6 +483,14 @@ pub use selection::GhosttyGridRef;
 pub use allocator::{GhosttyAllocator, GhosttyAllocatorVtable, test_support_allocator};
 #[cfg(feature = "std")]
 pub use test_support::{test_allocator, terminal_cell_codepoint};
+#[cfg(feature = "std")]
+pub use tmux::viewer::{
+    Action, ActionTag, Command, CommandTag, Viewer, ViewerPane, ViewerState, ViewerWindow,
+};
+#[cfg(feature = "std")]
+pub use tmux::control::{Notification, NotificationTag};
+#[cfg(all(feature = "std", feature = "tmux-tests"))]
+pub use terminal_types::Terminal;
 
 #[cfg(all(not(test), not(feature = "std")))]
 #[panic_handler]

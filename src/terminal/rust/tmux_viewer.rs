@@ -14,6 +14,7 @@ use super::output::*;
 const COMMAND_QUEUE_INITIAL: usize = 8;
 
 #[repr(C)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ViewerState {
     StartupBlock = 0,
     StartupSession = 1,
@@ -22,6 +23,7 @@ pub enum ViewerState {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ActionTag {
     None = 0,
     Exit = 1,
@@ -74,6 +76,7 @@ pub struct ViewerPane {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CommandTag {
     ListWindows = 0,
     PaneHistory = 1,
@@ -181,6 +184,10 @@ impl CommandQueue {
 
     fn is_empty(&self) -> bool {
         self.len == 0
+    }
+
+    fn queue_len(&self) -> usize {
+        self.len
     }
 
     fn first(&self) -> Option<*const Command> {
@@ -490,6 +497,7 @@ impl Viewer {
     pub fn deinit(&mut self) {
         self.command_queue.deinit(self.alloc);
         self.windows.deinit(self.alloc);
+        self.deinit_panes();
         self.panes.deinit(self.alloc);
         if !self.version_ptr.is_null() && self.version_len > 0 {
             unsafe {
@@ -1086,7 +1094,19 @@ impl Viewer {
             let _ = self.command_queue.push(Command::pane_state(), self.alloc);
         }
 
-        self.panes.clear();
+        let mut i: usize = 0;
+        while i < self.panes.len {
+            let pane_id = unsafe { *self.panes.keys.add(i) };
+            if !new_panes.contains(pane_id) {
+                if let Some(pane_ptr) = self.panes.get(pane_id) {
+                    let pane = unsafe { ptr::read(pane_ptr) };
+                    Self::deinit_pane(self.alloc, pane);
+                }
+                let _ = self.panes.remove(pane_id);
+            } else {
+                i += 1;
+            }
+        }
         let mut j: usize = 0;
         while j < new_panes.len {
             let pane_id = unsafe { *new_panes.keys.add(j) };
@@ -1095,6 +1115,61 @@ impl Viewer {
             j += 1;
         }
         new_panes.deinit(self.alloc);
+    }
+
+    fn alloc_pane_terminal(
+        alloc: *const GhosttyAllocator,
+        layout: &Layout,
+    ) -> *mut c_void {
+        let cols = layout.width as CellCountInt;
+        let rows = layout.height as CellCountInt;
+        if cols == 0 || rows == 0 {
+            return ptr::null_mut();
+        }
+        #[cfg(ghostty_vt_terminal_owned)]
+        unsafe {
+            let Some(term) = Terminal::init_full(alloc, cols, rows, 10_000) else {
+                return ptr::null_mut();
+            };
+            let size = core::mem::size_of::<Terminal>();
+            let raw = alloc_alloc_impl(alloc, size);
+            if raw.is_null() {
+                return ptr::null_mut();
+            }
+            ptr::write(raw as *mut Terminal, term);
+            raw as *mut c_void
+        }
+        #[cfg(not(ghostty_vt_terminal_owned))]
+        {
+            let _ = (alloc, cols, rows);
+            ptr::null_mut()
+        }
+    }
+
+    fn deinit_pane(alloc: *const GhosttyAllocator, pane: ViewerPane) {
+        if pane.terminal.is_null() {
+            return;
+        }
+        unsafe {
+            let term = pane.terminal as *mut Terminal;
+            let mut term_val = ptr::read(term);
+            #[cfg(ghostty_vt_terminal_owned)]
+            term_val.deinit_full(alloc);
+            #[cfg(not(ghostty_vt_terminal_owned))]
+            term_val.deinit(alloc);
+            alloc_free_impl(alloc, term as *mut u8, core::mem::size_of::<Terminal>());
+        }
+    }
+
+    fn deinit_panes(&mut self) {
+        while self.panes.len > 0 {
+            let pane_id = unsafe { *self.panes.keys.add(0) };
+            if let Some(pane_ptr) = self.panes.get(pane_id) {
+                let pane = unsafe { ptr::read(pane_ptr) };
+                Self::deinit_pane(self.alloc, pane);
+            }
+            let _ = self.panes.remove(pane_id);
+        }
     }
 
     fn collect_panes_from_layout(
@@ -1113,7 +1188,7 @@ impl Viewer {
                             ptr::read(existing)
                         } else {
                             ViewerPane {
-                                terminal: ptr::null_mut(),
+                                terminal: Self::alloc_pane_terminal(self.alloc, &*layout),
                             }
                         };
                         let _ = (*panes).insert(id, pane, self.alloc);
@@ -1199,7 +1274,7 @@ impl Viewer {
         let _ = self.push_action(empty_action);
 
         self.windows.clear();
-        self.panes.clear();
+        self.deinit_panes();
         self.command_queue.deinit(self.alloc);
         self.command_queue = CommandQueue::new(self.alloc, COMMAND_QUEUE_INITIAL);
 
@@ -1247,6 +1322,38 @@ impl Viewer {
 
         self.state = ViewerState::CommandQueue;
         true
+    }
+
+    /// Test and integration helpers (std builds only).
+    #[cfg(feature = "std")]
+    pub fn window_count(&self) -> usize {
+        self.windows.len
+    }
+
+    #[cfg(feature = "std")]
+    pub fn pane_count(&self) -> usize {
+        self.panes.count()
+    }
+
+    #[cfg(feature = "std")]
+    pub fn command_queue_len(&self) -> usize {
+        self.command_queue.queue_len()
+    }
+
+    #[cfg(feature = "std")]
+    pub fn tmux_version_bytes(&self) -> &[u8] {
+        if self.version_ptr.is_null() || self.version_len == 0 {
+            return &[];
+        }
+        unsafe { core::slice::from_raw_parts(self.version_ptr, self.version_len) }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn pane_has_terminal(&self, pane_id: usize) -> bool {
+        self.panes
+            .get(pane_id)
+            .map(|p| unsafe { !(*p).terminal.is_null() })
+            .unwrap_or(false)
     }
 }
 
@@ -1411,4 +1518,32 @@ fn parse_usize(s: &[u8]) -> Option<usize> {
         i += 1;
     }
     Some(result)
+}
+
+#[cfg(feature = "tmux-tests")]
+impl Viewer {
+    pub fn test_tmux_version_bytes(&self) -> &[u8] {
+        if self.version_ptr.is_null() || self.version_len == 0 {
+            return b"";
+        }
+        unsafe { core::slice::from_raw_parts(self.version_ptr, self.version_len) }
+    }
+
+    pub fn test_window_count(&self) -> usize {
+        self.windows.len
+    }
+
+    pub fn test_pane_count(&self) -> usize {
+        self.panes.count()
+    }
+
+    pub fn test_pane_terminal(&self, pane_id: usize) -> Option<*mut Terminal> {
+        let pane = self.panes.get(pane_id)?;
+        let terminal = unsafe { (*pane).terminal };
+        if terminal.is_null() {
+            None
+        } else {
+            Some(terminal as *mut Terminal)
+        }
+    }
 }

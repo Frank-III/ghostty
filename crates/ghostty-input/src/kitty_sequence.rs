@@ -429,6 +429,27 @@ mod tests {
         };
         assert_eq!(seq.encode_to_string(), "\x1b[97;5:3u");
     }
+
+    #[test]
+    fn kitty_sequence_function_keys() {
+        let f1 = KittySequence {
+            key: 1,
+            final_byte: b'P',
+            ..Default::default()
+        };
+        assert_eq!(f1.encode_to_string(), "\x1b[P");
+
+        let f1_shift = KittySequence {
+            key: 1,
+            final_byte: b'P',
+            mods: KittyMods {
+                shift: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert_eq!(f1_shift.encode_to_string(), "\x1b[1;2P");
+    }
 }
 
 impl Default for KittySequence {

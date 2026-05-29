@@ -827,7 +827,7 @@ mod tests {
             let (hptr, hlen) = layout.children();
             assert_eq!(hlen, 2);
             unsafe {
-                let first = *hptr.add(0);
+                let first = &*hptr.add(0);
                 let (vptr, vlen) = first.children();
                 assert_eq!(vlen, 2);
                 assert_eq!((*vptr.add(0)).pane_id(), Some(1));
@@ -851,7 +851,7 @@ mod tests {
             let (hptr, hlen) = layout.children();
             assert_eq!(hlen, 2);
             unsafe {
-                let vert_child = *hptr.add(0);
+                let vert_child = &*hptr.add(0);
                 let (vptr, vlen) = vert_child.children();
                 assert_eq!(vlen, 2);
                 assert_eq!((*vptr.add(0)).pane_id(), Some(1));
