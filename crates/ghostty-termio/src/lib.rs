@@ -48,7 +48,7 @@ pub use exec::{ChildWatcher, ExecSpawn};
 #[cfg(unix)]
 pub use exec_config::{command_from_termio_config, is_abnormal_exit};
 #[cfg(unix)]
-pub use r#loop::TermioLoop;
+pub use r#loop::{TermioDrain, TermioLoop};
 #[cfg(unix)]
 pub use stream::PtyStream;
 #[cfg(unix)]

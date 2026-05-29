@@ -185,6 +185,12 @@ impl App {
         {
             for surface in &mut self.surfaces {
                 let _ = surface.tick();
+                for event in surface.drain_session_events() {
+                    events.push(AppEvent::Surface {
+                        id: surface.id(),
+                        event,
+                    });
+                }
                 if let Some(exit_code) = surface.poll_child_exit() {
                     events.push(AppEvent::Surface {
                         id: surface.id(),
@@ -242,6 +248,22 @@ impl App {
         surface.set_title(title.clone());
         self.push_surface_event(id, SurfaceEvent::TitleChanged { title });
         true
+    }
+
+    /// Write bytes to a surface PTY (input path).
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn write_surface(&mut self, id: SurfaceId, bytes: &[u8]) -> bool {
+        self.find_surface_mut(id)
+            .map(|s| s.write(bytes).is_ok())
+            .unwrap_or(false)
+    }
+
+    /// Resize a surface grid.
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn resize_surface(&mut self, id: SurfaceId, cols: u16, rows: u16) -> bool {
+        self.find_surface_mut(id)
+            .map(|s| s.resize(cols, rows).is_ok())
+            .unwrap_or(false)
     }
 }
 

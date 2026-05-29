@@ -138,6 +138,15 @@ impl Surface {
             None => Ok(()),
         }
     }
+
+    /// Take pending session events (title, redraw) after tick.
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn drain_session_events(&mut self) -> Vec<crate::SurfaceEvent> {
+        self.session
+            .as_mut()
+            .map(|s| s.drain_session_events())
+            .unwrap_or_default()
+    }
 }
 
 #[cfg(test)]

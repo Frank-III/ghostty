@@ -11,6 +11,7 @@ use ghostty_termio::{
 };
 
 use crate::app_config::AppConfig;
+use crate::events::SurfaceEvent;
 use crate::session_command::command_from_config;
 use crate::surface_id::SurfaceId;
 
@@ -88,6 +89,8 @@ pub struct SurfaceSession {
     cell_height_px: u32,
     #[cfg(feature = "rust-vt")]
     damage: DamageState,
+    pending_title: Option<String>,
+    pending_redraw: bool,
 }
 
 impl SurfaceSession {
@@ -116,6 +119,8 @@ impl SurfaceSession {
             cell_width_px,
             cell_height_px,
             damage: DamageState::default(),
+            pending_title: None,
+            pending_redraw: false,
         })
     }
 
@@ -151,8 +156,7 @@ impl SurfaceSession {
 
     /// Queue bytes for the PTY child (keyboard/input path).
     pub fn write(&mut self, bytes: &[u8]) -> FoundationResult<()> {
-        self.termio
-            .push(TermioMessage::Write(bytes.to_vec()))?;
+        self.termio.push(TermioMessage::Write(bytes.to_vec()))?;
         self.tick().map(|_| ())
     }
 
@@ -166,9 +170,15 @@ impl SurfaceSession {
 
     /// One iteration: drain thread events into terminal state.
     pub fn tick(&mut self) -> FoundationResult<usize> {
-        let n = self.termio.tick(&mut self.terminal)?;
+        let drain = self.termio.tick(&mut self.terminal)?;
+        if let Some(title) = drain.set_title {
+            self.pending_title = Some(title);
+        }
+        if drain.redraw_requested {
+            self.pending_redraw = true;
+        }
         #[cfg(feature = "rust-vt")]
-        if n > 0 {
+        if drain.pty_bytes > 0 {
             let ws = self.winsize();
             let size = GridSize {
                 columns: ws.cols,
@@ -176,7 +186,20 @@ impl SurfaceSession {
             };
             self.damage.mark_rect(DamageRect::full_screen(size));
         }
-        Ok(n)
+        Ok(drain.pty_bytes)
+    }
+
+    /// Take pending surface events produced by the last termio drain(s).
+    pub fn drain_session_events(&mut self) -> Vec<SurfaceEvent> {
+        let mut events = Vec::new();
+        if let Some(title) = self.pending_title.take() {
+            events.push(SurfaceEvent::TitleChanged { title });
+        }
+        if self.pending_redraw {
+            self.pending_redraw = false;
+            events.push(SurfaceEvent::RedrawRequested);
+        }
+        events
     }
 
     pub fn run_until<F>(&mut self, deadline: Instant, mut done: F) -> FoundationResult<()>
@@ -200,6 +223,11 @@ impl SurfaceSession {
     pub fn shutdown(&mut self) -> FoundationResult<()> {
         self.termio.shutdown()?;
         self.tick().map(|_| ())
+    }
+
+    /// Queue a termio thread message (write/resize/title/redraw).
+    pub fn push_termio(&mut self, msg: TermioMessage) -> FoundationResult<()> {
+        self.termio.push(msg)
     }
 
     pub fn cell_codepoint(&self, x: u16, y: u16) -> Option<u32> {

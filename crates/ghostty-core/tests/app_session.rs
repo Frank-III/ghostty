@@ -90,3 +90,30 @@ fn tick_reports_child_exit() {
     cleanup_app(&mut app);
     panic!("expected ChildExited event");
 }
+
+#[test]
+fn spawn_from_config_file_command() {
+    let dir = std::env::temp_dir().join(format!("ghostty-app-cfg-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let cfg_path = dir.join("test.ghostty");
+    std::fs::write(&cfg_path, "command = printf cfg-port\n").unwrap();
+
+    let app_config = ghostty_core::AppConfig::from_config_file(&cfg_path).expect("load");
+    let mut app = App::new(app_config, RuntimeConfig::default());
+    let id = app.create_surface().expect("surface");
+
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while Instant::now() < deadline {
+        app.tick();
+        if app.find_surface(id).unwrap().contains_text("cfg-port") {
+            cleanup_app(&mut app);
+            let _ = std::fs::remove_dir_all(&dir);
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    cleanup_app(&mut app);
+    let _ = std::fs::remove_dir_all(&dir);
+    panic!("expected cfg-port output from config file command");
+}

@@ -122,6 +122,7 @@ pub enum GhosttyAppEventTag {
     SurfaceChildExited = 3,
     SurfaceFocusChanged = 4,
     SurfaceTitleChanged = 5,
+    SurfaceRedrawRequested = 6,
 }
 
 /// Polled app event payload (`ghostty_app_event_s` subset).
@@ -190,6 +191,52 @@ pub unsafe extern "C" fn ghostty_app_surface_count(app: *mut GhosttyApp) -> usiz
     app_from_ptr(app).map(|a| a.surface_count()).unwrap_or(0)
 }
 
+/// Write bytes to a surface PTY (returns 0 on success, -1 on error).
+#[cfg(all(unix, feature = "rust-vt"))]
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_app_surface_write(
+    app: *mut GhosttyApp,
+    id: GhosttySurfaceId,
+    data: *const u8,
+    len: usize,
+) -> i32 {
+    let Some(app) = app_from_ptr(app) else {
+        return -1;
+    };
+    if data.is_null() || len == 0 {
+        return 0;
+    }
+    let sid = match ghostty_core::SurfaceId::from_raw(id.raw) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let bytes = core::slice::from_raw_parts(data, len);
+    if app.write_surface(sid, bytes) {
+        0
+    } else {
+        -1
+    }
+}
+
+/// Resize a surface grid (returns 1 on success, 0 on failure).
+#[cfg(all(unix, feature = "rust-vt"))]
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_app_surface_resize(
+    app: *mut GhosttyApp,
+    id: GhosttySurfaceId,
+    cols: u16,
+    rows: u16,
+) -> i32 {
+    let Some(app) = app_from_ptr(app) else {
+        return 0;
+    };
+    let sid = match ghostty_core::SurfaceId::from_raw(id.raw) {
+        Some(s) => s,
+        None => return 0,
+    };
+    i32::from(app.resize_surface(sid, cols, rows))
+}
+
 /// Drain one pending event from the last tick into `out` (returns false when empty).
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_app_poll_event(
@@ -245,6 +292,14 @@ fn app_event_to_c(event: &AppEvent) -> GhosttyAppEvent {
             event: SurfaceEvent::TitleChanged { .. },
         } => GhosttyAppEvent {
             tag: GhosttyAppEventTag::SurfaceTitleChanged,
+            surface_id: GhosttySurfaceId { raw: id.get() },
+            ..Default::default()
+        },
+        AppEvent::Surface {
+            id,
+            event: SurfaceEvent::RedrawRequested,
+        } => GhosttyAppEvent {
+            tag: GhosttyAppEventTag::SurfaceRedrawRequested,
             surface_id: GhosttySurfaceId { raw: id.get() },
             ..Default::default()
         },

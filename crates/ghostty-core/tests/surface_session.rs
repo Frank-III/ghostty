@@ -98,3 +98,37 @@ fn resize_updates_terminal() {
     assert_eq!(session.winsize().rows, 40);
     session.write(b"x").expect("write");
 }
+
+#[test]
+fn termio_set_title_emits_session_event() {
+    use ghostty_termio::TermioMessage;
+
+    let mut session = SurfaceSession::spawn(
+        AppConfig::default(),
+        SurfaceSessionOptions {
+            command: Some(echo_cat_command()),
+            ..Default::default()
+        },
+    )
+    .expect("spawn");
+
+    session
+        .push_termio(TermioMessage::SetTitle("term-title".into()))
+        .expect("push");
+
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while Instant::now() < deadline {
+        session.tick().expect("tick");
+        let events = session.drain_session_events();
+        if events.iter().any(|e| {
+            matches!(
+                e,
+                ghostty_core::SurfaceEvent::TitleChanged { title } if title == "term-title"
+            )
+        }) {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    panic!("expected TitleChanged event from SetTitle");
+}

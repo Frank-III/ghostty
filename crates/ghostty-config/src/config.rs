@@ -55,6 +55,8 @@ pub struct Config {
     pub grapheme_width_method: GraphemeWidthMethod,
     pub background_blur: BackgroundBlur,
     pub env: Vec<(String, String)>,
+    pub working_directory: Option<String>,
+    pub initial_window: bool,
     diagnostics: DiagnosticList,
 }
 
@@ -115,6 +117,8 @@ impl Config {
             grapheme_width_method: GraphemeWidthMethod::Unicode,
             background_blur: BackgroundBlur::False,
             env: Vec::new(),
+            working_directory: None,
+            initial_window: true,
             diagnostics: DiagnosticList::new(),
         }
     }
@@ -385,6 +389,16 @@ impl Config {
                 } else {
                     return Err(ConfigError::InvalidValue);
                 }
+            }
+            "working-directory" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                let mut parsed = String::new();
+                crate::string_literal::parse(&mut parsed, v)?;
+                self.working_directory = Some(parsed);
+            }
+            "initial-window" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.initial_window = parse_bool(v).map_err(|_| ConfigError::InvalidValue)?;
             }
             _ => return Err(ConfigError::InvalidField),
         }
@@ -726,5 +740,13 @@ mod tests {
         cfg.load_file(&parent).unwrap();
         assert_eq!(cfg.font_size, 22.0);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn parse_working_directory() {
+        let mut cfg = Config::with_defaults();
+        cfg.load_from_str("working-directory = /var/tmp\n", "/tmp/config");
+        assert_eq!(cfg.working_directory.as_deref(), Some("/var/tmp"));
+        assert!(cfg.diagnostics().is_empty());
     }
 }

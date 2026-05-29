@@ -22,6 +22,7 @@ pub struct DerivedTermioConfig {
     pub abnormal_command_exit_runtime: u32,
     pub env: Vec<(String, String)>,
     pub term: String,
+    pub working_directory: Option<std::path::PathBuf>,
 }
 
 /// Font discovery/sizing fields.
@@ -59,12 +60,14 @@ impl From<&Config> for DerivedCoreConfig {
 
 impl From<&Config> for DerivedTermioConfig {
     fn from(cfg: &Config) -> Self {
+        let working_directory = cfg.working_directory.as_deref().map(crate::expand_path);
         Self {
             command: cfg.command.clone(),
             wait_after_command: cfg.wait_after_command,
             abnormal_command_exit_runtime: cfg.abnormal_command_exit_runtime,
             env: cfg.env.clone(),
             term: cfg.term.clone(),
+            working_directory,
         }
     }
 }

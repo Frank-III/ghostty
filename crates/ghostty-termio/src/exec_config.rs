@@ -25,6 +25,9 @@ pub fn command_from_termio_config(
     for (key, value) in &cfg.env {
         builder = builder.env(key, value);
     }
+    if let Some(cwd) = &cfg.working_directory {
+        builder = builder.cwd(cwd);
+    }
 
     if cfg.wait_after_command {
         let mut shell_cmd = ShellCommandBuilder::new();
@@ -43,6 +46,9 @@ pub fn command_from_termio_config(
         builder = builder.env("TERM", &cfg.term);
         for (key, value) in &cfg.env {
             builder = builder.env(key, value);
+        }
+        if let Some(cwd) = &cfg.working_directory {
+            builder = builder.cwd(cwd);
         }
     }
 
@@ -69,5 +75,14 @@ mod tests {
                 .map(|s| s.to_str()),
             Some(Some("xterm-ghostty"))
         );
+    }
+
+    #[test]
+    fn working_directory_applied() {
+        let mut cfg = Config::with_defaults();
+        cfg.working_directory = Some("/tmp".to_string());
+        let derived = DerivedTermioConfig::from(&cfg);
+        let spec = command_from_termio_config(&derived).expect("spec");
+        assert_eq!(spec.cwd.as_deref(), Some(std::path::Path::new("/tmp")));
     }
 }
