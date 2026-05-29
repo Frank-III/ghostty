@@ -25,6 +25,7 @@ pub enum TermioMessage {
 }
 
 /// Fixed-capacity mailbox for termio messages.
+#[derive(Debug)]
 pub struct TermioMailbox {
     queue: std::collections::VecDeque<TermioMessage>,
     capacity: usize,

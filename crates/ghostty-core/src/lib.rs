@@ -19,7 +19,12 @@ mod surface_session;
 pub use app::App;
 pub use app_config::AppConfig;
 pub use events::{ActionTag, ActionTargetTag, AppEvent, SurfaceEvent};
-pub use runtime::RuntimeConfig;
+pub use runtime::{
+    RuntimeAction, RuntimeActionCb, RuntimeClipboard, RuntimeClipboardContent,
+    RuntimeClipboardRequest, RuntimeCloseSurfaceCb, RuntimeConfirmReadClipboardCb,
+    RuntimeConfig, RuntimeReadClipboardCb, RuntimeTarget, RuntimeTargetTag, RuntimeTargetU,
+    RuntimeWakeupCb, RuntimeWriteClipboardCb,
+};
 pub use surface::Surface;
 pub use surface_id::SurfaceId;
 #[cfg(all(unix, feature = "rust-vt"))]

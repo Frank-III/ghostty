@@ -9,6 +9,7 @@ repository.workspace = true
 [dependencies]
 ghostty-config = { path = "../ghostty-config" }
 ghostty-foundation = { path = "../ghostty-foundation" }
+ghostty-renderer = { path = "../ghostty-renderer" }
 ghostty-vt = { path = "../ghostty-vt", features = ["std", "terminal-owned"], optional = true }
 
 [features]

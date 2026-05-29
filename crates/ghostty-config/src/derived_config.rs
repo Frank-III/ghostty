@@ -2,8 +2,19 @@
 //!
 //! Port target: `DerivedConfig` helpers in `src/config/Config.zig`.
 
-use crate::types::{CursorStyle, RgbColor, ShellIntegration};
+use crate::types::{ClipboardAccess, CursorStyle, OscColorReportFormat, RgbColor, ShellIntegration};
 use crate::Config;
+
+/// Stream handler / termio parser fields (`termio.DerivedConfig` subset).
+#[derive(Debug, Clone, PartialEq)]
+pub struct DerivedStreamConfig {
+    pub osc_color_report_format: OscColorReportFormat,
+    pub clipboard_read: ClipboardAccess,
+    pub clipboard_write: ClipboardAccess,
+    pub enquiry_response: String,
+    pub default_cursor_style: CursorStyle,
+    pub default_cursor_blink: Option<bool>,
+}
 
 /// App-level fields (shell integration, theme path).
 #[derive(Debug, Clone, PartialEq)]
@@ -52,6 +63,25 @@ pub struct DerivedRendererConfig {
     pub cursor_style: CursorStyle,
     pub cursor_opacity: f64,
     pub minimum_contrast: f64,
+}
+
+impl From<&Config> for DerivedStreamConfig {
+    fn from(cfg: &Config) -> Self {
+        Self {
+            osc_color_report_format: cfg.osc_color_report_format,
+            clipboard_read: cfg.clipboard_read,
+            clipboard_write: cfg.clipboard_write,
+            enquiry_response: cfg.enquiry_response.clone(),
+            default_cursor_style: cfg.cursor_style,
+            default_cursor_blink: cfg.cursor_style_blink,
+        }
+    }
+}
+
+impl Default for DerivedStreamConfig {
+    fn default() -> Self {
+        (&Config::with_defaults()).into()
+    }
 }
 
 impl From<&Config> for DerivedCoreConfig {
@@ -132,5 +162,7 @@ mod tests {
         assert_eq!(renderer.background, cfg.background);
         let app: DerivedAppConfig = (&cfg).into();
         assert_eq!(app.shell_integration, cfg.shell_integration);
+        let stream: DerivedStreamConfig = (&cfg).into();
+        assert_eq!(stream.clipboard_read, cfg.clipboard_read);
     }
 }

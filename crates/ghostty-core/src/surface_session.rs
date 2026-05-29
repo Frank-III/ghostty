@@ -122,7 +122,8 @@ impl SurfaceSession {
         });
         let scrollback = config.config().scrollback_limit;
         let (cell_width_px, cell_height_px) = cell_size_from_config(config.config());
-        let mut termio = TermioLoop::spawn(&spec, winsize)?;
+        let stream_config = ghostty_config::DerivedStreamConfig::from(config.config());
+        let mut termio = TermioLoop::spawn(&spec, winsize, stream_config)?;
         let mut terminal = RustOwnedTerminalSink::new(winsize.cols, winsize.rows, scrollback)
             .ok_or(SurfaceSessionError::Terminal)?;
         termio.tick(&mut terminal)?;

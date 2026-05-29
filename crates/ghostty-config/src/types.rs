@@ -322,6 +322,46 @@ impl BackgroundBlur {
     }
 }
 
+/// Clipboard read/write policy (`Config.ClipboardAccess` in Zig).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ClipboardAccess {
+    Allow,
+    Deny,
+    #[default]
+    Ask,
+}
+
+impl ClipboardAccess {
+    pub fn parse_cli(input: &str) -> Result<Self, ConfigError> {
+        match input.trim().to_ascii_lowercase().as_str() {
+            "allow" => Ok(Self::Allow),
+            "deny" => Ok(Self::Deny),
+            "ask" => Ok(Self::Ask),
+            _ => Err(ConfigError::InvalidValue),
+        }
+    }
+}
+
+/// OSC color report format (`Config.OSCColorReportFormat` in Zig).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OscColorReportFormat {
+    None,
+    #[default]
+    SixteenBit,
+    EightBit,
+}
+
+impl OscColorReportFormat {
+    pub fn parse_cli(input: &str) -> Result<Self, ConfigError> {
+        match input.trim().to_ascii_lowercase().as_str() {
+            "none" => Ok(Self::None),
+            "8-bit" => Ok(Self::EightBit),
+            "16-bit" => Ok(Self::SixteenBit),
+            _ => Err(ConfigError::InvalidValue),
+        }
+    }
+}
+
 /// Shell integration auto-injection (`Config.ShellIntegration` in Zig).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ShellIntegration {

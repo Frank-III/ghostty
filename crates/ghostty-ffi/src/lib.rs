@@ -6,19 +6,42 @@
 use core::ffi::{c_char, c_void, CStr};
 use core::ptr;
 
-use ghostty_core::{App, AppConfig, AppEvent, RuntimeConfig, SurfaceEvent};
+use ghostty_core::{
+    App, AppConfig, AppEvent, RuntimeAction, RuntimeActionCb, RuntimeClipboard,
+    RuntimeClipboardContent, RuntimeClipboardRequest, RuntimeCloseSurfaceCb,
+    RuntimeConfirmReadClipboardCb, RuntimeConfig, RuntimeReadClipboardCb, RuntimeTarget,
+    RuntimeTargetTag, RuntimeTargetU, RuntimeWakeupCb, RuntimeWriteClipboardCb, SurfaceEvent,
+};
 
 /// Opaque app pointer (`ghostty_app_t`).
 pub type GhosttyApp = c_void;
 
-/// `ghostty_runtime_config_s` — callback fields deferred; layout matches header subset.
+pub type GhosttyClipboard = RuntimeClipboard;
+pub type GhosttyClipboardContent = RuntimeClipboardContent;
+pub type GhosttyClipboardRequest = RuntimeClipboardRequest;
+pub type GhosttyTargetTag = RuntimeTargetTag;
+pub type GhosttyTargetU = RuntimeTargetU;
+pub type GhosttyTarget = RuntimeTarget;
+pub type GhosttyAction = RuntimeAction;
+pub type GhosttyRuntimeWakeupCb = RuntimeWakeupCb;
+pub type GhosttyRuntimeReadClipboardCb = RuntimeReadClipboardCb;
+pub type GhosttyRuntimeConfirmReadClipboardCb = RuntimeConfirmReadClipboardCb;
+pub type GhosttyRuntimeWriteClipboardCb = RuntimeWriteClipboardCb;
+pub type GhosttyRuntimeCloseSurfaceCb = RuntimeCloseSurfaceCb;
+pub type GhosttyRuntimeActionCb = RuntimeActionCb;
+
+/// `ghostty_runtime_config_s` — layout matches `include/ghostty.h`.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct GhosttyRuntimeConfig {
     pub userdata: *mut c_void,
     pub supports_selection_clipboard: bool,
-    // Padding so cbindgen emits a stable struct before callbacks are added.
-    _reserved: [u8; 7],
+    pub wakeup_cb: GhosttyRuntimeWakeupCb,
+    pub action_cb: GhosttyRuntimeActionCb,
+    pub read_clipboard_cb: GhosttyRuntimeReadClipboardCb,
+    pub confirm_read_clipboard_cb: GhosttyRuntimeConfirmReadClipboardCb,
+    pub write_clipboard_cb: GhosttyRuntimeWriteClipboardCb,
+    pub close_surface_cb: GhosttyRuntimeCloseSurfaceCb,
 }
 
 impl Default for GhosttyRuntimeConfig {
@@ -26,7 +49,12 @@ impl Default for GhosttyRuntimeConfig {
         Self {
             userdata: ptr::null_mut(),
             supports_selection_clipboard: false,
-            _reserved: [0; 7],
+            wakeup_cb: None,
+            action_cb: None,
+            read_clipboard_cb: None,
+            confirm_read_clipboard_cb: None,
+            write_clipboard_cb: None,
+            close_surface_cb: None,
         }
     }
 }
@@ -41,6 +69,12 @@ fn runtime_from_c(cfg: *const GhosttyRuntimeConfig) -> RuntimeConfig {
         userdata: cfg.userdata,
         supports_selection_clipboard: cfg.supports_selection_clipboard,
         resources_dir: std::env::var_os("GHOSTTY_RESOURCES_DIR").map(std::path::PathBuf::from),
+        wakeup_cb: cfg.wakeup_cb,
+        action_cb: cfg.action_cb,
+        read_clipboard_cb: cfg.read_clipboard_cb,
+        confirm_read_clipboard_cb: cfg.confirm_read_clipboard_cb,
+        write_clipboard_cb: cfg.write_clipboard_cb,
+        close_surface_cb: cfg.close_surface_cb,
     }
 }
 

@@ -1,9 +1,11 @@
 //! Production termio session (`Termio.zig`) via background thread + event drain.
 
+use ghostty_config::DerivedStreamConfig;
 use ghostty_foundation::FoundationResult;
 
 use crate::command::CommandSpec;
 use crate::spawn::SpawnPtyError;
+use crate::stream_handler::StreamHandler;
 use crate::termio::TermioMessage;
 use crate::thread::{TermioThreadEvent, TermioThreadHandle};
 use crate::winsize::Winsize;
@@ -21,12 +23,29 @@ pub struct TermioDrain {
 pub struct TermioLoop {
     thread: TermioThreadHandle,
     winsize: Winsize,
+    stream: StreamHandler,
 }
 
 impl TermioLoop {
-    pub fn spawn(spec: &CommandSpec, winsize: Winsize) -> Result<Self, SpawnPtyError> {
+    pub fn spawn(
+        spec: &CommandSpec,
+        winsize: Winsize,
+        stream_config: DerivedStreamConfig,
+    ) -> Result<Self, SpawnPtyError> {
         let thread = TermioThreadHandle::spawn(spec, winsize)?;
-        Ok(Self { thread, winsize })
+        Ok(Self {
+            thread,
+            winsize,
+            stream: StreamHandler::new(stream_config),
+        })
+    }
+
+    pub fn stream_handler(&self) -> &StreamHandler {
+        &self.stream
+    }
+
+    pub fn stream_handler_mut(&mut self) -> &mut StreamHandler {
+        &mut self.stream
     }
 
     pub fn winsize(&self) -> Winsize {
@@ -66,10 +85,12 @@ impl TermioLoop {
                     sink.resize_terminal(cols, rows);
                 }
                 TermioThreadEvent::SetTitle(title) => {
-                    drain.set_title = Some(title);
+                    drain.set_title = Some(title.clone());
+                    let _ = self.stream.on_set_title(title);
                 }
                 TermioThreadEvent::RedrawRequested => {
                     drain.redraw_requested = true;
+                    let _ = self.stream.on_redraw_requested();
                 }
                 TermioThreadEvent::ChildExit(_) => {}
             }

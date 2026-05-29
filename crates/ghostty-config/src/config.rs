@@ -7,8 +7,8 @@ use crate::error::{ConfigError, DiagnosticList, LoadError};
 use crate::file_load;
 use crate::parse::{strip_utf8_bom, LineIter};
 use crate::types::{
-    BackgroundBlur, CursorStyle, GraphemeWidthMethod, LinkPreviews, MouseShiftCapture, RgbColor,
-    ShellIntegration, WindowPadding,
+    BackgroundBlur, ClipboardAccess, CursorStyle, GraphemeWidthMethod, LinkPreviews,
+    MouseShiftCapture, OscColorReportFormat, RgbColor, ShellIntegration, WindowPadding,
 };
 
 /// Subset of Ghostty config fields used across the stack (full schema deferred).
@@ -38,6 +38,9 @@ pub struct Config {
     pub mouse_shift_capture: MouseShiftCapture,
     pub mouse_reporting: bool,
     pub clipboard_paste_protection: bool,
+    pub clipboard_read: ClipboardAccess,
+    pub clipboard_write: ClipboardAccess,
+    pub osc_color_report_format: OscColorReportFormat,
     pub command: Option<String>,
     pub wait_after_command: bool,
     pub selection_clear_on_typing: bool,
@@ -103,6 +106,9 @@ impl Config {
             mouse_shift_capture: MouseShiftCapture::False,
             mouse_reporting: true,
             clipboard_paste_protection: true,
+            clipboard_read: ClipboardAccess::Ask,
+            clipboard_write: ClipboardAccess::Allow,
+            osc_color_report_format: OscColorReportFormat::SixteenBit,
             command: None,
             wait_after_command: false,
             selection_clear_on_typing: true,
@@ -451,6 +457,18 @@ impl Config {
                 let mut parsed = String::new();
                 crate::string_literal::parse(&mut parsed, v)?;
                 self.theme = Some(parsed);
+            }
+            "clipboard-read" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.clipboard_read = ClipboardAccess::parse_cli(v)?;
+            }
+            "clipboard-write" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.clipboard_write = ClipboardAccess::parse_cli(v)?;
+            }
+            "osc-color-report-format" => {
+                let v = value.ok_or(ConfigError::ValueRequired)?;
+                self.osc_color_report_format = OscColorReportFormat::parse_cli(v)?;
             }
             _ => return Err(ConfigError::InvalidField),
         }

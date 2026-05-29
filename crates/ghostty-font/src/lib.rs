@@ -27,4 +27,6 @@ pub use face::{
     default_dpi, DesiredSize, GlyphSize, Options, RenderOptions, Variation, VariationId,
 };
 pub use metrics::{calc, FaceMetrics, Key, Metrics, Modifier, ModifierSet, ParseError};
-pub use style::{Presentation, Style};
+pub mod atlas;
+
+pub use atlas::{Atlas, AtlasError, AtlasFormat, AtlasRegion};

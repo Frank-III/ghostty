@@ -53,4 +53,6 @@ pub use size::{
     ScreenSize, Size,
 };
 pub use state::{GridPoint, Preedit, PreeditCodepoint, PreeditRange, RendererMouse, RendererState};
-pub use webgl::{WebGlGraphicsApi, WebGlRenderer};
+pub mod styled;
+
+pub use styled::{CellStyle, StyledCell, StyledCellSnapshot};

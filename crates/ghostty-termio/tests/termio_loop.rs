@@ -2,6 +2,7 @@
 
 use std::time::{Duration, Instant};
 
+use ghostty_config::DerivedStreamConfig;
 use ghostty_termio::{CommandBuilder, CommandSpec, TermioLoop, TermioMessage, TermioSink, Winsize};
 
 struct VecSink(Vec<u8>);
@@ -32,7 +33,7 @@ fn loop_write_round_trip() {
         x_pixels: 0,
         y_pixels: 0,
     };
-    let mut loop_ = TermioLoop::spawn(&cat_spec(), winsize).expect("spawn");
+    let mut loop_ = TermioLoop::spawn(&cat_spec(), winsize, DerivedStreamConfig::default()).expect("spawn");
     loop_
         .push(TermioMessage::Write(b"loop-ping\n".to_vec()))
         .expect("write");
@@ -60,7 +61,7 @@ fn loop_resize_and_shutdown() {
         x_pixels: 0,
         y_pixels: 0,
     };
-    let mut loop_ = TermioLoop::spawn(&cat_spec(), winsize).expect("spawn");
+    let mut loop_ = TermioLoop::spawn(&cat_spec(), winsize, DerivedStreamConfig::default()).expect("spawn");
     loop_
         .push(TermioMessage::Resize {
             cols: 100,

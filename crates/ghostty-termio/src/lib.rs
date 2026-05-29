@@ -24,6 +24,15 @@ pub mod exec_config;
 pub mod r#loop;
 
 #[cfg(unix)]
+pub mod stream_handler;
+
+#[cfg(unix)]
+pub mod surface_mailbox;
+
+#[cfg(unix)]
+pub mod renderer_mailbox;
+
+#[cfg(unix)]
 pub mod shell_integration;
 
 #[cfg(unix)]
@@ -57,6 +66,12 @@ pub use stream::PtyStream;
 #[cfg(unix)]
 pub use thread::{TermioThreadEvent, TermioThreadHandle};
 
+#[cfg(unix)]
+pub use stream_handler::StreamHandler;
+#[cfg(unix)]
+pub use surface_mailbox::{SurfaceMailbox, SurfaceMessage};
+#[cfg(unix)]
+pub use renderer_mailbox::{RendererMailbox, RendererMessage};
 #[cfg(unix)]
 pub use shell_integration::{
     apply_shell_integration, detect_shell, IntegratedShell, ShellIntegrationContext,
