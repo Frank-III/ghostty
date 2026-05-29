@@ -1,0 +1,26 @@
+crates/ghostty-core/src/surface_session.rs
+  s_6cee157524a3f1::t_ae51c8879a8c62 292-306
+  s_6cee157524a3f1::t_65dc051f6883cc 9-10
+crates/ghostty-core/src/app.rs
+  s_6cee157524a3f1::t_315290c2b3ce00 226-231
+crates/ghostty-termio/src/loop.rs
+  s_6cee157524a3f1::t_cc65d8d9785a01 96-100
+  s_6cee157524a3f1::t_4428e49fa3c1f8 9
+  s_6cee157524a3f1::t_f039a6720d3d57 113-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "154cc99c05834fc36558c754b2795947ca52c4f3",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
