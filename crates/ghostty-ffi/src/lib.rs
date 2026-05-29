@@ -6,7 +6,7 @@
 use core::ffi::c_void;
 use core::ptr;
 
-use ghostty_core::{App, AppConfig, RuntimeConfig};
+use ghostty_core::{App, AppConfig, AppEvent, RuntimeConfig, SurfaceEvent};
 
 /// Opaque app pointer (`ghostty_app_t`).
 pub type GhosttyApp = c_void;
@@ -91,7 +91,150 @@ pub unsafe extern "C" fn ghostty_app_userdata(app: *mut GhosttyApp) -> *mut c_vo
 /// Returns the Rust port milestone string for embedders (bootstrap ABI).
 #[no_mangle]
 pub unsafe extern "C" fn ghostty_rust_port_milestone() -> *const u8 {
-    b"phase6-surface-session\0".as_ptr()
+    b"phase7-cargo-primary\0".as_ptr()
+}
+
+/// Surface id for C embedders (`ghostty_surface_id_t`).
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GhosttySurfaceId {
+    pub raw: u64,
+}
+
+/// Event tag for polled app events (`ghostty_app_event_tag_e` subset).
+#[repr(i32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GhosttyAppEventTag {
+    None = 0,
+    Quit = 1,
+    CloseSurface = 2,
+    SurfaceChildExited = 3,
+    SurfaceFocusChanged = 4,
+    SurfaceTitleChanged = 5,
+}
+
+/// Polled app event payload (`ghostty_app_event_s` subset).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct GhosttyAppEvent {
+    pub tag: GhosttyAppEventTag,
+    pub surface_id: GhosttySurfaceId,
+    pub exit_code: u32,
+    pub focused: bool,
+}
+
+impl Default for GhosttyAppEvent {
+    fn default() -> Self {
+        Self {
+            tag: GhosttyAppEventTag::None,
+            surface_id: GhosttySurfaceId { raw: 0 },
+            exit_code: 0,
+            focused: false,
+        }
+    }
+}
+
+/// Create a surface on the app (`ghostty_app_create_surface` bootstrap).
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_app_create_surface(app: *mut GhosttyApp) -> GhosttySurfaceId {
+    let Some(app) = app_from_ptr(app) else {
+        return GhosttySurfaceId { raw: 0 };
+    };
+    app.create_surface()
+        .map(|id| GhosttySurfaceId { raw: id.get() })
+        .unwrap_or(GhosttySurfaceId { raw: 0 })
+}
+
+/// Delete a surface by id (`ghostty_app_delete_surface` bootstrap).
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_app_delete_surface(app: *mut GhosttyApp, id: GhosttySurfaceId) -> bool {
+    let Some(app) = app_from_ptr(app) else {
+        return false;
+    };
+    ghostty_core::SurfaceId::from_raw(id.raw)
+        .map(|sid| app.delete_surface(sid))
+        .unwrap_or(false)
+}
+
+/// Focus a surface (`ghostty_app_focus_surface` bootstrap).
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_app_focus_surface(app: *mut GhosttyApp, id: GhosttySurfaceId) -> bool {
+    let Some(app) = app_from_ptr(app) else {
+        return false;
+    };
+    ghostty_core::SurfaceId::from_raw(id.raw)
+        .map(|sid| app.focus_surface(sid))
+        .unwrap_or(false)
+}
+
+/// Number of live surfaces.
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_app_surface_count(app: *mut GhosttyApp) -> usize {
+    app_from_ptr(app)
+        .map(|a| a.surface_count())
+        .unwrap_or(0)
+}
+
+/// Drain one pending event from the last tick into `out` (returns false when empty).
+#[no_mangle]
+pub unsafe extern "C" fn ghostty_app_poll_event(
+    app: *mut GhosttyApp,
+    out: *mut GhosttyAppEvent,
+) -> bool {
+    if out.is_null() {
+        return false;
+    }
+    let Some(app) = app_from_ptr(app) else {
+        return false;
+    };
+    let Some(event) = app.take_polled_event() else {
+        return false;
+    };
+    unsafe {
+        *out = app_event_to_c(&event);
+    }
+    true
+}
+
+fn app_event_to_c(event: &AppEvent) -> GhosttyAppEvent {
+    match event {
+        AppEvent::Quit => GhosttyAppEvent {
+            tag: GhosttyAppEventTag::Quit,
+            ..Default::default()
+        },
+        AppEvent::CloseSurface { id } => GhosttyAppEvent {
+            tag: GhosttyAppEventTag::CloseSurface,
+            surface_id: GhosttySurfaceId { raw: id.get() },
+            ..Default::default()
+        },
+        AppEvent::Surface {
+            id,
+            event: SurfaceEvent::ChildExited { exit_code },
+        } => GhosttyAppEvent {
+            tag: GhosttyAppEventTag::SurfaceChildExited,
+            surface_id: GhosttySurfaceId { raw: id.get() },
+            exit_code: *exit_code,
+            ..Default::default()
+        },
+        AppEvent::Surface {
+            id,
+            event: SurfaceEvent::FocusChanged { focused },
+        } => GhosttyAppEvent {
+            tag: GhosttyAppEventTag::SurfaceFocusChanged,
+            surface_id: GhosttySurfaceId { raw: id.get() },
+            focused: *focused,
+            ..Default::default()
+        },
+        AppEvent::Surface {
+            id,
+            event: SurfaceEvent::TitleChanged { .. },
+        } => GhosttyAppEvent {
+            tag: GhosttyAppEventTag::SurfaceTitleChanged,
+            surface_id: GhosttySurfaceId { raw: id.get() },
+            ..Default::default()
+        },
+        _ => GhosttyAppEvent::default(),
+    }
 }
 
 #[cfg(all(unix, feature = "rust-vt"))]
@@ -230,6 +373,33 @@ mod tests {
     #[test]
     fn null_app_tick_is_noop() {
         unsafe { ghostty_app_tick(ptr::null_mut()) };
+    }
+
+    #[test]
+    fn app_create_delete_surface() {
+        let cfg = GhosttyRuntimeConfig::default();
+        let app = unsafe { ghostty_app_new(&cfg, ptr::null_mut()) };
+        assert!(!app.is_null());
+        let id = unsafe { ghostty_app_create_surface(app) };
+        assert_ne!(id.raw, 0);
+        assert_eq!(unsafe { ghostty_app_surface_count(app) }, 1);
+        assert!(unsafe { ghostty_app_delete_surface(app, id) });
+        assert_eq!(unsafe { ghostty_app_surface_count(app) }, 0);
+        unsafe { ghostty_app_free(app) };
+    }
+
+    #[test]
+    fn app_poll_close_surface_event() {
+        let cfg = GhosttyRuntimeConfig::default();
+        let app = unsafe { ghostty_app_new(&cfg, ptr::null_mut()) };
+        let id = unsafe { ghostty_app_create_surface(app) };
+        assert!(unsafe { ghostty_app_delete_surface(app, id) });
+        unsafe { ghostty_app_tick(app) };
+        let mut event = GhosttyAppEvent::default();
+        assert!(unsafe { ghostty_app_poll_event(app, &mut event) });
+        assert_eq!(event.tag, GhosttyAppEventTag::CloseSurface);
+        assert_eq!(event.surface_id.raw, id.raw);
+        unsafe { ghostty_app_free(app) };
     }
 
     #[cfg(all(unix, feature = "rust-vt"))]

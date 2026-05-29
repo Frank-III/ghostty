@@ -133,4 +133,15 @@ mod tests {
         let backend = Backend::default_for_target();
         let _discover = discover_for_backend(backend);
     }
+
+    #[test]
+    fn fixture_monospace_descriptor_round_trip() {
+        let mut desc = Descriptor::default();
+        desc.family = Some("JetBrains Mono".to_string());
+        desc.monospace = true;
+        desc.size = 12.0;
+        assert_eq!(desc.family.as_deref(), Some("JetBrains Mono"));
+        let discover = discover_for_backend(Backend::default_for_target());
+        let _ = discover.list_matching(&desc);
+    }
 }

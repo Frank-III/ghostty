@@ -5,8 +5,9 @@
 use ghostty_foundation::FoundationResult;
 
 use crate::command::CommandSpec;
+#[cfg(unix)]
+use crate::exec::{ChildWatcher, ExecSpawn};
 use crate::pty::{PosixPty, PtyIoError};
-use crate::spawn::{spawn_pty_command, SpawnPtyError};
 use crate::termio::{TermioMailbox, TermioMessage};
 use crate::winsize::Winsize;
 
@@ -27,19 +28,19 @@ impl TermioSink for Vec<u8> {
 /// Minimal PTY-backed termio session for integration tests.
 pub struct TermioHarness {
     pty: PosixPty,
-    pid: libc::pid_t,
+    child: ChildWatcher,
     mailbox: TermioMailbox,
     winsize: Winsize,
     shutdown: bool,
 }
 
 impl TermioHarness {
-    pub fn spawn(spec: &CommandSpec, winsize: Winsize) -> Result<Self, SpawnPtyError> {
-        let (pty, pid) = spawn_pty_command(spec, winsize)?;
-        pty.set_nonblocking(true).map_err(|_| SpawnPtyError::SpawnFailed)?;
+    pub fn spawn(spec: &CommandSpec, winsize: Winsize) -> Result<Self, crate::spawn::SpawnPtyError> {
+        let exec = ExecSpawn::spawn(spec, winsize)?;
+        exec.pty.set_nonblocking(true).map_err(|_| crate::spawn::SpawnPtyError::SpawnFailed)?;
         Ok(Self {
-            pty,
-            pid,
+            pty: exec.pty,
+            child: exec.child,
             mailbox: TermioMailbox::new(64),
             winsize,
             shutdown: false,
@@ -55,7 +56,15 @@ impl TermioHarness {
     }
 
     pub fn pid(&self) -> libc::pid_t {
-        self.pid
+        self.child.pid()
+    }
+
+    pub fn poll_child_exit(&mut self) -> Option<u32> {
+        self.child.poll_exit()
+    }
+
+    pub fn terminate_child(&mut self) {
+        self.child.terminate();
     }
 
     pub fn winsize(&self) -> Winsize {
@@ -91,6 +100,7 @@ impl TermioHarness {
                 TermioMessage::Shutdown => {
                     self.shutdown = true;
                 }
+                TermioMessage::RedrawRequested | TermioMessage::SetTitle(_) => {}
             }
         }
         Ok(())
@@ -143,6 +153,12 @@ impl TermioHarness {
             }
         }
         Ok(())
+    }
+}
+
+impl Drop for TermioHarness {
+    fn drop(&mut self) {
+        self.terminate_child();
     }
 }
 

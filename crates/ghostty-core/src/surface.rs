@@ -129,6 +129,15 @@ impl Surface {
     pub fn poll_child_exit(&mut self) -> Option<u32> {
         self.session.as_mut()?.poll_child_exit()
     }
+
+    /// Request termio shutdown for this surface session.
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn shutdown(&mut self) -> FoundationResult<()> {
+        match self.session.as_mut() {
+            Some(session) => session.shutdown(),
+            None => Ok(()),
+        }
+    }
 }
 
 #[cfg(test)]

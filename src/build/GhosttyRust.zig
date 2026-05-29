@@ -410,3 +410,44 @@ fn rustTargetTriple(target: std.Target) ?[]const u8 {
         else => null,
     };
 }
+
+/// Build the Rust workspace core staticlib via Cargo (`ghostty-ffi`).
+///
+/// Phase 7 transition: Zig packaging links this artifact instead of invoking `rustc`
+/// on individual Rust modules. Callers should depend on the returned step before linking.
+pub fn coreStaticLibBuild(
+    b: *std.Build,
+    cfg: *const Config,
+) *std.Build.Step {
+    const triple = rustTargetTriple(cfg.target.result) orelse
+        @panic("no Rust target mapping for ghostty-ffi Cargo build");
+
+    const run = b.addSystemCommand(&.{
+        "cargo",
+        "build",
+        "-p",
+        "ghostty-ffi",
+        "--features",
+        "rust-vt",
+        "--target",
+        triple,
+    });
+    run.setCwd(b.path("."));
+    run.setEnvironmentVariable("RUSTFLAGS", "--cfg ghostty_vt_terminal_owned");
+    switch (cfg.optimize) {
+        .Debug => {},
+        else => run.addArg("--release"),
+    }
+    return &run.step;
+}
+
+/// Expected `libghostty_ffi.a` path after [`coreStaticLibBuild`].
+pub fn coreStaticLibPath(b: *std.Build, cfg: *const Config) std.Build.LazyPath {
+    const triple = rustTargetTriple(cfg.target.result) orelse
+        @panic("no Rust target mapping for ghostty-ffi artifact path");
+    const profile: []const u8 = switch (cfg.optimize) {
+        .Debug => "debug",
+        else => "release",
+    };
+    return b.path(b.fmt("target/{s}/{s}/libghostty_ffi.a", .{ triple, profile }));
+}

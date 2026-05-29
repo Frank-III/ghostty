@@ -10,6 +10,10 @@ pub enum TermioMessage {
     Write(Vec<u8>),
     Resize { cols: u16, rows: u16 },
     Shutdown,
+    /// Renderer/surface bridge placeholder (`Termio.zig` surface mailbox).
+    RedrawRequested,
+    /// Title change from child process (`Exec` → surface).
+    SetTitle(String),
 }
 
 /// Fixed-capacity mailbox for termio messages.

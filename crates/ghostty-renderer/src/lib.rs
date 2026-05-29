@@ -15,6 +15,7 @@ pub mod backend;
 pub mod cell;
 pub mod color;
 pub mod cursor;
+pub mod damage;
 pub mod generic;
 pub mod size;
 pub mod state;
@@ -28,6 +29,7 @@ pub use color::{linear_srgb_to_display_p3, shader_rgba, srgb_bytes_to_display_p3
 pub use cursor::{
     resolve_style, CursorStyle, CursorStyleOptions, RenderCursorState, TerminalCursorStyle,
 };
+pub use damage::{DamageRect, DamageState};
 pub use generic::{
     GenericRenderer, GenericRendererStub, GraphicsApi, GraphicsError, StubGraphicsApi,
 };

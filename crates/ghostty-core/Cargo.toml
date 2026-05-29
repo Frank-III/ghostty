@@ -18,3 +18,15 @@ ghostty-termio = { path = "../ghostty-termio", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[dev-dependencies]
+ghostty-config = { path = "../ghostty-config" }
+ghostty-termio = { path = "../ghostty-termio", features = ["rust-vt"] }
+
+[[test]]
+name = "surface_session"
+required-features = ["rust-vt"]
+
+[[test]]
+name = "app_session"
+required-features = ["rust-vt"]

@@ -1,5 +1,6 @@
 //! Core configuration (`src/config/Config.zig` minimal subset).
 
+use std::collections::HashSet;
 use std::path::Path;
 
 use crate::error::{ConfigError, DiagnosticList, LoadError};
@@ -125,9 +126,27 @@ impl Config {
 
     /// Parse config from an in-memory file body (`loadReader`).
     pub fn load_from_str(&mut self, content: &str, source_path: &str) {
+        let _ = self.load_from_str_collect_includes(content, source_path);
+    }
+
+    /// Parse lines and return `config-file` entries discovered in this file.
+    pub fn load_from_str_collect_includes(
+        &mut self,
+        content: &str,
+        source_path: &str,
+    ) -> Vec<String> {
         let content = strip_utf8_bom(content);
+        let mut includes = Vec::new();
         for line in LineIter::new(content) {
             let loc = Some(line.location(source_path));
+            if line.key == "config-file" {
+                if let Some(value) = line.value.as_deref() {
+                    includes.push(value.trim().to_string());
+                } else {
+                    self.diagnostics.invalid_value("config-file", "value required", loc);
+                }
+                continue;
+            }
             if let Err(err) = self.apply_line(&line.key, line.value.as_deref()) {
                 let message = match err {
                     ConfigError::InvalidValue => "invalid value",
@@ -141,16 +160,13 @@ impl Config {
                 }
             }
         }
+        includes
     }
 
     /// Load absolute config file path (`loadFile`).
     pub fn load_file(&mut self, path: &Path) -> Result<(), LoadError> {
-        file_load::validate_config_path(path)?;
-        let content =
-            std::fs::read_to_string(path).map_err(|_| LoadError::FileOpenFailed)?;
-        let path_str = path.to_string_lossy();
-        self.load_from_str(&content, &path_str);
-        Ok(())
+        let mut visited = HashSet::new();
+        file_load::load_recursive(self, path, &mut visited)
     }
 
     /// Load optional file; returns whether it was loaded (`loadOptionalFile`).
@@ -661,5 +677,24 @@ mod tests {
         assert_eq!(cfg.window_padding_x.top_left, 4);
         assert_eq!(cfg.window_padding_x.bottom_right, 8);
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn recursive_config_file_include() {
+        let dir = std::env::temp_dir().join(format!("ghostty-recursive-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let child = dir.join("child.ghostty");
+        let parent = dir.join("parent.ghostty");
+        std::fs::write(&child, "font-size = 22\n").unwrap();
+        std::fs::write(
+            &parent,
+            format!("config-file = \"{}\"\nfont-size = 11\n", child.display()),
+        )
+        .unwrap();
+        let mut cfg = Config::with_defaults();
+        cfg.load_file(&parent).unwrap();
+        assert_eq!(cfg.font_size, 22.0);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -8,6 +8,7 @@
 //! - `src/cli/args.zig` (`LineIterator` for config files)
 
 pub mod config;
+pub mod derived_config;
 pub mod error;
 pub mod file_load;
 pub mod parse;
@@ -15,6 +16,9 @@ pub mod string_literal;
 pub mod types;
 
 pub use config::{Config, OptionalFileAction};
+pub use derived_config::{
+    DerivedCoreConfig, DerivedFontConfig, DerivedRendererConfig, DerivedTermioConfig,
+};
 pub use error::{
     ConfigError, Diagnostic, DiagnosticList, LoadError, SourceLocation,
 };

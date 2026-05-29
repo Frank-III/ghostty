@@ -20,6 +20,8 @@ pub struct App {
     /// Mirrors `App.first` — true until the first surface is created.
     first: bool,
     pending_events: Vec<AppEvent>,
+    /// Events from the most recent [`tick`](Self::tick) for FFI polling.
+    tick_events: Vec<AppEvent>,
 }
 
 impl App {
@@ -33,6 +35,7 @@ impl App {
             focused_surface: None,
             first: true,
             pending_events: Vec::new(),
+            tick_events: Vec::new(),
         }
     }
 
@@ -58,6 +61,10 @@ impl App {
 
     pub fn set_focused(&mut self, focused: bool) {
         self.focused = focused;
+    }
+
+    pub fn focused_surface(&self) -> Option<SurfaceId> {
+        self.focused_surface
     }
 
     pub fn is_first_surface(&self) -> bool {
@@ -104,6 +111,10 @@ impl App {
         self.first = false;
     }
 
+    fn push_surface_event(&mut self, id: SurfaceId, event: SurfaceEvent) {
+        self.pending_events.push(AppEvent::Surface { id, event });
+    }
+
     /// Allocate a surface ID and register a surface.
     ///
     /// With `rust-vt`, spawns config + termio + Rust VT via [`SurfaceSession`].
@@ -133,6 +144,38 @@ impl App {
         Some(id)
     }
 
+    /// Remove a surface by id, shutting down its session when present.
+    pub fn delete_surface(&mut self, id: SurfaceId) -> bool {
+        let Some(index) = self.surfaces.iter().position(|s| s.id() == id) else {
+            return false;
+        };
+
+        #[cfg(all(unix, feature = "rust-vt"))]
+        {
+            if let Some(surface) = self.surfaces.get_mut(index) {
+                let _ = surface.shutdown();
+            }
+        }
+
+        self.surfaces.remove(index);
+
+        if self.focused_surface == Some(id) {
+            self.focused_surface = self.surfaces.first().map(|s| s.id());
+            for surface in &mut self.surfaces {
+                surface.set_focused(self.focused_surface == Some(surface.id()));
+            }
+            if let Some(new_focus) = self.focused_surface {
+                self.push_surface_event(
+                    new_focus,
+                    SurfaceEvent::FocusChanged { focused: true },
+                );
+            }
+        }
+
+        self.push_event(AppEvent::CloseSurface { id });
+        true
+    }
+
     pub fn push_event(&mut self, event: AppEvent) {
         self.pending_events.push(event);
     }
@@ -154,18 +197,66 @@ impl App {
             }
         }
 
+        self.tick_events = events.clone();
         events
+    }
+
+    /// Pop the next event produced by the last [`tick`](Self::tick).
+    pub fn take_polled_event(&mut self) -> Option<AppEvent> {
+        if self.tick_events.is_empty() {
+            return None;
+        }
+        Some(self.tick_events.remove(0))
     }
 
     pub fn focus_surface(&mut self, id: SurfaceId) -> bool {
         if self.find_surface(id).is_none() {
             return false;
         }
+        let previous = self.focused_surface;
+        let mut focus_events = Vec::new();
         for surface in &mut self.surfaces {
-            surface.set_focused(surface.id() == id);
+            let now_focused = surface.id() == id;
+            if surface.focused() != now_focused {
+                surface.set_focused(now_focused);
+                focus_events.push((
+                    surface.id(),
+                    SurfaceEvent::FocusChanged {
+                        focused: now_focused,
+                    },
+                ));
+            }
         }
-        self.focused_surface = Some(id);
+        for (sid, event) in focus_events {
+            self.push_surface_event(sid, event);
+        }
+        if previous != Some(id) {
+            self.focused_surface = Some(id);
+        }
         true
+    }
+
+    /// Update surface title and enqueue a title-changed event.
+    pub fn set_surface_title(&mut self, id: SurfaceId, title: impl Into<String>) -> bool {
+        let Some(surface) = self.find_surface_mut(id) else {
+            return false;
+        };
+        let title = title.into();
+        surface.set_title(title.clone());
+        self.push_surface_event(id, SurfaceEvent::TitleChanged { title });
+        true
+    }
+}
+
+impl Drop for App {
+    fn drop(&mut self) {
+        #[cfg(all(unix, feature = "rust-vt"))]
+        {
+            for surface in &mut self.surfaces {
+                let _ = surface.shutdown();
+            }
+        }
+        self.surfaces.clear();
     }
 }
 
@@ -173,16 +264,48 @@ impl App {
 mod tests {
     use super::*;
 
+    #[cfg(all(unix, feature = "rust-vt"))]
+    fn cleanup_app(app: &mut App) {
+        let ids: Vec<_> = app.surfaces().iter().map(|s| s.id()).collect();
+        for id in ids {
+            let _ = app.delete_surface(id);
+        }
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    fn short_lived_surface(app: &mut App) -> SurfaceId {
+        use ghostty_termio::{CommandBuilder, CommandSpec};
+        use crate::surface_session::SurfaceSessionOptions;
+
+        let spec: CommandSpec = CommandBuilder::new()
+            .path("/bin/sh")
+            .arg("sh")
+            .arg("-c")
+            .arg("printf ok")
+            .build()
+            .expect("spec");
+        app.create_surface_with_options(SurfaceSessionOptions {
+            command: Some(spec),
+            ..Default::default()
+        })
+        .expect("surface")
+    }
+
     #[test]
     fn create_surface_and_find() {
         let mut app = App::with_defaults(RuntimeConfig::default());
         assert!(app.is_first_surface());
+        #[cfg(all(unix, feature = "rust-vt"))]
+        let id = short_lived_surface(&mut app);
+        #[cfg(not(all(unix, feature = "rust-vt")))]
         let id = app.create_surface().unwrap();
         assert!(!app.is_first_surface());
         assert_eq!(app.surface_count(), 1);
         assert!(app.find_surface(id).is_some());
         #[cfg(all(unix, feature = "rust-vt"))]
         assert!(app.find_surface(id).unwrap().has_session());
+        #[cfg(all(unix, feature = "rust-vt"))]
+        cleanup_app(&mut app);
     }
 
     #[test]
@@ -197,86 +320,91 @@ mod tests {
     #[test]
     fn create_surface_focuses_first() {
         let mut app = App::with_defaults(RuntimeConfig::default());
+        #[cfg(all(unix, feature = "rust-vt"))]
+        let id = short_lived_surface(&mut app);
+        #[cfg(not(all(unix, feature = "rust-vt")))]
         let id = app.create_surface().unwrap();
+        assert_eq!(app.focused_surface(), Some(id));
         assert!(app.find_surface(id).unwrap().focused());
+        #[cfg(all(unix, feature = "rust-vt"))]
+        cleanup_app(&mut app);
     }
 
-    #[cfg(all(unix, feature = "rust-vt"))]
-    mod session {
-        use std::time::{Duration, Instant};
+    #[test]
+    fn multiple_surfaces_and_delete() {
+        let mut app = App::with_defaults(RuntimeConfig::default());
+        #[cfg(all(unix, feature = "rust-vt"))]
+        let a = short_lived_surface(&mut app);
+        #[cfg(all(unix, feature = "rust-vt"))]
+        let b = short_lived_surface(&mut app);
+        #[cfg(not(all(unix, feature = "rust-vt")))]
+        let a = app.create_surface().unwrap();
+        #[cfg(not(all(unix, feature = "rust-vt")))]
+        let b = app.create_surface().unwrap();
+        assert_eq!(app.surface_count(), 2);
+        app.focus_surface(b);
+        assert_eq!(app.focused_surface(), Some(b));
+        assert!(app.delete_surface(a));
+        assert_eq!(app.surface_count(), 1);
+        assert!(app.find_surface(a).is_none());
+        assert_eq!(app.focused_surface(), Some(b));
+        #[cfg(all(unix, feature = "rust-vt"))]
+        cleanup_app(&mut app);
+    }
 
-        use ghostty_termio::{CommandBuilder, CommandSpec};
+    #[test]
+    fn focus_emits_event_on_tick() {
+        let mut app = App::with_defaults(RuntimeConfig::default());
+        #[cfg(all(unix, feature = "rust-vt"))]
+        let a = short_lived_surface(&mut app);
+        #[cfg(all(unix, feature = "rust-vt"))]
+        let b = short_lived_surface(&mut app);
+        #[cfg(not(all(unix, feature = "rust-vt")))]
+        let a = app.create_surface().unwrap();
+        #[cfg(not(all(unix, feature = "rust-vt")))]
+        let b = app.create_surface().unwrap();
+        app.focus_surface(b);
+        let events = app.tick();
+        assert!(events.iter().any(|e| {
+            matches!(
+                e,
+                AppEvent::Surface {
+                    id,
+                    event: SurfaceEvent::FocusChanged { focused: true },
+                } if *id == b
+            )
+        }));
+        assert!(events.iter().any(|e| {
+            matches!(
+                e,
+                AppEvent::Surface {
+                    id,
+                    event: SurfaceEvent::FocusChanged { focused: false },
+                } if *id == a
+            )
+        }));
+        #[cfg(all(unix, feature = "rust-vt"))]
+        cleanup_app(&mut app);
+    }
 
-        use super::*;
-        use crate::surface_session::SurfaceSessionOptions;
-
-        fn printf_spec(text: &str) -> CommandSpec {
-            CommandBuilder::new()
-                .path("/bin/sh")
-                .arg("sh")
-                .arg("-c")
-                .arg(format!("printf '{text}'"))
-                .build()
-                .expect("spec")
-        }
-
-        #[test]
-        fn create_surface_spawns_pty_session() {
-            let mut app = App::with_defaults(RuntimeConfig::default());
-            let id = app.create_surface().unwrap();
-            let surface = app.find_surface(id).unwrap();
-            assert!(surface.has_session());
-            assert!(surface.session().unwrap().pid() > 0);
-        }
-
-        #[test]
-        fn tick_pumps_child_output_into_terminal() {
-            let mut app = App::with_defaults(RuntimeConfig::default());
-            let id = app
-                .create_surface_with_options(SurfaceSessionOptions {
-                    command: Some(printf_spec("app-vt")),
-                    ..Default::default()
-                })
-                .expect("surface");
-
-            let deadline = Instant::now() + Duration::from_secs(3);
-            while Instant::now() < deadline {
-                app.tick();
-                if app.find_surface(id).unwrap().contains_text("app-vt") {
-                    return;
-                }
-                std::thread::sleep(Duration::from_millis(10));
-            }
-            panic!("expected app-vt in terminal grid");
-        }
-
-        #[test]
-        fn tick_reports_child_exit() {
-            let mut app = App::with_defaults(RuntimeConfig::default());
-            let id = app
-                .create_surface_with_options(SurfaceSessionOptions {
-                    command: Some(printf_spec("done")),
-                    ..Default::default()
-                })
-                .expect("surface");
-
-            let deadline = Instant::now() + Duration::from_secs(3);
-            while Instant::now() < deadline {
-                let events = app.tick();
-                if events.iter().any(|e| {
-                    matches!(
-                        e,
-                        AppEvent::Surface {
-                            id: sid,
-                            event: SurfaceEvent::ChildExited { exit_code: 0 },
-                        } if *sid == id
-                    )
-                }) {
-                    return;
-                }
-                std::thread::sleep(Duration::from_millis(10));
-            }
-            panic!("expected ChildExited event");
-        }
+    #[test]
+    fn set_surface_title_emits_event() {
+        let mut app = App::with_defaults(RuntimeConfig::default());
+        #[cfg(all(unix, feature = "rust-vt"))]
+        let id = short_lived_surface(&mut app);
+        #[cfg(not(all(unix, feature = "rust-vt")))]
+        let id = app.create_surface().unwrap();
+        assert!(app.set_surface_title(id, "term"));
+        let events = app.tick();
+        assert!(events.iter().any(|e| {
+            matches!(
+                e,
+                AppEvent::Surface {
+                    event: SurfaceEvent::TitleChanged { title },
+                    ..
+                } if title == "term"
+            )
+        }));
+        cleanup_app(&mut app);
     }
 }

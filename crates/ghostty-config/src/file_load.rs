@@ -1,5 +1,6 @@
 //! Default config file paths (`src/config/file_load.zig`).
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::error::LoadError;
@@ -110,6 +111,39 @@ pub fn validate_config_path(path: &Path) -> Result<(), LoadError> {
     }
     if meta.len() == 0 {
         return Err(LoadError::FileIsEmpty);
+    }
+    Ok(())
+}
+
+/// Resolve a `config-file` path relative to the including file's directory.
+pub fn resolve_config_file_path(base_file: &Path, entry: &str) -> PathBuf {
+    let trimmed = entry.trim();
+    if trimmed.starts_with('/') {
+        return PathBuf::from(trimmed);
+    }
+    base_file
+        .parent()
+        .map(|dir| dir.join(trimmed))
+        .unwrap_or_else(|| PathBuf::from(trimmed))
+}
+
+/// Load a config file and any nested `config-file` entries (cycle-safe).
+pub fn load_recursive(
+    config: &mut crate::Config,
+    path: &Path,
+    visited: &mut HashSet<PathBuf>,
+) -> Result<(), LoadError> {
+    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    if !visited.insert(canonical.clone()) {
+        return Ok(());
+    }
+    validate_config_path(&canonical)?;
+    let content =
+        std::fs::read_to_string(&canonical).map_err(|_| LoadError::FileOpenFailed)?;
+    let includes = config.load_from_str_collect_includes(&content, &canonical.to_string_lossy());
+    for include in includes {
+        let resolved = resolve_config_file_path(&canonical, &include);
+        load_recursive(config, &resolved, visited)?;
     }
     Ok(())
 }

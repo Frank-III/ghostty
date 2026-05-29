@@ -41,9 +41,12 @@ pub enum AppEvent {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SurfaceEvent {
     SetTitle,
+    TitleChanged { title: String },
     Close,
     ChildExited { exit_code: u32 },
+    FocusChanged { focused: bool },
     PresentSurface,
+    RedrawRequested,
     RingBell,
 }
 

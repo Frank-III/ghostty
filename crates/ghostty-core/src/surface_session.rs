@@ -73,7 +73,6 @@ pub struct SurfaceSession {
     config: AppConfig,
     harness: TermioHarness,
     terminal: RustOwnedTerminalSink,
-    child_exit_emitted: bool,
 }
 
 impl SurfaceSession {
@@ -96,7 +95,6 @@ impl SurfaceSession {
             config,
             harness,
             terminal,
-            child_exit_emitted: false,
         })
     }
 
@@ -184,29 +182,7 @@ impl SurfaceSession {
     }
 
     pub fn poll_child_exit(&mut self) -> Option<u32> {
-        if self.child_exit_emitted {
-            return None;
-        }
-        let pid = self.harness.pid();
-        if pid <= 0 {
-            return None;
-        }
-        let mut status: i32 = 0;
-        let result = unsafe { libc::waitpid(pid, &mut status, libc::WNOHANG) };
-        if result == 0 {
-            return None;
-        }
-        if result < 0 {
-            return None;
-        }
-        self.child_exit_emitted = true;
-        use ghostty_termio::{process_exit_from_wait_status, ProcessExit};
-        Some(match process_exit_from_wait_status(status) {
-            ProcessExit::Exited(code) => u32::from(code),
-            ProcessExit::Signaled(sig) => sig,
-            ProcessExit::Stopped(sig) => sig,
-            ProcessExit::Unknown(raw) => raw,
-        })
+        self.harness.poll_child_exit()
     }
 
     pub fn is_shutdown(&self) -> bool {
@@ -225,112 +201,5 @@ impl std::fmt::Debug for SurfaceSession {
             .field("pid", &self.pid())
             .field("winsize", &self.winsize())
             .finish_non_exhaustive()
-    }
-}
-
-#[cfg(all(unix, test, feature = "rust-vt"))]
-mod tests {
-    use std::time::{Duration, Instant};
-
-    use ghostty_config::Config;
-    use ghostty_termio::{CommandBuilder, CommandSpec};
-
-    use super::*;
-    use crate::AppConfig;
-
-    fn echo_cat_command() -> CommandSpec {
-        CommandBuilder::new()
-            .path("/bin/sh")
-            .arg("sh")
-            .arg("-c")
-            .arg("cat")
-            .build()
-            .expect("cat spec")
-    }
-
-    #[test]
-    fn spawn_default_shell() {
-        let session = SurfaceSession::from_defaults().expect("spawn");
-        assert!(session.pid() > 0);
-        assert_eq!(session.id().get(), 1);
-    }
-
-    #[test]
-    fn write_echo_round_trip() {
-        let mut session = SurfaceSession::spawn(
-            AppConfig::default(),
-            SurfaceSessionOptions {
-                command: Some(echo_cat_command()),
-                ..Default::default()
-            },
-        )
-        .expect("spawn");
-
-        session.write(b"ping\n").expect("write");
-        let deadline = Instant::now() + Duration::from_secs(3);
-        session
-            .run_until(deadline, |s| s.contains_text("ping"))
-            .expect("run");
-        assert!(session.contains_text("ping"));
-    }
-
-    #[test]
-    fn child_output_reaches_terminal() {
-        let spec = CommandBuilder::new()
-            .path("/bin/sh")
-            .arg("sh")
-            .arg("-c")
-            .arg("printf 'core-vt'")
-            .build()
-            .expect("spec");
-
-        let mut session = SurfaceSession::spawn(
-            AppConfig::default(),
-            SurfaceSessionOptions {
-                command: Some(spec),
-                ..Default::default()
-            },
-        )
-        .expect("spawn");
-
-        let deadline = Instant::now() + Duration::from_secs(3);
-        session
-            .run_until(deadline, |s| s.contains_text("core-vt"))
-            .expect("run");
-        assert!(session.contains_text("core-vt"));
-    }
-
-    #[test]
-    fn config_command_used() {
-        let mut cfg = Config::with_defaults();
-        cfg.command = Some("printf cfg-cmd".to_string());
-        let mut session = SurfaceSession::spawn(
-            AppConfig::new(cfg),
-            SurfaceSessionOptions::default(),
-        )
-        .expect("spawn");
-
-        let deadline = Instant::now() + Duration::from_secs(3);
-        session
-            .run_until(deadline, |s| s.contains_text("cfg-cmd"))
-            .expect("run");
-        assert!(session.contains_text("cfg-cmd"));
-    }
-
-    #[test]
-    fn resize_updates_terminal() {
-        let mut session = SurfaceSession::spawn(
-            AppConfig::default(),
-            SurfaceSessionOptions {
-                command: Some(echo_cat_command()),
-                ..Default::default()
-            },
-        )
-        .expect("spawn");
-
-        session.resize(120, 40).expect("resize");
-        assert_eq!(session.winsize().cols, 120);
-        assert_eq!(session.winsize().rows, 40);
-        session.write(b"x").expect("write");
     }
 }

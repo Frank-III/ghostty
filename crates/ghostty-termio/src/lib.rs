@@ -7,6 +7,8 @@
 //! - `src/termio/` (Exec, Termio thread — harness started in `harness.rs`)
 
 pub mod command;
+#[cfg(unix)]
+pub mod exec;
 pub mod harness;
 pub mod mode;
 pub mod pty;
@@ -14,6 +16,9 @@ pub mod shell;
 pub mod termio;
 pub mod vt_sink;
 pub mod winsize;
+
+#[cfg(unix)]
+pub mod r#loop;
 
 #[cfg(unix)]
 pub mod spawn;
@@ -26,6 +31,11 @@ pub use shell::{shell_escape, ShellCommandBuilder};
 pub use termio::{TermioMailbox, TermioMessage};
 pub use winsize::Winsize;
 pub use ghostty_foundation::{FoundationError, FoundationResult};
+
+#[cfg(unix)]
+pub use exec::{ChildWatcher, ExecSpawn};
+#[cfg(unix)]
+pub use r#loop::TermioLoop;
 
 #[cfg(unix)]
 pub use spawn::{spawn_on_pty, spawn_pty_command, SpawnError, SpawnPtyError};

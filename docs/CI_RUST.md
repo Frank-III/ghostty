@@ -26,6 +26,7 @@ cargo test -p ghostty-termio --features rust-vt
 
 # Headless SurfaceSession (config + termio + Rust VT)
 RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-core --features rust-vt
+# Includes `tests/app_session.rs` and `tests/surface_session.rs` (separate processes).
 RUSTFLAGS='--cfg ghostty_vt_terminal_owned' cargo test -p ghostty-ffi --features rust-vt
 
 # Rust tmux viewer behavioral tests (pane capture, session reset, live output)
@@ -43,8 +44,19 @@ App-owned mode sets `c_abi` on the Ghostty terminal module so pin/render/wrapper
 symbols export for the linked Rust VT object (same bridge as lib-vt, without a
 separate `libghostty-vt` artifact).
 
+## Phase 7 Cargo-primary bootstrap
+
+`src/build/GhosttyRust.zig` exposes `coreStaticLibBuild` and `coreStaticLibPath` so Zig
+packaging can depend on a Cargo-built `libghostty_ffi.a` instead of per-module `rustc` objects.
+
+```bash
+export RUSTFLAGS='--cfg ghostty_vt_terminal_owned'
+cargo build -p ghostty-ffi --features rust-vt
+```
+
 ## Phase 8 flip criteria (not yet)
 
+- [x] `coreStaticLibBuild` / `coreStaticLibPath` in `GhosttyRust.zig`
 - [ ] All `crates/*` tests green on Linux + macOS CI
 - [ ] `ghostty-vt` object built via Cargo artifact, not direct `rustc` invoke
 - [ ] Zig build reduced to packaging, codegen, and platform shells only
