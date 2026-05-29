@@ -1,0 +1,59 @@
+crates/ghostty-termio/src/loop.rs
+  s_6cee157524a3f1::t_2fc804c1dd80a9 12-19
+  s_6cee157524a3f1::t_c555fe101ee842 56-58,62,68-73,77
+crates/ghostty-core/src/surface_session.rs
+  s_6cee157524a3f1::t_dfd31694fa5855 92-93
+  s_6cee157524a3f1::t_b31ecf4a75b085 14
+  s_6cee157524a3f1::t_eb6162038b4b4a 122-123
+  s_6cee157524a3f1::t_0cd3547482c5aa 228-232
+  s_6cee157524a3f1::t_7c5c21afa7f13a 173-179,181,189-202
+  s_6cee157524a3f1::t_c4c7a1f5f06658 159
+crates/ghostty-ffi/src/lib.rs
+  s_6cee157524a3f1::t_906759cae7dd98 298-305
+  s_6cee157524a3f1::t_fbd0dcfd6812f6 194-213,219-239
+  s_6cee157524a3f1::t_dc70b2e8492647 125
+  s_6cee157524a3f1::t_795679295480dc 214-218
+crates/ghostty-config/src/derived_config.rs
+  s_6cee157524a3f1::t_c4c7a1f5f06658 63
+  s_6cee157524a3f1::t_d4d7df60cbf16b 25
+  s_6cee157524a3f1::t_0f4c804b5f146e 70
+crates/ghostty-core/tests/app_session.rs
+  s_6cee157524a3f1::t_9b6327344387ec 93-119
+crates/ghostty-core/tests/surface_session.rs
+  s_6cee157524a3f1::t_3dbef0ec7b97e8 101-117,134
+  s_6cee157524a3f1::t_b62ded7a234bcd 118-133
+crates/ghostty-config/src/config.rs
+  s_6cee157524a3f1::t_ab874a78d78810 120-121
+  s_6cee157524a3f1::t_efbf4e5c854a00 393-394,398-400,402
+  s_6cee157524a3f1::t_f278b6fb234691 58-59
+  s_6cee157524a3f1::t_e375a36cc0c86f 395-397
+  s_6cee157524a3f1::t_c4c7a1f5f06658 401
+  s_6cee157524a3f1::t_b65783d0883233 744-751
+crates/ghostty-termio/src/lib.rs
+  s_6cee157524a3f1::t_1914d6a68ab964 51
+crates/ghostty-core/src/app.rs
+  s_6cee157524a3f1::t_69c01683af78ec 252-267
+  s_6cee157524a3f1::t_17c94c32a65d54 188-193
+crates/ghostty-core/src/surface.rs
+  s_6cee157524a3f1::t_448a6fcb44100e 141-149
+crates/ghostty-termio/src/exec_config.rs
+  s_6cee157524a3f1::t_38429027db5cb7 50-52
+  s_6cee157524a3f1::t_93b97e90925386 79-87
+  s_6cee157524a3f1::t_50943f5efcf42e 28-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e81ad728d9974fa6dd64263529c62e34f0ad8c4b",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
