@@ -517,6 +517,12 @@ impl SurfaceSession {
         self.tick().map(|_| ())
     }
 
+    /// Stop the PTY thread and drain pending output.
+    pub fn shutdown_and_drain(&mut self) -> FoundationResult<()> {
+        self.terminal.detach_vt_effects();
+        self.termio.shutdown_and_drain(&mut self.terminal)
+    }
+
     /// Queue a termio thread message (write/resize/title/redraw).
     pub fn push_termio(&mut self, msg: TermioMessage) -> FoundationResult<()> {
         self.termio.push(msg)
@@ -550,17 +556,7 @@ impl SurfaceSession {
 impl Drop for SurfaceSession {
     fn drop(&mut self) {
         self.terminal.detach_vt_effects();
-        if !self.termio.is_shutdown() {
-            let _ = self.termio.shutdown();
-        }
-        let deadline = Instant::now() + Duration::from_secs(3);
-        while Instant::now() < deadline {
-            if self.termio.is_shutdown() {
-                break;
-            }
-            let _ = self.termio.tick(&mut self.terminal);
-            std::thread::sleep(Duration::from_millis(5));
-        }
+        let _ = self.termio.shutdown_and_drain(&mut self.terminal);
     }
 }
 

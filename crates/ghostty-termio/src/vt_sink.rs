@@ -320,15 +320,7 @@ mod rust_vt_tests {
     }
 
     fn finish_termio(termio: &mut crate::TermioLoop, sink: &mut RustOwnedTerminalSink) {
-        let _ = termio.shutdown();
-        let deadline = Instant::now() + Duration::from_secs(2);
-        while Instant::now() < deadline {
-            let _ = termio.tick(sink);
-            if termio.is_shutdown() {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(5));
-        }
+        let _ = termio.shutdown_and_drain(sink);
     }
 
     fn check_direct_write_updates_grid() {

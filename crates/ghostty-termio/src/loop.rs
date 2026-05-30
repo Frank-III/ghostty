@@ -1,5 +1,7 @@
 //! Production termio session (`Termio.zig`) via background thread + event drain.
 
+use std::time::{Duration, Instant};
+
 use ghostty_config::DerivedStreamConfig;
 use ghostty_foundation::FoundationResult;
 
@@ -109,6 +111,22 @@ impl TermioLoop {
 
     pub fn shutdown(&mut self) -> FoundationResult<()> {
         self.push(TermioMessage::Shutdown)
+    }
+
+    /// Request shutdown and drain thread events until the background thread exits.
+    pub fn shutdown_and_drain(&mut self, sink: &mut dyn TermioSink) -> FoundationResult<()> {
+        if !self.is_shutdown() {
+            self.shutdown()?;
+        }
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while Instant::now() < deadline {
+            self.tick(sink)?;
+            if self.is_shutdown() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        Ok(())
     }
 
     /// Drain surface-thread messages queued by the stream handler.

@@ -16,9 +16,7 @@ fn echo_cat_command() -> CommandSpec {
 }
 
 fn finish_session(session: &mut SurfaceSession) {
-    let _ = session.shutdown();
-    let deadline = Instant::now() + Duration::from_secs(3);
-    let _ = session.run_until(deadline, |_| false);
+    let _ = session.shutdown_and_drain();
 }
 
 #[test]
