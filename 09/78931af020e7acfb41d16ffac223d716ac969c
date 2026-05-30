@@ -1,0 +1,19 @@
+crates/ghostty-termio/src/vt_sink.rs
+  s_6cee157524a3f1::t_59bc01a1657c55 312-334,340,354-355,366,374,382-383,410,418-419,429,440,443-444,454,459,462-463,473,478,481-482,492,499,502,531-542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0978931af020e7acfb41d16ffac223d716ac969c",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
