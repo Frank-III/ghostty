@@ -1,0 +1,282 @@
+crates/ghostty-renderer/Cargo.toml
+  s_6cee157524a3f1::t_f302a5fe460410 11
+crates/ghostty-renderer/src/cell.rs
+  s_6cee157524a3f1::t_ee76954d8cc715 61
+  s_6cee157524a3f1::t_4679c1aa841dd8 33
+crates/ghostty-renderer/src/generic.rs
+  s_6cee157524a3f1::t_17118d37d59b23 119-122
+  s_6cee157524a3f1::t_274226e27c46c6 26-32
+src/terminal/rust/osc_color_apply.rs
+  s_6cee157524a3f1::t_b13eb9e8a44117 67-69
+  s_6cee157524a3f1::t_26c1d0ca9fa746 3
+  s_6cee157524a3f1::t_c3512900cf94b7 244
+  s_6cee157524a3f1::t_d0f79ae05a7262 57-59
+  s_6cee157524a3f1::t_5ec14b3b62a824 1-2,4-56,60-66,70-167,169-178,189-243,245-250
+  s_6cee157524a3f1::t_faf9ea58942837 168,179-188
+crates/ghostty-core/src/events.rs
+  s_6cee157524a3f1::t_1e1c133d258389 61-64
+  s_6cee157524a3f1::t_64b035d03d6d73 79-81
+  s_6cee157524a3f1::t_bd4a954df74ab7 15,22-24
+crates/ghostty-core/tests/app_session.rs
+  s_6cee157524a3f1::t_f80e03416f079d 120-124,126-163,165-194
+  s_6cee157524a3f1::t_c0037f49671933 125,164
+crates/ghostty-renderer/src/lib.rs
+  s_6cee157524a3f1::t_4386cd476c61b3 14
+  s_6cee157524a3f1::t_46d5a64f4653bd 31
+  s_6cee157524a3f1::t_b4b3dab2347d77 59,62
+src/terminal/rust/stream_types.rs
+  s_6cee157524a3f1::t_d96a9255be6aa5 445
+  s_6cee157524a3f1::t_f1bc1a436d9232 292-294,297,299-302
+crates/ghostty-termio/src/vt_effects.rs
+  s_6cee157524a3f1::t_379fc255c999c6 106,142,155-156,162-163
+  s_6cee157524a3f1::t_86bb6bbfcf81f2 35,44,51,65-68
+  s_6cee157524a3f1::t_eb046af73d364f 9-10
+  s_6cee157524a3f1::t_b49ba5468a23f6 247-274,277-283
+  s_6cee157524a3f1::t_e8b14b10741e0a 52
+  s_6cee157524a3f1::t_a47013fcfe0143 16-22
+  s_6cee157524a3f1::t_59c6aa7926ba72 5
+  s_6cee157524a3f1::t_f1e944223da2fb 124-125
+  s_6cee157524a3f1::t_20971aeb46d8ae 57
+  s_6cee157524a3f1::t_8208fd0fb10778 164-170
+  s_6cee157524a3f1::t_7a41153b506e89 187,192-193
+  s_6cee157524a3f1::t_db316ee31d7f2f 275-276
+  s_6cee157524a3f1::t_b4c91af2d747cf 292
+  s_6cee157524a3f1::t_ebd5111d457eed 293
+  s_6cee157524a3f1::t_924c6c26c66218 126-133
+  s_6cee157524a3f1::t_79f97e027a9ce8 93-97,99-100,102-103
+  s_6cee157524a3f1::t_aa1667b379e4d3 136
+  s_6cee157524a3f1::t_589dcac0f08b11 13-14,53-56,98,101,104-105,107-123,134-135,137-141,143-154,157-161,188-191,194,202-208,294-297
+  s_6cee157524a3f1::t_e4c195b9c1308d 63-64
+src/terminal/rust/color_change_kind.rs
+  s_6cee157524a3f1::t_3fdce7ba200a35 1-25
+crates/ghostty-renderer/src/cells.rs
+  s_6cee157524a3f1::t_6d51e9cb0bdd64 11,20,31-34
+crates/ghostty-font/src/session.rs
+  s_6cee157524a3f1::t_4f191eef2bb0cf 14-20,23-43,47-52,56-66
+  s_6cee157524a3f1::t_29bc7aa1dd08d0 1-13,21-22,44-46,53-55,67-69
+src/terminal/rust/lib.rs
+  s_6cee157524a3f1::t_29932d0ebf76fe 128
+  s_6cee157524a3f1::t_3f8fb58f80984f 130
+  s_6cee157524a3f1::t_fba5718cb64c47 129
+  s_6cee157524a3f1::t_a59c1959667561 490
+  s_6cee157524a3f1::t_f89f6f6a6ce022 492
+crates/ghostty-font/src/atlas.rs
+  s_6cee157524a3f1::t_421fa36d607545 104-140,143,147-148
+  s_6cee157524a3f1::t_738c91bfcc5312 88-91
+  s_6cee157524a3f1::t_bbb2b7a8d5df8c 36
+  s_6cee157524a3f1::t_8a12828e414fd5 84-87
+  s_6cee157524a3f1::t_f0d28f5988df87 141-142,144-146
+  s_6cee157524a3f1::t_9b099eafe47475 291-306,313
+  s_6cee157524a3f1::t_b8418f062da38f 307-312
+crates/ghostty-termio/src/lib.rs
+  s_6cee157524a3f1::t_125cb30518710b 30-31
+crates/ghostty-renderer/src/text.rs
+  s_6cee157524a3f1::t_4e323e6c989206 115
+  s_6cee157524a3f1::t_2bd2fe02c20389 1-6,8-30,37-41,43-84,86,116
+  s_6cee157524a3f1::t_4cbfe0342b536e 85,87-114
+  s_6cee157524a3f1::t_84853fac692e6b 7
+  s_6cee157524a3f1::t_b44b8f656f89ce 31-36,42
+crates/ghostty-renderer/src/frame.rs
+  s_6cee157524a3f1::t_67b5107ad95426 3,14
+  s_6cee157524a3f1::t_1ffd03f65abc0a 30
+crates/ghostty-core/src/runtime.rs
+  s_6cee157524a3f1::t_222abd3da03ec0 6-7
+  s_6cee157524a3f1::t_6f605d02456997 56
+crates/ghostty-config/src/derived_config.rs
+  s_6cee157524a3f1::t_10a7eee28086da 72,80
+  s_6cee157524a3f1::t_347cae889c5979 17-18
+  s_6cee157524a3f1::t_0c373645406ce5 171-183
+src/terminal/rust/effects_wrapper.rs
+  s_6cee157524a3f1::t_193aeaeadb3b42 46,50-54
+  s_6cee157524a3f1::t_d86a4cba67074c 143-154
+  s_6cee157524a3f1::t_f044eb487229ce 19
+  s_6cee157524a3f1::t_7964b4078e82d2 28-29
+  s_6cee157524a3f1::t_8fe58be8d518f9 12
+  s_6cee157524a3f1::t_9930f05b68c4ac 37
+src/terminal/rust/stream_terminal.rs
+  s_6cee157524a3f1::t_27afa5cb049031 1060,1085-1106
+  s_6cee157524a3f1::t_2d1896286f6a45 1113,1117,1135-1139
+  s_6cee157524a3f1::t_ca6222b00f2efd 1111-1112,1114-1116,1119-1123,1143-1145
+  s_6cee157524a3f1::t_a89251b99717fb 1118,1124-1134,1140-1142
+  s_6cee157524a3f1::t_24a3507d34c7ab 1061,1063-1064,1066-1071,1073-1079,1107-1109
+  s_6cee157524a3f1::t_33e0e2f6c7c9aa 1062,1065,1072,1080-1084
+crates/ghostty-core/src/lib.rs
+  s_6cee157524a3f1::t_bd728ccebf1018 8
+  s_6cee157524a3f1::t_771bbcb730b53f 20-22
+  s_6cee157524a3f1::t_6f6d069b117e3e 27-29
+crates/ghostty-termio/src/surface_mailbox.rs
+  s_6cee157524a3f1::t_41d8835192d426 37-40
+crates/ghostty-renderer/src/opengl.rs
+  s_6cee157524a3f1::t_82294b9c9455e9 42
+  s_6cee157524a3f1::t_f54ab9a73a23ec 30-34
+  s_6cee157524a3f1::t_f81a7fc4e35983 9-12
+crates/ghostty-core/src/app.rs
+  s_6cee157524a3f1::t_c505c4254c3803 72-74,76-78,80-81,85-90,93-103,105-107
+  s_6cee157524a3f1::t_65eb75fb4d1618 108-119
+  s_6cee157524a3f1::t_854c9e913a6335 301,320-321,323-329,331
+  s_6cee157524a3f1::t_38972685a231ac 120-127,129-131
+  s_6cee157524a3f1::t_7671c67de111c6 128
+  s_6cee157524a3f1::t_a92efdc9f1630a 303-317
+  s_6cee157524a3f1::t_278879c1c46f49 6-7
+  s_6cee157524a3f1::t_a6d851692f3a56 9
+  s_6cee157524a3f1::t_362086ebdc5f14 8
+  s_6cee157524a3f1::t_643ec4f7eb5455 75,82-84,91-92,104
+crates/ghostty-font/src/lib.rs
+  s_6cee157524a3f1::t_7fe6bdf8bba8aa 31-33,36-38
+src/terminal/rust/terminal_effects.rs
+  s_6cee157524a3f1::t_df263a999b1738 123-132
+  s_6cee157524a3f1::t_6d3895e63cb71b 24-30
+crates/ghostty-renderer/src/draw_backend.rs
+  s_6cee157524a3f1::t_f8d28572fbe34d 48-49,51-54
+  s_6cee157524a3f1::t_bb985f7a7bc341 21
+  s_6cee157524a3f1::t_16fb4ee3ae00f5 50
+  s_6cee157524a3f1::t_a039cadc413949 5
+  s_6cee157524a3f1::t_dde357a65a0ddb 33
+  s_6cee157524a3f1::t_232b48224a478d 129
+  s_6cee157524a3f1::t_89b3c0dcdaa5fe 112-126
+  s_6cee157524a3f1::t_7cb498bba16d60 127-128,130-137
+crates/ghostty-renderer/src/host.rs
+  s_6cee157524a3f1::t_e2f409b9e0ee0f 52-59
+src/terminal/rust/kitty_color_apply.rs
+  s_6cee157524a3f1::t_7ea411badb0f9b 107,123,133
+  s_6cee157524a3f1::t_5d15c8772f916d 12,16-25,28-40
+  s_6cee157524a3f1::t_20a52feb8d08b3 91,93
+  s_6cee157524a3f1::t_08cc1c90324684 1-11,13-15,26-27,41-90,92,94-106,108-122,124-132,134-138
+crates/ghostty-termio/src/color_report.rs
+  s_6cee157524a3f1::t_49830be407601c 1-77
+crates/ghostty-core/src/action.rs
+  s_6cee157524a3f1::t_40c392adbfacd4 158-167
+  s_6cee157524a3f1::t_455316879a3119 243
+  s_6cee157524a3f1::t_fcee356dd02827 183
+  s_6cee157524a3f1::t_15867eec1aa4fa 1-157,168-169,171-182,184-218,233-237,239-242,244-252
+  s_6cee157524a3f1::t_15df43aa0798fb 219-232
+  s_6cee157524a3f1::t_50db2720d2d9f9 170
+  s_6cee157524a3f1::t_7c427f15452da6 238
+docs/PORTING_STATUS.tsv
+  s_6cee157524a3f1::t_6c267abbf685b3 69
+  s_6cee157524a3f1::t_a82f041b8f933c 66
+  s_6cee157524a3f1::t_5c8678375c45e8 73
+  s_6cee157524a3f1::t_07686874c6cbb4 61
+  s_6cee157524a3f1::t_31030a43785f51 65,72
+  s_6cee157524a3f1::t_2a90feccdb9912 70-71
+  s_6cee157524a3f1::t_8d84ccff4e83a2 49
+  s_6cee157524a3f1::t_e5db40f6ba2a8f 85-86
+  s_6cee157524a3f1::t_47d5bdaf9e5e50 76
+  s_6cee157524a3f1::t_f32505eeb6d521 84
+crates/ghostty-renderer/src/webgl.rs
+  s_6cee157524a3f1::t_23e19532212103 45
+  s_6cee157524a3f1::t_9033a26e19a995 9-12,30-35
+src/terminal/rust/osc_types.rs
+  s_6cee157524a3f1::t_dfd7b97200b761 63-65,68,70-73
+  s_6cee157524a3f1::t_cd81b8a7ef4045 122
+crates/ghostty-termio/src/vt_sink.rs
+  s_6cee157524a3f1::t_36582b7ba4b2b5 105,115-122,125-126
+  s_6cee157524a3f1::t_7a3a35c5e3411e 53
+  s_6cee157524a3f1::t_2576c46ece7b8b 107-114,123-124
+  s_6cee157524a3f1::t_5b52daa31d2846 106
+  s_6cee157524a3f1::t_fce18ddafa2ce6 151-154,156,162-170,172-185
+  s_6cee157524a3f1::t_440d0b91fc3e53 171
+  s_6cee157524a3f1::t_7511e3df45fcb1 316,319-320,335-337,344-346,349
+  s_6cee157524a3f1::t_84442f84dfca52 146-149
+  s_6cee157524a3f1::t_928912eea9d75a 317-318,321-334,338,340-343,347-348,350-352
+  s_6cee157524a3f1::t_af875ddb57bcd4 353-358,361-364,366-381,383-390
+  s_6cee157524a3f1::t_f666bb01350568 359-360,365,382
+  s_6cee157524a3f1::t_366396a51c5a37 391-447
+  s_6cee157524a3f1::t_5d23706549c4e0 339
+src/terminal/rust/stream_osc_dispatch.rs
+  s_6cee157524a3f1::t_787ed2b68475dc 52-55
+crates/ghostty-termio/src/stream_handler.rs
+  s_6cee157524a3f1::t_b6334c9c95dd98 151-159
+  s_6cee157524a3f1::t_abd25bf62deced 228-249
+  s_6cee157524a3f1::t_3adbc661fc4dc8 206-227
+  s_6cee157524a3f1::t_5f13e99552ad65 113-150
+src/terminal/rust/stream_osc_parse.rs
+  s_6cee157524a3f1::t_18db0ef7cefc05 476-479
+src/terminal/rust/stream_handler.rs
+  s_6cee157524a3f1::t_0994b20a73af99 206
+src/terminal/rust/cargo_link_stubs.rs
+  s_6cee157524a3f1::t_27204e92aba90a 101-112
+crates/ghostty-core/tests/surface_session.rs
+  s_6cee157524a3f1::t_ade8f674a2fd6b 181
+  s_6cee157524a3f1::t_8e0a9f9b53bc16 172-176
+  s_6cee157524a3f1::t_5f47a66ca02bad 200
+  s_6cee157524a3f1::t_8e339ff4b498b3 185-199,201-230,233,235-236,240-245,247,250
+  s_6cee157524a3f1::t_299e83448e3bb0 231-232,234,237-239,246
+  s_6cee157524a3f1::t_bc2785778c57ad 248-249
+  s_6cee157524a3f1::t_72fece713a0842 182
+  s_6cee157524a3f1::t_2783dd0fefe9ce 161-171,177-180,183-184
+crates/ghostty-core/src/surface_session.rs
+  s_6cee157524a3f1::t_98b1809ac3abba 35-36
+  s_6cee157524a3f1::t_df6f86b9303e0d 140-156
+  s_6cee157524a3f1::t_07cc7db6620b99 228-235
+  s_6cee157524a3f1::t_e8d37f72a853e4 112-114,121
+  s_6cee157524a3f1::t_380ad21ad0fe7a 246
+  s_6cee157524a3f1::t_0fa123421e0fb2 405-409
+  s_6cee157524a3f1::t_9afe8540e56b3a 24-27
+  s_6cee157524a3f1::t_7751305e5cf9f0 350,356-361,368-369,371-372,374-378
+  s_6cee157524a3f1::t_21fdb2a1514f3c 161
+  s_6cee157524a3f1::t_701b4c2befaabc 362-367,370,373
+  s_6cee157524a3f1::t_d28c88ddb08c49 445-447
+  s_6cee157524a3f1::t_3063bb30460765 485-488
+  s_6cee157524a3f1::t_02c1c022542ac4 317-323
+  s_6cee157524a3f1::t_8b6fcb01014d1c 525-531
+  s_6cee157524a3f1::t_7dd54a38e694b1 10
+  s_6cee157524a3f1::t_bc36992b6c1d3b 177-179,186
+  s_6cee157524a3f1::t_a067b244224ab8 115-120
+  s_6cee157524a3f1::t_ebe0b9fff5bb5b 272-286
+  s_6cee157524a3f1::t_719997fd068f85 351-355,379-404
+  s_6cee157524a3f1::t_a52fe55ba35e7d 270-271
+  s_6cee157524a3f1::t_b592920ea62727 180-185
+crates/ghostty-font/src/face.rs
+  s_6cee157524a3f1::t_1518b80d1818ec 175,181
+  s_6cee157524a3f1::t_059bbb5971cf8a 116-118,144,147-152,248-258,260-263,265-270,272-277,287-292,295-297,301-305
+  s_6cee157524a3f1::t_51840696bc0418 271
+  s_6cee157524a3f1::t_4dd4e5420a182c 120
+  s_6cee157524a3f1::t_da2ab26c16afe5 193-194,411-412
+  s_6cee157524a3f1::t_5a14a07f1170e3 259
+  s_6cee157524a3f1::t_158cb35021f0f1 307-327
+  s_6cee157524a3f1::t_b598e576245cec 293-294,298-300
+  s_6cee157524a3f1::t_a61402e2a78d7f 108,122,124-131,133-136,138-143,145-146,153-158,247,264,278-280,286
+  s_6cee157524a3f1::t_78b0c516e013ce 110-115,119,121,123,132,137,159-174,176-180,182-192,195-229,231-246
+  s_6cee157524a3f1::t_3e2844a09ccb01 230
+  s_6cee157524a3f1::t_1a35ff8de0cd94 331-334,336,338,340-348,350-353,356-380,383-394,456-495,500,509
+  s_6cee157524a3f1::t_25d61ada98446e 335,337,339,349,354-355,381-382,395-410,413-455
+crates/ghostty-config/src/types.rs
+  s_6cee157524a3f1::t_c798943eefba89 15-32
+crates/ghostty-font/src/glyph.rs
+  s_6cee157524a3f1::t_bcde7009c5071f 1-39
+src/terminal/rust/test_support.rs
+  s_6cee157524a3f1::t_8d593eb124b1e4 9,22-25,38-40,42-80,103-127
+crates/ghostty-font/Cargo.toml
+  s_6cee157524a3f1::t_53c1d5010c36e6 12-14
+  s_6cee157524a3f1::t_0c37d7aeb5aac2 17
+crates/ghostty-renderer/src/atlas_texture.rs
+  s_6cee157524a3f1::t_dc35ac89c40568 1-51,54-55
+  s_6cee157524a3f1::t_a6f5cbf3532ef6 52-53
+crates/ghostty-termio/src/loop.rs
+  s_6cee157524a3f1::t_299d7b0d4c871a 122-134
+crates/ghostty-renderer/src/metal.rs
+  s_6cee157524a3f1::t_1c628842844b1b 30-34
+  s_6cee157524a3f1::t_d7dc179731e97e 9-12
+  s_6cee157524a3f1::t_dbd426b485df53 42
+src/terminal/rust/constants.rs
+  s_6cee157524a3f1::t_4bc67fb9b74baa 16-19
+crates/ghostty-font/src/glyph_cache.rs
+  s_6cee157524a3f1::t_6a8a1456290cd0 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4944b977686d8a33ca230ebf629a9c9740992b9e",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
