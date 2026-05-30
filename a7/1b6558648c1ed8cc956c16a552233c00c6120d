@@ -1,0 +1,70 @@
+src/terminal/rust/terminal_effects.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 24
+src/terminal/rust/test_support.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 9-13,26,70-74,97-98
+  s_6cee157524a3f1::t_d52b489d8bb666 162-192
+crates/ghostty-config/src/lib.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 41-42
+src/terminal/rust/kitty_color_apply.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 37-48
+src/terminal/rust/osc_color_apply.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 57-62,239-241
+crates/ghostty-font/src/lib.rs
+  s_6cee157524a3f1::t_4e5e06513efc03 40-42
+crates/ghostty-renderer/src/text.rs
+  s_6cee157524a3f1::t_e95fddd58b855b 151-165
+  s_6cee157524a3f1::t_8367bc7f03115d 25-28
+docs/PORTING_STATUS.tsv
+  s_6cee157524a3f1::t_d6fed5ecff99f9 89
+src/terminal/rust/effects_wrapper.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 8-9,127
+crates/ghostty-font/src/face.rs
+  s_6cee157524a3f1::t_0555532ef31d9b 205,418
+  s_6cee157524a3f1::t_a8b223e03aea4d 106-117
+crates/ghostty-renderer/src/cells.rs
+  s_6cee157524a3f1::t_217e600bd94f2b 25,29-41
+  s_6cee157524a3f1::t_33a3f66644be56 13-14
+crates/ghostty-config/src/derived_config.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 5-7
+crates/ghostty-font/src/shaping.rs
+  s_6cee157524a3f1::t_0fece1ffec6811 56-62
+  s_6cee157524a3f1::t_a67665e7046b7a 8-16
+  s_6cee157524a3f1::t_78299fa28191af 17
+crates/ghostty-termio/tests/termio_loop.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 36-37,65-66
+crates/ghostty-termio/src/lib.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 83-86
+crates/ghostty-core/src/surface_session.rs
+  s_6cee157524a3f1::t_09d3a7a4419768 335-337
+  s_6cee157524a3f1::t_4e5e06513efc03 405
+  s_6cee157524a3f1::t_a369d113c02f27 394-404,406
+src/terminal/rust/lib.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 21,30,65,125,483-486,495
+  s_6cee157524a3f1::t_eb0f9d87151861 496
+crates/ghostty-termio/src/vt_sink.rs
+  s_6cee157524a3f1::t_bfa3ff63ffa013 158-161
+  s_6cee157524a3f1::t_f3c563bc3790a4 477-478,480-483
+  s_6cee157524a3f1::t_9d4089a85428f5 479
+  s_6cee157524a3f1::t_08e972efa01c53 55
+  s_6cee157524a3f1::t_5a69495775b4f3 544
+crates/ghostty-termio/src/stream_handler.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 104-107
+crates/ghostty-termio/src/surface_mailbox.rs
+  s_6cee157524a3f1::t_c8a5304a6a0056 29-31,34-36,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a71b6558648c1ed8cc956c16a552233c00c6120d",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
