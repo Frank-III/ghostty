@@ -27,6 +27,9 @@ pub mod r#loop;
 pub mod vt_effects;
 
 #[cfg(unix)]
+pub mod color_report;
+
+#[cfg(unix)]
 pub mod stream_handler;
 
 #[cfg(unix)]

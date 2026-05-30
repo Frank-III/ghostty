@@ -49,6 +49,14 @@ impl HostRenderer {
             Self::WebGl(r) => r.draw_snapshot(snapshot, damage),
         }
     }
+
+    pub fn upload_atlas(&mut self, atlas: &ghostty_font::Atlas) -> Result<(), GraphicsError> {
+        match self {
+            Self::Metal(r) => r.upload_atlas(atlas),
+            Self::OpenGl(r) => r.upload_atlas(atlas),
+            Self::WebGl(r) => r.upload_atlas(atlas),
+        }
+    }
 }
 
 #[cfg(test)]

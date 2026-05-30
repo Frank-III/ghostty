@@ -2,6 +2,7 @@
 
 use std::sync::Mutex;
 
+use crate::atlas_texture::AtlasTexture;
 use crate::backend::Backend;
 use crate::cells::CellSnapshot;
 use crate::damage::DamageState;
@@ -17,6 +18,7 @@ pub struct BackendRenderer<A: GraphicsApi> {
     pub backend: Backend,
     pub frames_drawn: u64,
     last_prep: Option<FramePrep>,
+    pub atlas_texture: Option<AtlasTexture>,
 }
 
 impl<A: GraphicsApi> BackendRenderer<A> {
@@ -28,6 +30,7 @@ impl<A: GraphicsApi> BackendRenderer<A> {
             backend,
             frames_drawn: 0,
             last_prep: None,
+            atlas_texture: None,
         };
         renderer.api.init_surface()?;
         Ok(renderer)
@@ -40,6 +43,13 @@ impl<A: GraphicsApi> BackendRenderer<A> {
 
     pub fn last_frame(&self) -> Option<&FramePrep> {
         self.last_prep.as_ref()
+    }
+
+    pub fn upload_atlas(&mut self, atlas: &ghostty_font::Atlas) -> Result<(), GraphicsError> {
+        let tex = AtlasTexture::from_atlas(atlas);
+        self.api.upload_atlas_texture(&tex)?;
+        self.atlas_texture = Some(tex);
+        Ok(())
     }
 
     pub fn draw_snapshot(
@@ -96,6 +106,33 @@ mod tests {
             },
             padding: Padding::default(),
         }
+    }
+
+    #[test]
+    fn upload_atlas_stages_texture() {
+        use ghostty_font::{Atlas, AtlasFormat};
+
+        let mut atlas = Atlas::new(64, AtlasFormat::Grayscale);
+        let region = atlas.reserve(8, 8).unwrap();
+        atlas.write_grayscale(region, &[0; 64]);
+        let mut renderer =
+            BackendRenderer::new(StubGraphicsApi, Backend::Metal, test_size()).unwrap();
+        renderer.upload_atlas(&atlas).unwrap();
+        let tex = renderer.atlas_texture.as_ref().expect("atlas texture");
+        assert_eq!(tex.size, 64);
+        assert!(!tex.is_stale(&atlas));
+    }
+
+    #[test]
+    fn metal_upload_forwards_to_api() {
+        use ghostty_font::{Atlas, AtlasFormat};
+        use crate::metal::MetalRenderer;
+
+        let mut atlas = Atlas::new(32, AtlasFormat::Grayscale);
+        let _ = atlas.reserve(4, 4).unwrap();
+        let mut renderer = MetalRenderer::with_size(test_size()).unwrap();
+        renderer.upload_atlas(&atlas).unwrap();
+        assert!(renderer.api.last_atlas_upload.is_some());
     }
 
     #[test]

@@ -203,7 +203,7 @@ pub trait StreamHandler {
     fn on_mouse_shape(&mut self, _v: MouseShape) {}
     fn on_configure_charset(&mut self, _v: ConfigureCharset) {}
     fn on_set_attribute(&mut self, _v: SgrAttribute) {}
-    fn on_kitty_color_report(&mut self, _v: KittyColorReport) {}
+    fn on_kitty_color_report(&mut self, _v: KittyColorReport<'_>) {}
     fn on_color_operation(&mut self, _v: ColorOperation<'_>) {}
     fn on_semantic_prompt(&mut self, _v: SemanticPrompt<'_>) {}
     fn on_raw_action(&mut self, _tag: ParserActionTag) -> bool {

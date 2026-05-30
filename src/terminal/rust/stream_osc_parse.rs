@@ -473,7 +473,10 @@ pub fn parse(osc: &ParserOsc) -> Command<'_> {
         }),
         8 => parse_hyperlink(payload),
         9 => parse_osc9(payload),
-        21 => Command::KittyColorProtocol(KittyColorOsc { kind: 0 }),
+        21 => Command::KittyColorProtocol(KittyColorOsc {
+            requests: payload,
+            terminator,
+        }),
         22 => Command::MouseShape(MouseShapeOsc {
             value: bytes_to_str(payload),
         }),

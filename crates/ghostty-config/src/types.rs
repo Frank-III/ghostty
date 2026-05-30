@@ -12,6 +12,24 @@ pub struct RgbColor {
 }
 
 impl RgbColor {
+    /// WCAG relative luminance in `[0.0, 1.0]`.
+    pub fn relative_luminance(self) -> f64 {
+        fn channel(c: u8) -> f64 {
+            let s = f64::from(c) / 255.0;
+            if s <= 0.03928 {
+                s / 12.92
+            } else {
+                ((s + 0.055) / 1.055).powf(2.4)
+            }
+        }
+        0.2126 * channel(self.r) + 0.7152 * channel(self.g) + 0.0722 * channel(self.b)
+    }
+
+    /// True when the background reads as dark (matches Ghostty color-scheme DSR).
+    pub fn prefers_dark_color_scheme(self) -> bool {
+        self.relative_luminance() < 0.5
+    }
+
     pub fn parse_cli(input: &str) -> Result<Self, ConfigError> {
         let input = input.trim();
         if input.is_empty() {

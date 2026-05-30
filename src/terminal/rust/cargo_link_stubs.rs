@@ -98,6 +98,19 @@ pub unsafe extern "C" fn ghostty_terminal_wrapper_clipboard_contents(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ghostty_terminal_wrapper_color_changed(
+    wrapper: *mut c_void,
+    kind: i32,
+    r: u8,
+    g: u8,
+    b: u8,
+) {
+    unsafe {
+        GhosttyVtEffectWrapper::dispatch_color_changed(wrapper, kind, r, g, b);
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ghostty_vt_system_png_available() -> bool {
     false
 }

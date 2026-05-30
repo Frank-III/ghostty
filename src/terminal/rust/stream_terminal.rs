@@ -1057,8 +1057,92 @@ impl StreamHandler for StreamTerminal {
         }
     }
 
-    fn on_kitty_color_report(&mut self, _v: KittyColorReport) {}
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_kitty_color_report(&mut self, v: KittyColorReport<'_>) {
+        use crate::color_change_kind::kitty_kind_to_action;
+        use crate::kitty_color_apply::apply_kitty_color_requests_with_flags;
+        use crate::osc_parser_kitty::parse_kitty_color;
+        use crate::terminal_effects;
+        use crate::terminal_types::Terminal;
 
+        let parsed = parse_kitty_color(v.requests, v.terminator);
+        if parsed.as_slice().is_empty() {
+            return;
+        }
+        let wrapper = self.effects_wrapper();
+        let terminal_ptr = self.terminal as *mut Terminal;
+        unsafe {
+            let term = &mut *terminal_ptr;
+            apply_kitty_color_requests_with_flags(
+                &mut term.colors,
+                &mut term.flags,
+                parsed.as_slice(),
+                |key, color| {
+                    if let Some(kind) = kitty_kind_to_action(key) {
+                        terminal_effects::color_changed(wrapper, kind, color.r, color.g, color.b);
+                    }
+                },
+            );
+        }
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
+    fn on_kitty_color_report(&mut self, v: KittyColorReport<'_>) {
+        use crate::kitty_color_apply::apply_kitty_color_requests;
+        use crate::osc_parser_kitty::parse_kitty_color;
+        use crate::terminal_types::Terminal;
+
+        let parsed = parse_kitty_color(v.requests, v.terminator);
+        if parsed.as_slice().is_empty() {
+            return;
+        }
+        let terminal_ptr = self.terminal as *mut Terminal;
+        unsafe {
+            let term = &mut *terminal_ptr;
+            apply_kitty_color_requests(
+                &mut term.colors,
+                &mut term.flags.dirty,
+                parsed.as_slice(),
+                |_, _| {},
+            );
+        }
+    }
+
+    #[cfg(ghostty_vt_terminal_owned)]
+    fn on_color_operation(&mut self, v: ColorOperation<'_>) {
+        use crate::color_change_kind::color_target_kind;
+        use crate::effects_wrapper::GhosttyVtEffectWrapper;
+        use crate::osc_color_apply::handle_color_requests;
+        use crate::osc_parser_color::parse_color_osc;
+        use crate::terminal_effects;
+        use crate::terminal_types::Terminal;
+
+        let parsed = parse_color_osc(v.op, v.requests, v.terminator);
+        if parsed.requests.count() == 0 {
+            return;
+        }
+        let wrapper = self.effects_wrapper();
+        let format = unsafe { GhosttyVtEffectWrapper::osc_color_report_format(wrapper) };
+        let terminal_ptr = self.terminal as *mut Terminal;
+        unsafe {
+            handle_color_requests(
+                &mut (*terminal_ptr).colors,
+                parsed.requests.as_slice(),
+                format,
+                v.terminator,
+                |bytes| {
+                    terminal_effects::write_pty(wrapper, bytes);
+                },
+                |target, color| {
+                    if let Some(kind) = color_target_kind(target) {
+                        terminal_effects::color_changed(wrapper, kind, color.r, color.g, color.b);
+                    }
+                },
+            );
+        }
+    }
+
+    #[cfg(not(ghostty_vt_terminal_owned))]
     fn on_color_operation(&mut self, _v: ColorOperation<'_>) {}
 
     fn on_semantic_prompt(&mut self, _v: SemanticPrompt<'_>) {}

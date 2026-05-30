@@ -50,7 +50,7 @@ impl TermioSink for VtSink {
 pub mod rust_owned {
     use core::ffi::c_void;
 
-    use ghostty_vt::test_support::{terminal_cell_codepoint, test_allocator};
+    use ghostty_vt::test_support::{terminal_cell_codepoint, terminal_cell_fg_rgb, test_allocator};
 
     use super::super::harness::TermioSink;
 
@@ -102,6 +102,28 @@ pub mod rust_owned {
             }
         }
 
+        /// Attach stream-handler side effects and PTY write-back for VT responses.
+        pub fn bind_session(&mut self, termio: &mut crate::TermioLoop) {
+            termio.bind_rust_terminal(self);
+        }
+
+        pub(crate) fn attach_vt_bridge(
+            &mut self,
+            stream: &mut crate::StreamHandler,
+            termio: &mut crate::TermioLoop,
+        ) {
+            if self.bridge.is_none() {
+                let mut bridge = crate::vt_effects::TermioVtBridge::new(self.handle);
+                unsafe {
+                    ghostty_rust_terminal_owned_set_wrapper(self.handle, bridge.effects_ptr());
+                }
+                self.bridge = Some(bridge);
+            }
+            let bridge = self.bridge.as_mut().expect("bridge");
+            bridge.bind_stream(stream);
+            bridge.bind_termio(termio);
+        }
+
         /// Attach stream-handler side effects to VT parser callbacks for this sink.
         pub fn bind_stream_handler(&mut self, stream: &mut crate::StreamHandler) {
             if self.bridge.is_none() {
@@ -121,13 +143,46 @@ pub mod rust_owned {
             terminal_cell_codepoint(self.handle, x, y)
         }
 
+        pub fn cell_fg_rgb(&self, x: u16, y: u16) -> Option<[u8; 3]> {
+            terminal_cell_fg_rgb(self.handle, x, y)
+        }
+
         pub fn contains_text(&self, needle: &str) -> bool {
+            self.contains_text_at(0, needle)
+        }
+
+        pub fn contains_text_at(&self, row: u16, needle: &str) -> bool {
             for (i, ch) in needle.chars().enumerate() {
-                if self.cell_codepoint(i as u16, 0) != Some(ch as u32) {
+                if self.cell_codepoint(i as u16, row) != Some(ch as u32) {
                     return false;
                 }
             }
             !needle.is_empty()
+        }
+
+        /// True if `needle` appears as consecutive cells on any screen row.
+        pub fn contains_text_anywhere(&self, needle: &str) -> bool {
+            if needle.is_empty() {
+                return false;
+            }
+            let needle: Vec<u32> = needle.chars().map(|c| c as u32).collect();
+            let width = 80u16;
+            let height = 24u16;
+            for y in 0..height {
+                for x in 0..width.saturating_sub(needle.len() as u16) {
+                    let mut matched = true;
+                    for (i, &cp) in needle.iter().enumerate() {
+                        if self.cell_codepoint(x + i as u16, y) != Some(cp) {
+                            matched = false;
+                            break;
+                        }
+                    }
+                    if matched {
+                        return true;
+                    }
+                }
+            }
+            false
         }
     }
 
@@ -255,6 +310,139 @@ mod rust_vt_tests {
             stream.surface_mailbox().pop(),
             Some(crate::SurfaceMessage::SetTitle(title)) if title == "direct-title"
         ));
+    }
+
+    #[test]
+    fn enquiry_response_reaches_terminal() {
+        use std::time::{Duration, Instant};
+
+        use crate::{CommandBuilder, TermioLoop, Winsize};
+        use ghostty_config::DerivedStreamConfig;
+
+        let spec = CommandBuilder::new()
+            .path("/bin/sh")
+            .arg("sh")
+            .arg("-c")
+            .arg("cat")
+            .build()
+            .expect("spec");
+        let winsize = Winsize {
+            cols: 80,
+            rows: 24,
+            x_pixels: 0,
+            y_pixels: 0,
+        };
+        let mut config = DerivedStreamConfig::default();
+        config.enquiry_response = "ENQ-OK".to_string();
+        let mut termio = TermioLoop::spawn(&spec, winsize, config).expect("spawn");
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
+        sink.bind_session(&mut termio);
+        sink.write_terminal(&[0x05]);
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < deadline {
+            termio.tick(&mut sink).expect("tick");
+            if sink.contains_text("ENQ-OK") {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        panic!("enquiry response not received");
+    }
+
+    #[test]
+    fn osc4_query_response_reaches_pty() {
+        use std::time::{Duration, Instant};
+
+        use crate::{CommandBuilder, TermioLoop, Winsize};
+        use ghostty_config::DerivedStreamConfig;
+
+        // hexdump makes PTY write-back visible; raw `cat` would re-parse echoed OSC as
+        // control sequences instead of printing literal "rgb:" on the grid.
+        let spec = CommandBuilder::new()
+            .path("/bin/sh")
+            .arg("sh")
+            .arg("-c")
+            .arg("hexdump -C")
+            .build()
+            .expect("spec");
+        let winsize = Winsize {
+            cols: 80,
+            rows: 24,
+            x_pixels: 0,
+            y_pixels: 0,
+        };
+        let mut termio =
+            TermioLoop::spawn(&spec, winsize, DerivedStreamConfig::default()).expect("spawn");
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
+        sink.bind_session(&mut termio);
+        sink.write_terminal(b"\x1b]4;0;?\x07");
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < deadline {
+            termio.tick(&mut sink).expect("tick");
+            if sink.contains_text_anywhere("rgb:") {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        panic!("OSC 4 query response not received");
+    }
+
+    #[test]
+    fn osc_background_set_emits_color_change() {
+        use crate::{CommandBuilder, TermioLoop, Winsize};
+        use ghostty_config::DerivedStreamConfig;
+
+        let spec = CommandBuilder::new()
+            .path("/bin/sh")
+            .arg("sh")
+            .arg("-c")
+            .arg("cat")
+            .build()
+            .expect("spec");
+        let winsize = Winsize {
+            cols: 80,
+            rows: 24,
+            x_pixels: 0,
+            y_pixels: 0,
+        };
+        let mut termio =
+            TermioLoop::spawn(&spec, winsize, DerivedStreamConfig::default()).expect("spawn");
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
+        sink.bind_session(&mut termio);
+        sink.write_terminal(b"\x1b]11;rgb:aa/bb/cc\x07");
+        termio.tick(&mut sink).expect("tick");
+        let msg = termio.drain_surface_mailbox();
+        assert!(msg.iter().any(|m| matches!(
+            m,
+            crate::SurfaceMessage::ColorChange { kind: -2, color }
+                if color.r == 0xaa && color.g == 0xbb && color.b == 0xcc
+        )));
+    }
+
+    #[test]
+    fn sgr_foreground_resolves_cell_rgb() {
+        use crate::{CommandBuilder, TermioLoop, Winsize};
+        use ghostty_config::DerivedStreamConfig;
+
+        let spec = CommandBuilder::new()
+            .path("/bin/sh")
+            .arg("sh")
+            .arg("-c")
+            .arg("cat")
+            .build()
+            .expect("spec");
+        let winsize = Winsize {
+            cols: 80,
+            rows: 24,
+            x_pixels: 0,
+            y_pixels: 0,
+        };
+        let mut termio =
+            TermioLoop::spawn(&spec, winsize, DerivedStreamConfig::default()).expect("spawn");
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
+        sink.bind_session(&mut termio);
+        sink.write_terminal(b"\x1b[31mR");
+        assert_eq!(sink.cell_fg_rgb(0, 0), Some([0xcc, 0x66, 0x66]));
     }
 
     #[test]

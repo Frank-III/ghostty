@@ -13,10 +13,10 @@ use core::{mem, ptr};
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct GhosttySizeReportSize {
-    pub(crate) rows: u16,
-    pub(crate) columns: u16,
-    pub(crate) cell_width: u32,
-    pub(crate) cell_height: u32,
+    pub rows: u16,
+    pub columns: u16,
+    pub cell_width: u32,
+    pub cell_height: u32,
 }
 
 pub(crate) const SIZE_REPORT_MODE_2048: c_int = 0;

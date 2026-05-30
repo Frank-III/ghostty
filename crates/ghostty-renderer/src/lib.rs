@@ -11,6 +11,7 @@
 //! Deferred: shader pipelines, `cell.Contents` GPU buffers, font atlas upload, and full
 //! `drawFrame` / `rebuildCells` GPU passes.
 
+pub mod atlas_texture;
 pub mod backend;
 pub mod cell;
 pub mod cells;
@@ -27,6 +28,7 @@ pub mod size;
 pub mod state;
 pub mod webgl;
 
+pub use atlas_texture::AtlasTexture;
 pub use backend::Backend;
 pub use cell::{
     constraint_width, is_covering, no_min_contrast, CellAtlas, CellBg, CellKey, CellText,
@@ -54,5 +56,7 @@ pub use size::{
 };
 pub use state::{GridPoint, Preedit, PreeditCodepoint, PreeditRange, RendererMouse, RendererState};
 pub mod styled;
+pub mod text;
 
 pub use styled::{CellStyle, StyledCell, StyledCellSnapshot};
+pub use text::build_cell_texts;

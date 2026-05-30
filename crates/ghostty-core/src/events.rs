@@ -12,15 +12,16 @@ pub enum ActionTargetTag {
 }
 
 /// Subset of `apprt.action.Action.Key` / `ghostty_action_tag_e` (bootstrap only).
-#[repr(i32)]
+#[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ActionTag {
     Quit = 0,
     NewWindow = 1,
     NewTab = 2,
     CloseTab = 3,
-    SetTitle = 4,
-    PresentTerminal = 5,
+    SetTitle = 32,
+    PresentTerminal = 21,
+    RingBell = 50,
 }
 
 /// Messages delivered to the app thread (`App.zig` `Message`).
@@ -57,6 +58,10 @@ pub enum SurfaceEvent {
         clipboard: crate::RuntimeClipboard,
         data: Vec<u8>,
     },
+    ColorChanged {
+        kind: i32,
+        color: ghostty_config::RgbColor,
+    },
 }
 
 #[cfg(test)]
@@ -71,7 +76,8 @@ mod tests {
 
     #[test]
     fn action_tag_order_matches_bootstrap_subset() {
-        assert_eq!(ActionTag::Quit as i32, 0);
-        assert_eq!(ActionTag::SetTitle as i32, 4);
+        assert_eq!(ActionTag::Quit as u32, 0);
+        assert_eq!(ActionTag::SetTitle as u32, 32);
+        assert_eq!(ActionTag::RingBell as u32, 50);
     }
 }

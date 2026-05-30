@@ -117,3 +117,78 @@ fn spawn_from_config_file_command() {
     let _ = std::fs::remove_dir_all(&dir);
     panic!("expected cfg-port output from config file command");
 }
+
+#[test]
+fn redraw_dispatches_present_terminal_action() {
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    use ghostty_core::RuntimeActionTag;
+    use ghostty_core::{RuntimeAction, RuntimeTarget};
+
+    static LAST_ACTION: AtomicU32 = AtomicU32::new(u32::MAX);
+
+    unsafe extern "C" fn capture_action(
+        _app: *mut core::ffi::c_void,
+        _target: RuntimeTarget,
+        action: RuntimeAction,
+    ) -> bool {
+        LAST_ACTION.store(action.tag as u32, Ordering::SeqCst);
+        true
+    }
+
+    let mut runtime = RuntimeConfig::default();
+    runtime.action_cb = Some(capture_action);
+    let mut app = App::with_defaults(runtime);
+    let id = app
+        .create_surface_with_options(SurfaceSessionOptions {
+            command: Some(printf_spec("")),
+            ..Default::default()
+        })
+        .expect("surface");
+    app.push_event(AppEvent::Surface {
+        id,
+        event: SurfaceEvent::RedrawRequested,
+    });
+    app.tick();
+    assert_eq!(
+        LAST_ACTION.load(Ordering::SeqCst),
+        RuntimeActionTag::PresentTerminal as u32
+    );
+    cleanup_app(&mut app);
+}
+
+#[test]
+fn set_title_dispatches_action_cb() {
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    use ghostty_core::RuntimeActionTag;
+    use ghostty_core::{RuntimeAction, RuntimeTarget};
+
+    static LAST_ACTION: AtomicU32 = AtomicU32::new(u32::MAX);
+
+    unsafe extern "C" fn capture_action(
+        _app: *mut core::ffi::c_void,
+        _target: RuntimeTarget,
+        action: RuntimeAction,
+    ) -> bool {
+        LAST_ACTION.store(action.tag as u32, Ordering::SeqCst);
+        true
+    }
+
+    let mut runtime = RuntimeConfig::default();
+    runtime.action_cb = Some(capture_action);
+    let mut app = App::with_defaults(runtime);
+    let id = app
+        .create_surface_with_options(SurfaceSessionOptions {
+            command: Some(printf_spec("")),
+            ..Default::default()
+        })
+        .expect("surface");
+    assert!(app.set_surface_title(id, "term"));
+    app.tick();
+    assert_eq!(
+        LAST_ACTION.load(Ordering::SeqCst),
+        RuntimeActionTag::SetTitle as u32
+    );
+    cleanup_app(&mut app);
+}

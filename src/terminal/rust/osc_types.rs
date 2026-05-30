@@ -60,13 +60,17 @@ pub enum ConemuChangeTabTitle<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct KittyColorOsc {
-    pub kind: u8,
+pub struct KittyColorOsc<'a> {
+    pub requests: &'a [u8],
+    pub terminator: OscTerminator,
 }
 
-impl Default for KittyColorOsc {
+impl<'a> Default for KittyColorOsc<'a> {
     fn default() -> Self {
-        Self { kind: 0 }
+        Self {
+            requests: &[],
+            terminator: OscTerminator::St,
+        }
     }
 }
 
@@ -115,7 +119,7 @@ pub enum Command<'a> {
     ReportPwd(ReportPwdOsc<'a>),
     MouseShape(MouseShapeOsc<'a>),
     ColorOperation(ColorOperationOsc<'a>),
-    KittyColorProtocol(KittyColorOsc),
+    KittyColorProtocol(KittyColorOsc<'a>),
     ShowDesktopNotification(ShowDesktopNotificationOsc<'a>),
     HyperlinkStart(HyperlinkStart<'a>),
     HyperlinkEnd,

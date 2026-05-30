@@ -30,7 +30,7 @@ pub enum CellAtlas {
 
 /// Packed flags on `CellText` (`CellText.bools`).
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CellTextBools {
     bits: u8,
 }
@@ -58,7 +58,7 @@ impl CellTextBools {
 
 /// Foreground cell shader parameter (`shaderpkg.CellText`).
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CellText {
     pub glyph_pos: [u32; 2],
     pub glyph_size: [u32; 2],

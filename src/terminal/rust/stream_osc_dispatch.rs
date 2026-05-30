@@ -49,7 +49,10 @@ pub fn osc_dispatch<H: StreamHandler>(handler: &mut H, cmd: Command<'_>) {
         }
 
         Command::KittyColorProtocol(v) => {
-            handler.on_kitty_color_report(KittyColorReport { kind: v.kind });
+            handler.on_kitty_color_report(KittyColorReport {
+                requests: v.requests,
+                terminator: v.terminator,
+            });
         }
 
         Command::ShowDesktopNotification(v) => {

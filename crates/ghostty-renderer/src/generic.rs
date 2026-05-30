@@ -23,6 +23,13 @@ pub trait GraphicsApi: Sized {
 
     fn init_surface(&mut self) -> Result<(), GraphicsError>;
     fn resize(&mut self, size: Size) -> Result<(), GraphicsError>;
+
+    fn upload_atlas_texture(
+        &mut self,
+        _tex: &crate::atlas_texture::AtlasTexture,
+    ) -> Result<(), GraphicsError> {
+        Ok(())
+    }
 }
 
 /// Frame draw entry point for a generic renderer.
@@ -107,6 +114,10 @@ impl GraphicsApi for StubGraphicsApi {
     }
 
     fn resize(&mut self, _size: Size) -> Result<(), GraphicsError> {
+        Ok(())
+    }
+
+    fn upload_atlas_texture(&mut self, _tex: &crate::atlas_texture::AtlasTexture) -> Result<(), GraphicsError> {
         Ok(())
     }
 }

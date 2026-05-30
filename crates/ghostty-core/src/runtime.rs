@@ -3,6 +3,8 @@
 use core::ffi::{c_char, c_void};
 use std::path::PathBuf;
 
+pub use crate::action::RuntimeAction;
+
 /// `ghostty_clipboard_e`
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,14 +53,7 @@ pub struct RuntimeTarget {
     pub target: RuntimeTargetU,
 }
 
-/// Opaque action payload (`ghostty_action_s`); full union deferred.
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct RuntimeAction {
-    pub tag: u32,
-    _payload: [u8; 256],
-}
-
+/// Host-provided runtime hooks for the embedded apprt.
 pub type RuntimeWakeupCb = Option<unsafe extern "C" fn(*mut c_void)>;
 pub type RuntimeReadClipboardCb =
     Option<unsafe extern "C" fn(*mut c_void, RuntimeClipboard, *mut c_void) -> bool>;

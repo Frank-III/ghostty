@@ -158,3 +158,93 @@ fn cell_snapshot_captures_output() {
         .any(|cp| *cp == b'Z' as u32));
     assert!(session.damage().is_dirty());
 }
+
+#[test]
+fn prepare_draw_uploads_font_atlas() {
+    let mut session = SurfaceSession::spawn(
+        AppConfig::default(),
+        SurfaceSessionOptions {
+            command: Some(echo_cat_command()),
+            ..Default::default()
+        },
+    )
+    .expect("spawn");
+    session.write(b"A").expect("write");
+    let deadline = Instant::now() + Duration::from_secs(3);
+    session
+        .run_until(deadline, |s| s.contains_text("A"))
+        .expect("run");
+    assert_eq!(session.atlas_upload_generation(), 0);
+    let prep = session.prepare_draw();
+    assert!(prep.grid.columns > 0);
+    assert!(session.atlas_upload_generation() > 0);
+    assert!(session.glyph_cache_len() > 0);
+    assert!(!session.last_frame_prep().unwrap().text_cells.is_empty());
+    let _ = session.shutdown();
+}
+
+#[test]
+fn osc_background_change_emits_surface_event() {
+    use ghostty_core::SurfaceEvent;
+
+    let mut session = SurfaceSession::spawn(
+        AppConfig::default(),
+        SurfaceSessionOptions {
+            command: Some(echo_cat_command()),
+            ..Default::default()
+        },
+    )
+    .expect("spawn");
+
+    session
+        .write_vt_input(b"\x1b]11;rgb:aa/bb/cc\x07")
+        .expect("write");
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while Instant::now() < deadline {
+        session.tick().expect("tick");
+        let events = session.drain_session_events();
+        if events.iter().any(|e| {
+            matches!(
+                e,
+                SurfaceEvent::ColorChanged { kind: -2, color }
+                    if color.r == 0xaa && color.g == 0xbb && color.b == 0xcc
+            )
+        }) {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    panic!("expected ColorChanged for background");
+}
+
+#[test]
+fn cell_snapshot_captures_sgr_foreground() {
+    let mut session = SurfaceSession::spawn(
+        AppConfig::default(),
+        SurfaceSessionOptions {
+            command: Some(echo_cat_command()),
+            ..Default::default()
+        },
+    )
+    .expect("spawn");
+
+    session.write_vt_input(b"\x1b[31mR").expect("write");
+    let deadline = Instant::now() + Duration::from_secs(1);
+    session
+        .run_until(deadline, |s| s.cell_codepoint(0, 0) == Some(b'R' as u32))
+        .expect("run");
+
+    let rgb = session.cell_fg_rgb(0, 0).expect("foreground");
+    assert_eq!(rgb, [0xcc, 0x66, 0x66]);
+
+    let snap = session.cell_snapshot();
+    let idx = snap
+        .codepoints
+        .iter()
+        .position(|cp| *cp == Some(b'R' as u32))
+        .expect("R cell");
+    let fg = snap.foregrounds[idx].expect("snapshot foreground");
+    assert_eq!(fg.r, 0xcc);
+    assert_eq!(fg.g, 0x66);
+    assert_eq!(fg.b, 0x66);
+}

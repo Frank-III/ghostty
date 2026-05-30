@@ -289,13 +289,17 @@ impl Default for ProgressReport {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct KittyColorReport {
-    pub kind: u8,
+pub struct KittyColorReport<'a> {
+    pub requests: &'a [u8],
+    pub terminator: OscTerminator,
 }
 
-impl Default for KittyColorReport {
+impl<'a> Default for KittyColorReport<'a> {
     fn default() -> Self {
-        KittyColorReport { kind: 0 }
+        KittyColorReport {
+            requests: &[],
+            terminator: OscTerminator::St,
+        }
     }
 }
 
@@ -438,7 +442,7 @@ pub enum StreamAction<'a> {
     MouseShape(MouseShape),
     ConfigureCharset(ConfigureCharset),
     SetAttribute(SgrAttribute),
-    KittyColorReport(KittyColorReport),
+    KittyColorReport(KittyColorReport<'a>),
     ColorOperation(ColorOperation<'a>),
     SemanticPrompt(SemanticPrompt<'a>),
 }

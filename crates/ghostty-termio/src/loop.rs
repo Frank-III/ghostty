@@ -119,4 +119,17 @@ impl TermioLoop {
         }
         out
     }
+
+    /// Wire rust-owned VT side effects to this termio's stream handler and PTY write path.
+    #[cfg(feature = "rust-vt")]
+    pub fn bind_rust_terminal(
+        &mut self,
+        terminal: &mut crate::vt_sink::rust_owned::RustOwnedTerminalSink,
+    ) {
+        let termio_ptr = self as *mut Self;
+        // SAFETY: `attach_vt_bridge` only reads `stream` then stores `termio` as a raw pointer.
+        unsafe {
+            terminal.attach_vt_bridge(&mut (*termio_ptr).stream, &mut *termio_ptr);
+        }
+    }
 }

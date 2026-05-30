@@ -3,7 +3,10 @@
 //! With feature `rust-vt`, `create_surface` spawns a real [`SurfaceSession`] per surface.
 //! `tick` drains pending app events and pumps all surface sessions.
 
-use crate::{AppConfig, AppEvent, RuntimeConfig, Surface, SurfaceEvent, SurfaceId};
+use core::ffi::c_void;
+
+use crate::{AppConfig, AppEvent, RuntimeConfig, Surface, SurfaceId};
+use crate::events::SurfaceEvent;
 
 #[cfg(all(unix, feature = "rust-vt"))]
 use crate::surface_session::{SurfaceSession, SurfaceSessionOptions};
@@ -66,8 +69,66 @@ impl App {
         &mut self.runtime
     }
 
-    fn dispatch_runtime_surface_effect(runtime: &RuntimeConfig, event: &SurfaceEvent) {
+    fn dispatch_runtime_surface_effect(
+        app: *mut c_void,
+        runtime: &RuntimeConfig,
+        _surface_id: crate::SurfaceId,
+        surface_userdata: *mut c_void,
+        event: &SurfaceEvent,
+    ) {
         match event {
+            SurfaceEvent::TitleChanged { title } => {
+                if let Some(cb) = runtime.action_cb {
+                    let Ok(title_c) = std::ffi::CString::new(title.as_str()) else {
+                        return;
+                    };
+                    let target = crate::RuntimeTarget {
+                        tag: crate::RuntimeTargetTag::Surface,
+                        target: crate::RuntimeTargetU {
+                            surface: surface_userdata,
+                        },
+                    };
+                    let action = crate::RuntimeAction::set_title_ptr(title_c.as_ptr());
+                    // SAFETY: embedder-provided callback; CString valid for call duration.
+                    let _ = unsafe { cb(app, target, action) };
+                }
+            }
+            SurfaceEvent::RingBell => {
+                if let Some(cb) = runtime.action_cb {
+                    let target = crate::RuntimeTarget {
+                        tag: crate::RuntimeTargetTag::Surface,
+                        target: crate::RuntimeTargetU {
+                            surface: surface_userdata,
+                        },
+                    };
+                    let action = crate::RuntimeAction::ring_bell();
+                    let _ = unsafe { cb(app, target, action) };
+                }
+            }
+            SurfaceEvent::RedrawRequested => {
+                if let Some(cb) = runtime.action_cb {
+                    let target = crate::RuntimeTarget {
+                        tag: crate::RuntimeTargetTag::Surface,
+                        target: crate::RuntimeTargetU {
+                            surface: surface_userdata,
+                        },
+                    };
+                    let action = crate::RuntimeAction::present_terminal();
+                    let _ = unsafe { cb(app, target, action) };
+                }
+            }
+            SurfaceEvent::ColorChanged { kind, color } => {
+                if let Some(cb) = runtime.action_cb {
+                    let target = crate::RuntimeTarget {
+                        tag: crate::RuntimeTargetTag::Surface,
+                        target: crate::RuntimeTargetU {
+                            surface: surface_userdata,
+                        },
+                    };
+                    let action = crate::RuntimeAction::color_change(*kind, *color);
+                    let _ = unsafe { cb(app, target, action) };
+                }
+            }
             SurfaceEvent::ClipboardRead { clipboard } => {
                 if let Some(cb) = runtime.read_clipboard_cb {
                     // SAFETY: embedder-provided callback; userdata valid for app lifetime.
@@ -237,13 +298,37 @@ impl App {
 
         #[cfg(all(unix, feature = "rust-vt"))]
         {
+            let app_ptr = self as *mut Self as *mut c_void;
             let runtime = self.runtime.clone();
+
+            for app_event in &events {
+                if let AppEvent::Surface { id, event } = app_event {
+                    if let Some(surface) = self.surfaces.iter().find(|s| s.id() == *id) {
+                        Self::dispatch_runtime_surface_effect(
+                            app_ptr,
+                            &runtime,
+                            *id,
+                            surface.userdata(),
+                            event,
+                        );
+                    }
+                }
+            }
+
             for surface in &mut self.surfaces {
                 let _ = surface.tick();
+                let surface_userdata = surface.userdata();
+                let surface_id = surface.id();
                 for event in surface.drain_session_events() {
-                    Self::dispatch_runtime_surface_effect(&runtime, &event);
+                    Self::dispatch_runtime_surface_effect(
+                        app_ptr,
+                        &runtime,
+                        surface_id,
+                        surface_userdata,
+                        &event,
+                    );
                     events.push(AppEvent::Surface {
-                        id: surface.id(),
+                        id: surface_id,
                         event,
                     });
                 }

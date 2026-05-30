@@ -28,5 +28,11 @@ pub use face::{
 };
 pub use metrics::{calc, FaceMetrics, Key, Metrics, Modifier, ModifierSet, ParseError};
 pub mod atlas;
+pub mod glyph;
+pub mod glyph_cache;
+pub mod session;
 
 pub use atlas::{Atlas, AtlasError, AtlasFormat, AtlasRegion};
+pub use glyph::{Glyph, GlyphRenderError};
+pub use glyph_cache::GlyphCache;
+pub use session::{FontSession, FontSessionError};

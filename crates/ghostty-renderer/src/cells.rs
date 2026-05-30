@@ -8,6 +8,7 @@ use crate::size::GridSize;
 pub struct CellSnapshot {
     pub grid: GridSize,
     pub codepoints: Vec<Option<u32>>,
+    pub foregrounds: Vec<Option<crate::color::Rgb>>,
 }
 
 impl CellSnapshot {
@@ -16,6 +17,7 @@ impl CellSnapshot {
         Self {
             grid,
             codepoints: vec![None; len],
+            foregrounds: vec![None; len],
         }
     }
 
@@ -23,6 +25,13 @@ impl CellSnapshot {
         let idx = Self::index(self.grid, x, y);
         if let Some(slot) = self.codepoints.get_mut(idx) {
             *slot = Some(cp);
+        }
+    }
+
+    pub fn set_foreground(&mut self, x: u16, y: u16, color: crate::color::Rgb) {
+        let idx = Self::index(self.grid, x, y);
+        if let Some(slot) = self.foregrounds.get_mut(idx) {
+            *slot = Some(color);
         }
     }
 

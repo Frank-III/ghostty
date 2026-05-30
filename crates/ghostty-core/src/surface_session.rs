@@ -7,7 +7,7 @@ use std::time::Instant;
 use ghostty_foundation::{FoundationError, FoundationResult};
 use ghostty_termio::{
     ClipboardKind, CommandBuildError, CommandSpec, RustOwnedTerminalSink, SpawnPtyError,
-    SurfaceMessage, TermioLoop, TermioMessage, Winsize,
+    SurfaceMessage, TermioLoop, TermioMessage, TermioSink, Winsize,
 };
 
 use crate::app_config::AppConfig;
@@ -21,13 +21,18 @@ use ghostty_config::DerivedFontConfig;
 #[cfg(feature = "rust-vt")]
 use ghostty_font::metrics::{calc, FaceMetrics};
 #[cfg(feature = "rust-vt")]
-use ghostty_font::{descriptor_from_font_family, select_primary, DiscoveryError};
+use ghostty_font::{
+    descriptor_from_font_family, select_primary, Atlas, AtlasFormat, DesiredSize, DiscoveryError,
+    FontSession, GlyphCache, RenderOptions,
+};
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::cells::CellSnapshot;
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::damage::{DamageRect, DamageState};
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::frame::{finish_draw_frame, prepare_draw_frame, FramePrep};
+#[cfg(feature = "rust-vt")]
+use ghostty_renderer::build_cell_texts;
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::size::GridSize;
 #[cfg(feature = "rust-vt")]
@@ -104,6 +109,16 @@ pub struct SurfaceSession {
     last_frame: Option<FramePrep>,
     #[cfg(feature = "rust-vt")]
     host_renderer: Option<HostRenderer>,
+    #[cfg(feature = "rust-vt")]
+    font_atlas: Option<Atlas>,
+    #[cfg(feature = "rust-vt")]
+    font_session: Option<FontSession>,
+    #[cfg(feature = "rust-vt")]
+    glyph_cache: GlyphCache,
+    #[cfg(feature = "rust-vt")]
+    render_opts: Option<RenderOptions>,
+    #[cfg(feature = "rust-vt")]
+    atlas_upload_generation: usize,
     pending_title: Option<String>,
     pending_redraw: bool,
 }
@@ -122,12 +137,28 @@ impl SurfaceSession {
                 .expect("command spec")
         });
         let scrollback = config.config().scrollback_limit;
-        let (cell_width_px, cell_height_px) = cell_size_from_config(config.config());
+        let font_session = open_font_session(config.config());
+        let (cell_width_px, cell_height_px) = font_session
+            .as_ref()
+            .map(|session| {
+                let metrics = session.grid_metrics();
+                (metrics.cell_width, metrics.cell_height)
+            })
+            .unwrap_or_else(|| cell_size_from_config(config.config()));
+        let render_opts = font_session.as_ref().map(|session| {
+            let font = DerivedFontConfig::from(config.config());
+            RenderOptions {
+                grid_metrics: session.grid_metrics(),
+                cell_width: None,
+                thicken: font.font_thicken,
+                thicken_strength: font.font_thicken_strength,
+            }
+        });
         let stream_config = ghostty_config::DerivedStreamConfig::from(config.config());
         let mut termio = TermioLoop::spawn(&spec, winsize, stream_config)?;
         let mut terminal = RustOwnedTerminalSink::new(winsize.cols, winsize.rows, scrollback)
             .ok_or(SurfaceSessionError::Terminal)?;
-        terminal.bind_stream_handler(termio.stream_handler_mut());
+        terminal.bind_session(&mut termio);
         termio.tick(&mut terminal)?;
         let host_renderer =
             HostRenderer::for_host(renderer_size(winsize, cell_width_px, cell_height_px)).ok();
@@ -143,6 +174,16 @@ impl SurfaceSession {
             last_frame: None,
             #[cfg(feature = "rust-vt")]
             host_renderer,
+            #[cfg(feature = "rust-vt")]
+            font_atlas: None,
+            #[cfg(feature = "rust-vt")]
+            font_session,
+            #[cfg(feature = "rust-vt")]
+            glyph_cache: GlyphCache::default(),
+            #[cfg(feature = "rust-vt")]
+            render_opts,
+            #[cfg(feature = "rust-vt")]
+            atlas_upload_generation: 0,
             pending_title: None,
             pending_redraw: false,
         })
@@ -184,6 +225,14 @@ impl SurfaceSession {
         self.tick().map(|_| ())
     }
 
+    /// Feed escape sequences directly into the rust-owned VT (test / host path).
+    #[cfg(feature = "rust-vt")]
+    pub fn write_vt_input(&mut self, bytes: &[u8]) -> FoundationResult<()> {
+        self.terminal.bind_session(&mut self.termio);
+        self.terminal.write_terminal(bytes);
+        self.tick().map(|_| ())
+    }
+
     pub fn resize(&mut self, cols: u16, rows: u16) -> FoundationResult<()> {
         self.termio.push(TermioMessage::Resize { cols, rows })?;
         self.tick().map(|_| ())?;
@@ -194,8 +243,7 @@ impl SurfaceSession {
 
     /// One iteration: drain thread events into terminal state.
     pub fn tick(&mut self) -> FoundationResult<usize> {
-        self.terminal
-            .bind_stream_handler(self.termio.stream_handler_mut());
+        self.terminal.bind_session(&mut self.termio);
         let drain = self.termio.tick(&mut self.terminal)?;
         if let Some(title) = drain.set_title {
             self.pending_title = Some(title);
@@ -219,14 +267,23 @@ impl SurfaceSession {
     #[cfg(feature = "rust-vt")]
     pub fn prepare_draw(&mut self) -> FramePrep {
         let snap = self.cell_snapshot();
-        if let Some(renderer) = &mut self.host_renderer {
-            if let Ok(prep) = renderer.draw_snapshot(&snap, &mut self.damage) {
-                let prep = prep.clone();
-                self.last_frame = Some(prep.clone());
-                return prep;
-            }
-        }
-        let prep = prepare_draw_frame(&snap, &mut self.damage);
+        self.warm_glyph_cache_from_snapshot(&snap);
+        self.sync_font_atlas_upload();
+        let mut prep = if let Some(renderer) = &mut self.host_renderer {
+            renderer
+                .draw_snapshot(&snap, &mut self.damage)
+                .ok()
+                .map(|p| p.clone())
+                .unwrap_or_else(|| prepare_draw_frame(&snap, &mut self.damage))
+        } else {
+            prepare_draw_frame(&snap, &mut self.damage)
+        };
+        prep.text_cells = build_cell_texts(
+            &snap,
+            &self.glyph_cache,
+            self.cell_width_px,
+            self.cell_height_px,
+        );
         self.last_frame = Some(prep.clone());
         prep
     }
@@ -257,6 +314,13 @@ impl SurfaceSession {
             for x in 0..ws.cols {
                 if let Some(cp) = self.cell_codepoint(x, y) {
                     snap.set(x, y, cp);
+                    if let Some([r, g, b]) = self.terminal.cell_fg_rgb(x, y) {
+                        snap.set_foreground(
+                            x,
+                            y,
+                            ghostty_renderer::color::Rgb::new(r, g, b),
+                        );
+                    }
                 }
             }
         }
@@ -281,6 +345,66 @@ impl SurfaceSession {
         let font = DerivedFontConfig::from(self.config.config());
         let desc = descriptor_from_font_family(font.font_family.as_deref(), font.font_size);
         select_primary(&desc)
+    }
+
+    /// Lazily allocate the font atlas.
+    #[cfg(feature = "rust-vt")]
+    fn ensure_font_atlas(&mut self) {
+        if self.font_atlas.is_some() {
+            return;
+        }
+        self.font_atlas = Some(Atlas::new(512, AtlasFormat::Grayscale));
+    }
+
+    /// Rasterize visible codepoints into the atlas cache.
+    #[cfg(feature = "rust-vt")]
+    fn warm_glyph_cache_from_snapshot(&mut self, snap: &CellSnapshot) {
+        if self.font_session.is_none() || self.render_opts.is_none() {
+            return;
+        }
+        self.ensure_font_atlas();
+        let codepoints: Vec<u32> = snap.codepoints.iter().filter_map(|cp| *cp).collect();
+        let Some(atlas) = self.font_atlas.as_mut() else {
+            return;
+        };
+        let Some(session) = self.font_session.as_ref() else {
+            return;
+        };
+        let Some(opts) = self.render_opts.as_ref() else {
+            return;
+        };
+        let _ = self
+            .glyph_cache
+            .warm_snapshot(session, atlas, codepoints, opts);
+    }
+
+    /// Upload the font atlas to the host renderer when modified.
+    #[cfg(feature = "rust-vt")]
+    fn sync_font_atlas_upload(&mut self) {
+        self.ensure_font_atlas();
+        let Some(atlas) = self.font_atlas.as_ref() else {
+            return;
+        };
+        let generation = atlas.modified_generation();
+        if generation == self.atlas_upload_generation {
+            return;
+        }
+        if let Some(renderer) = self.host_renderer.as_mut() {
+            if renderer.upload_atlas(atlas).is_ok() {
+                self.atlas_upload_generation = generation;
+            }
+        }
+    }
+
+    /// Generation counter of the last atlas upload (test/diagnostics).
+    #[cfg(feature = "rust-vt")]
+    pub fn atlas_upload_generation(&self) -> usize {
+        self.atlas_upload_generation
+    }
+
+    #[cfg(feature = "rust-vt")]
+    pub fn glyph_cache_len(&self) -> usize {
+        self.glyph_cache.len()
     }
 
     /// Take pending surface events produced by the last termio drain(s).
@@ -317,6 +441,9 @@ impl SurfaceSession {
                         clipboard: runtime_clipboard(clipboard),
                         data,
                     });
+                }
+                SurfaceMessage::ColorChange { kind, color } => {
+                    events.push(SurfaceEvent::ColorChanged { kind, color });
                 }
             }
         }
@@ -355,6 +482,10 @@ impl SurfaceSession {
         self.terminal.cell_codepoint(x, y)
     }
 
+    pub fn cell_fg_rgb(&self, x: u16, y: u16) -> Option<[u8; 3]> {
+        self.terminal.cell_fg_rgb(x, y)
+    }
+
     pub fn poll_child_exit(&mut self) -> Option<u32> {
         self.termio.poll_child_exit()
     }
@@ -388,6 +519,14 @@ fn renderer_size(winsize: Winsize, cell_width_px: u32, cell_height_px: u32) -> S
         },
         padding: Padding::default(),
     }
+}
+
+#[cfg(feature = "rust-vt")]
+fn open_font_session(config: &ghostty_config::Config) -> Option<FontSession> {
+    let font = DerivedFontConfig::from(config);
+    let desc = descriptor_from_font_family(font.font_family.as_deref(), font.font_size);
+    let discovered = select_primary(&desc).ok()?;
+    FontSession::open(&discovered, DesiredSize::new(font.font_size)).ok()
 }
 
 #[cfg(feature = "rust-vt")]

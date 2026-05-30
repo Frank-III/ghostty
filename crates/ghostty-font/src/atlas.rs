@@ -33,6 +33,7 @@ pub struct AtlasRegion {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AtlasError {
     Full,
+    ShrinkNotSupported,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,6 +81,14 @@ impl Atlas {
         self.modified.load(Ordering::Relaxed)
     }
 
+    pub fn resized_generation(&self) -> usize {
+        self.resized.load(Ordering::Relaxed)
+    }
+
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+
     pub fn clear(&mut self) {
         self.data.fill(0);
         self.nodes.clear();
@@ -90,6 +99,51 @@ impl Atlas {
             width: self.size.saturating_sub(2),
         });
         self.bump_modified();
+    }
+
+    /// Grow the texture, preserving packed regions (`Atlas.zig` `grow`).
+    pub fn grow(&mut self, size_new: u32) -> Result<(), AtlasError> {
+        if size_new < self.size {
+            return Err(AtlasError::ShrinkNotSupported);
+        }
+        if size_new == self.size {
+            return Ok(());
+        }
+
+        let depth = self.format.depth();
+        let size_old = self.size;
+        let stride_old = size_old as usize * depth;
+        let stride_new = size_new as usize * depth;
+        let mut data_new = vec![0u8; (size_new as usize) * (size_new as usize) * depth];
+
+        // Copy interior rows, skipping the 1px top/bottom border rows.
+        for row in 1..size_old.saturating_sub(1) {
+            let src = row as usize * stride_old;
+            let dst = row as usize * stride_new;
+            data_new[dst..dst + stride_old]
+                .copy_from_slice(&self.data[src..src + stride_old]);
+        }
+
+        self.data = data_new;
+        self.size = size_new;
+        self.nodes.push(Node {
+            x: size_old.saturating_sub(1),
+            y: 1,
+            width: size_new.saturating_sub(size_old),
+        });
+        self.modified.fetch_add(1, Ordering::Relaxed);
+        self.resized.fetch_add(1, Ordering::Relaxed);
+        Ok(())
+    }
+
+    /// Reserve a region, doubling atlas size until space is available.
+    pub fn reserve_or_grow(&mut self, width: u32, height: u32) -> Result<AtlasRegion, AtlasError> {
+        if let Ok(region) = self.reserve(width, height) {
+            return Ok(region);
+        }
+        let size_new = self.size.saturating_mul(2).max(64);
+        self.grow(size_new)?;
+        self.reserve(width, height)
     }
 
     pub fn reserve(&mut self, width: u32, height: u32) -> Result<AtlasRegion, AtlasError> {
@@ -233,5 +287,28 @@ mod tests {
         atlas.write_grayscale(region, &[1, 2, 3, 4]);
         let idx = region.y as usize * 16 + region.x as usize;
         assert_eq!(atlas.data[idx], 1);
+    }
+
+    #[test]
+    fn grow_doubles_and_preserves_pixels() {
+        let mut atlas = Atlas::new(16, AtlasFormat::Grayscale);
+        let region = atlas.reserve(2, 2).unwrap();
+        atlas.write_grayscale(region, &[9, 9, 9, 9]);
+        let old_resized = atlas.resized_generation();
+        atlas.grow(32).unwrap();
+        assert_eq!(atlas.size(), 32);
+        assert!(atlas.resized_generation() > old_resized);
+        let idx = region.y as usize * 32 + region.x as usize;
+        assert_eq!(atlas.data()[idx], 9);
+    }
+
+    #[test]
+    fn reserve_or_grow_expands_when_full() {
+        let mut atlas = Atlas::new(16, AtlasFormat::Grayscale);
+        while atlas.reserve(8, 8).is_ok() {}
+        let old_size = atlas.size();
+        let region = atlas.reserve_or_grow(8, 8).expect("grow and reserve");
+        assert!(atlas.size() > old_size);
+        assert_eq!(region.width, 8);
     }
 }

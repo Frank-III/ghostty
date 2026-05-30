@@ -14,6 +14,8 @@ pub struct DerivedStreamConfig {
     pub enquiry_response: String,
     pub default_cursor_style: CursorStyle,
     pub default_cursor_blink: Option<bool>,
+    /// Terminal color scheme for DSR 996/997 (`device_status.zig` dark/light).
+    pub color_scheme_dark: bool,
 }
 
 /// App-level fields (shell integration, theme path).
@@ -67,6 +69,7 @@ pub struct DerivedRendererConfig {
 
 impl From<&Config> for DerivedStreamConfig {
     fn from(cfg: &Config) -> Self {
+        let renderer = DerivedRendererConfig::from(cfg);
         Self {
             osc_color_report_format: cfg.osc_color_report_format,
             clipboard_read: cfg.clipboard_read,
@@ -74,6 +77,7 @@ impl From<&Config> for DerivedStreamConfig {
             enquiry_response: cfg.enquiry_response.clone(),
             default_cursor_style: cfg.cursor_style,
             default_cursor_blink: cfg.cursor_style_blink,
+            color_scheme_dark: renderer.background.prefers_dark_color_scheme(),
         }
     }
 }
@@ -164,5 +168,18 @@ mod tests {
         assert_eq!(app.shell_integration, cfg.shell_integration);
         let stream: DerivedStreamConfig = (&cfg).into();
         assert_eq!(stream.clipboard_read, cfg.clipboard_read);
+        assert!(stream.color_scheme_dark);
+    }
+
+    #[test]
+    fn light_background_reports_light_color_scheme() {
+        let mut cfg = Config::with_defaults();
+        cfg.background = crate::types::RgbColor {
+            r: 0xff,
+            g: 0xff,
+            b: 0xff,
+        };
+        let stream: DerivedStreamConfig = (&cfg).into();
+        assert!(!stream.color_scheme_dark);
     }
 }

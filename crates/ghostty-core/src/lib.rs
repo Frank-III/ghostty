@@ -5,6 +5,7 @@
 //! - `src/Surface.zig`
 //! - `src/apprt/embedded.zig`
 
+mod action;
 mod app;
 mod app_config;
 mod events;
@@ -16,14 +17,16 @@ mod surface_id;
 #[cfg(all(unix, feature = "rust-vt"))]
 mod surface_session;
 
+pub use action::{
+    RuntimeAction, RuntimeActionTag, RuntimeActionUnion, RuntimeColorChange, RuntimeSetTitle,
+};
 pub use app::App;
 pub use app_config::AppConfig;
 pub use events::{ActionTag, ActionTargetTag, AppEvent, SurfaceEvent};
 pub use runtime::{
-    RuntimeAction, RuntimeActionCb, RuntimeClipboard, RuntimeClipboardContent,
-    RuntimeClipboardRequest, RuntimeCloseSurfaceCb, RuntimeConfirmReadClipboardCb,
-    RuntimeConfig, RuntimeReadClipboardCb, RuntimeTarget, RuntimeTargetTag, RuntimeTargetU,
-    RuntimeWakeupCb, RuntimeWriteClipboardCb,
+    RuntimeActionCb, RuntimeClipboard, RuntimeClipboardContent, RuntimeClipboardRequest,
+    RuntimeCloseSurfaceCb, RuntimeConfirmReadClipboardCb, RuntimeConfig, RuntimeReadClipboardCb,
+    RuntimeTarget, RuntimeTargetTag, RuntimeTargetU, RuntimeWakeupCb, RuntimeWriteClipboardCb,
 };
 pub use surface::Surface;
 pub use surface_id::SurfaceId;

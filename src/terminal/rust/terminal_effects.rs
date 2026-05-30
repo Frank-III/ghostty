@@ -21,6 +21,13 @@ extern "C" {
         ptr: *const u8,
         len: usize,
     );
+    fn ghostty_terminal_wrapper_color_changed(
+        wrapper: *mut c_void,
+        kind: i32,
+        r: u8,
+        g: u8,
+        b: u8,
+    );
 }
 
 #[cfg(ghostty_vt_terminal_owned)]
@@ -111,5 +118,15 @@ pub(crate) unsafe fn clipboard_contents(wrapper: *mut c_void, kind: u8, data: &[
     }
     unsafe {
         ghostty_terminal_wrapper_clipboard_contents(wrapper, kind, data.as_ptr(), data.len());
+    }
+}
+
+#[cfg(ghostty_vt_terminal_owned)]
+pub(crate) unsafe fn color_changed(wrapper: *mut c_void, kind: i32, r: u8, g: u8, b: u8) {
+    if wrapper.is_null() {
+        return;
+    }
+    unsafe {
+        ghostty_terminal_wrapper_color_changed(wrapper, kind, r, g, b);
     }
 }

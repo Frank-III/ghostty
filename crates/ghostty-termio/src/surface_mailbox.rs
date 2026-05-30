@@ -34,6 +34,10 @@ pub enum SurfaceMessage {
         clipboard: ClipboardKind,
         data: Vec<u8>,
     },
+    ColorChange {
+        kind: i32,
+        color: ghostty_config::RgbColor,
+    },
 }
 
 /// Fixed-capacity mailbox for surface messages.

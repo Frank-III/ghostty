@@ -9,12 +9,14 @@ pub type VtQuerySizeFn = Option<
     unsafe extern "C" fn(*mut c_void, *mut crate::constants::GhosttySizeReportSize) -> bool,
 >;
 pub type VtWritePtyFn = Option<unsafe extern "C" fn(*mut c_void, *const u8, usize)>;
+pub type VtColorChangedFn = Option<unsafe extern "C" fn(*mut c_void, i32, u8, u8, u8)>;
 
 /// Effect callbacks registered on a rust-owned terminal via [`set_wrapper`](crate::terminal_owned::RustTerminalOwned::set_wrapper).
 #[repr(C)]
 pub struct GhosttyVtEffectWrapper {
     pub userdata: *mut c_void,
     pub write_pty: VtWritePtyFn,
+    pub color_changed: VtColorChangedFn,
     pub bell: VtEffectFn,
     pub title_changed: VtEffectFn,
     pub report_enquiry: VtEffectFn,
@@ -23,6 +25,8 @@ pub struct GhosttyVtEffectWrapper {
     pub query_size: VtQuerySizeFn,
     pub report_color_scheme: VtEffectFn,
     pub clipboard_contents: VtClipboardFn,
+    /// 0=none, 1=16-bit, 2=8-bit (`Config.OSCColorReportFormat`).
+    pub osc_color_report_format: u8,
 }
 
 impl GhosttyVtEffectWrapper {
@@ -30,6 +34,7 @@ impl GhosttyVtEffectWrapper {
         Self {
             userdata: core::ptr::null_mut(),
             write_pty: None,
+            color_changed: None,
             bell: None,
             title_changed: None,
             report_enquiry: None,
@@ -38,7 +43,15 @@ impl GhosttyVtEffectWrapper {
             query_size: None,
             report_color_scheme: None,
             clipboard_contents: None,
+            osc_color_report_format: 1,
         }
+    }
+
+    pub unsafe fn osc_color_report_format(wrapper: *mut c_void) -> u8 {
+        if wrapper.is_null() {
+            return 1;
+        }
+        unsafe { (*(wrapper as *const Self)).osc_color_report_format }
     }
 
     pub unsafe fn dispatch_write_pty(wrapper: *mut c_void, data: &[u8]) {
@@ -124,6 +137,18 @@ impl GhosttyVtEffectWrapper {
             let w = &*(wrapper as *const Self);
             if let Some(f) = w.clipboard_contents {
                 f(wrapper, kind, data.as_ptr(), data.len());
+            }
+        }
+    }
+
+    pub unsafe fn dispatch_color_changed(wrapper: *mut c_void, kind: i32, r: u8, g: u8, b: u8) {
+        unsafe {
+            if wrapper.is_null() {
+                return;
+            }
+            let w = &*(wrapper as *const Self);
+            if let Some(f) = w.color_changed {
+                f(wrapper, kind, r, g, b);
             }
         }
     }
