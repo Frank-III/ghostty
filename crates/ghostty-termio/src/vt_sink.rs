@@ -136,10 +136,7 @@ pub mod rust_owned {
                 }
                 self.bridge = Some(bridge);
             }
-            self.bridge
-                .as_mut()
-                .expect("bridge")
-                .bind_stream(stream);
+            self.bridge.as_mut().expect("bridge").bind_stream(stream);
         }
 
         pub fn cell_codepoint(&self, x: u16, y: u16) -> Option<u32> {
@@ -172,6 +169,16 @@ pub mod rust_owned {
         }
 
         /// True if `needle` appears as consecutive cells on any screen row.
+        /// Clear VT effect callbacks and raw pointers before termio/stream teardown.
+        pub fn detach_vt_effects(&mut self) {
+            unsafe {
+                ghostty_rust_terminal_owned_set_wrapper(self.handle, core::ptr::null_mut());
+            }
+            if let Some(bridge) = self.bridge.as_mut() {
+                bridge.detach();
+            }
+        }
+
         pub fn contains_text_anywhere(&self, needle: &str) -> bool {
             if needle.is_empty() {
                 return false;
@@ -199,6 +206,7 @@ pub mod rust_owned {
 
     impl Drop for RustOwnedTerminalSink {
         fn drop(&mut self) {
+            self.detach_vt_effects();
             unsafe {
                 ghostty_rust_terminal_destroy(&self.alloc, self.handle);
             }

@@ -2,7 +2,7 @@
 //!
 //! Port target: subset of `Surface.zig` termio ownership without renderer/input.
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use ghostty_foundation::{FoundationError, FoundationResult};
 use ghostty_termio::{
@@ -98,8 +98,9 @@ impl From<FoundationError> for SurfaceSessionError {
 pub struct SurfaceSession {
     id: SurfaceId,
     config: AppConfig,
-    termio: TermioLoop,
+    /// Dropped after [`termio`](Self::termio) so the background thread stops before VT teardown.
     terminal: RustOwnedTerminalSink,
+    termio: TermioLoop,
     #[cfg(feature = "rust-vt")]
     cell_width_px: u32,
     #[cfg(feature = "rust-vt")]
@@ -161,8 +162,6 @@ impl SurfaceSession {
             .ok_or(SurfaceSessionError::Terminal)?;
         terminal.bind_session(&mut termio);
         termio.tick(&mut terminal)?;
-        let host_renderer =
-            HostRenderer::for_host(renderer_size(winsize, cell_width_px, cell_height_px)).ok();
         Ok(Self {
             id,
             config,
@@ -174,7 +173,7 @@ impl SurfaceSession {
             #[cfg(feature = "rust-vt")]
             last_frame: None,
             #[cfg(feature = "rust-vt")]
-            host_renderer,
+            host_renderer: None,
             #[cfg(feature = "rust-vt")]
             font_atlas: None,
             #[cfg(feature = "rust-vt")]
@@ -267,6 +266,7 @@ impl SurfaceSession {
     /// Prepare a draw frame from the current terminal grid (CPU path until GPU lands).
     #[cfg(feature = "rust-vt")]
     pub fn prepare_draw(&mut self) -> FramePrep {
+        self.ensure_host_renderer();
         let snap = self.cell_snapshot();
         self.warm_glyph_cache_from_snapshot(&snap);
         self.sync_font_atlas_upload();
@@ -394,10 +394,25 @@ impl SurfaceSession {
             .warm_snapshot(session, atlas, codepoints, opts);
     }
 
+    #[cfg(feature = "rust-vt")]
+    fn ensure_host_renderer(&mut self) {
+        if self.host_renderer.is_some() {
+            return;
+        }
+        let winsize = self.winsize();
+        self.host_renderer = HostRenderer::for_host(renderer_size(
+            winsize,
+            self.cell_width_px,
+            self.cell_height_px,
+        ))
+        .ok();
+    }
+
     /// Upload the font atlas to the host renderer when modified.
     #[cfg(feature = "rust-vt")]
     fn sync_font_atlas_upload(&mut self) {
         self.ensure_font_atlas();
+        self.ensure_host_renderer();
         let Some(atlas) = self.font_atlas.as_ref() else {
             return;
         };
@@ -470,7 +485,7 @@ impl SurfaceSession {
     where
         F: FnMut(&mut Self) -> bool,
     {
-        while !self.termio.is_shutdown() {
+        loop {
             self.tick()?;
             if done(self) {
                 return Ok(());
@@ -479,7 +494,20 @@ impl SurfaceSession {
             if remaining.is_zero() {
                 break;
             }
+            if self.termio.is_shutdown() {
+                break;
+            }
             std::thread::sleep(remaining.min(std::time::Duration::from_millis(16)));
+        }
+
+        // Short-lived children can exit before the last PTY bytes are drained.
+        for _ in 0..64 {
+            if self.tick()? == 0 {
+                break;
+            }
+            if done(self) {
+                return Ok(());
+            }
         }
         Ok(())
     }
@@ -516,6 +544,23 @@ impl SurfaceSession {
 
     pub fn contains_text(&self, needle: &str) -> bool {
         self.terminal.contains_text(needle)
+    }
+}
+
+impl Drop for SurfaceSession {
+    fn drop(&mut self) {
+        self.terminal.detach_vt_effects();
+        if !self.termio.is_shutdown() {
+            let _ = self.termio.shutdown();
+        }
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while Instant::now() < deadline {
+            if self.termio.is_shutdown() {
+                break;
+            }
+            let _ = self.termio.tick(&mut self.terminal);
+            std::thread::sleep(Duration::from_millis(5));
+        }
     }
 }
 

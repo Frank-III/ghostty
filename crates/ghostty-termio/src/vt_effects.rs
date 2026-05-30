@@ -71,6 +71,12 @@ impl TermioVtBridge {
     pub fn effects_ptr(&mut self) -> *mut c_void {
         &mut self.effects as *mut GhosttyVtEffectWrapper as *mut c_void
     }
+
+    pub fn detach(&mut self) {
+        self.stream = core::ptr::null_mut();
+        self.termio = core::ptr::null_mut();
+        self.effects.userdata = core::ptr::null_mut();
+    }
 }
 
 unsafe extern "C" fn title_changed(wrapper: *mut c_void) {

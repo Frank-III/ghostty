@@ -1,7 +1,10 @@
 //! Background termio I/O thread (`src/termio/Termio.zig` mailbox + pump cycle).
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::sync::{
+    mpsc::{self, Receiver, Sender, TryRecvError},
+    Arc,
+};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -30,26 +33,9 @@ pub struct TermioThreadHandle {
     pid: libc::pid_t,
     inbox: Sender<TermioMessage>,
     events: Receiver<TermioThreadEvent>,
-    shutdown: ArcBool,
+    shutdown: Arc<AtomicBool>,
     join: Option<JoinHandle<()>>,
     child_exit: Option<u32>,
-}
-
-#[derive(Debug)]
-struct ArcBool(AtomicBool);
-
-impl ArcBool {
-    fn new(value: bool) -> Self {
-        Self(AtomicBool::new(value))
-    }
-
-    fn load(&self) -> bool {
-        self.0.load(Ordering::SeqCst)
-    }
-
-    fn store(&self, value: bool) {
-        self.0.store(value, Ordering::SeqCst);
-    }
 }
 
 impl TermioThreadHandle {
@@ -62,9 +48,9 @@ impl TermioThreadHandle {
 
         let (inbox_tx, inbox_rx) = mpsc::channel();
         let (event_tx, event_rx) = mpsc::channel();
-        let shutdown = ArcBool::new(false);
+        let shutdown = Arc::new(AtomicBool::new(false));
 
-        let shutdown_flag = shutdown.clone_for_thread();
+        let shutdown_flag = Arc::clone(&shutdown);
         let join = thread::Builder::new()
             .name("ghostty-termio".into())
             .spawn(move || {
@@ -87,7 +73,7 @@ impl TermioThreadHandle {
     }
 
     pub fn push(&self, msg: TermioMessage) -> FoundationResult<()> {
-        if self.shutdown.load() {
+        if self.shutdown.load(Ordering::SeqCst) {
             return Err(ghostty_foundation::FoundationError::Unsupported);
         }
         self.inbox
@@ -104,7 +90,10 @@ impl TermioThreadHandle {
                 }
                 Ok(other) => return Some(other),
                 Err(TryRecvError::Empty) => return None,
-                Err(TryRecvError::Disconnected) => return None,
+                Err(TryRecvError::Disconnected) => {
+                    self.shutdown.store(true, Ordering::SeqCst);
+                    return None;
+                }
             }
         }
     }
@@ -119,17 +108,11 @@ impl TermioThreadHandle {
     }
 
     pub fn is_shutdown(&self) -> bool {
-        self.shutdown.load()
+        self.shutdown.load(Ordering::SeqCst)
     }
 
     fn request_shutdown(&self) {
-        let _ = self.push(TermioMessage::Shutdown);
-    }
-}
-
-impl ArcBool {
-    fn clone_for_thread(&self) -> Self {
-        Self(AtomicBool::new(self.load()))
+        let _ = self.inbox.send(TermioMessage::Shutdown);
     }
 }
 
@@ -146,7 +129,7 @@ fn termio_thread_main(
     exec: ExecSpawn,
     inbox: Receiver<TermioMessage>,
     events: Sender<TermioThreadEvent>,
-    shutdown: ArcBool,
+    shutdown: Arc<AtomicBool>,
 ) {
     let winsize = exec.pty.size().unwrap_or(Winsize {
         cols: 80,
@@ -174,7 +157,7 @@ fn termio_thread_main(
         }
     }
 
-    while !shutdown.load() && !stream.is_shutdown() {
+    while !shutdown.load(Ordering::SeqCst) && !stream.is_shutdown() {
         while let Ok(msg) = inbox.try_recv() {
             pending.push(msg);
         }
@@ -192,13 +175,13 @@ fn termio_thread_main(
             }
             let _ = stream.apply_messages(batch, &mut sink);
             if stream.is_shutdown() {
-                shutdown.store(true);
+                shutdown.store(true, Ordering::SeqCst);
             }
         }
 
         if let Some(code) = child.poll_exit() {
             let _ = events.send(TermioThreadEvent::ChildExit(code));
-            shutdown.store(true);
+            shutdown.store(true, Ordering::SeqCst);
             break;
         }
 
@@ -213,6 +196,7 @@ fn termio_thread_main(
     }
 
     child.terminate();
+    shutdown.store(true, Ordering::SeqCst);
 }
 
 #[cfg(all(unix, test))]
