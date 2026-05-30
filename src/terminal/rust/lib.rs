@@ -487,7 +487,10 @@ pub use selection::GhosttyGridRef;
 #[cfg(all(feature = "std", feature = "tmux-tests"))]
 pub use terminal_types::Terminal;
 #[cfg(feature = "std")]
-pub use test_support::{terminal_cell_codepoint, terminal_cell_fg_rgb, test_allocator};
+pub use test_support::{
+    terminal_cell_bg_rgb, terminal_cell_codepoint, terminal_cell_colors_rgb,
+    terminal_cell_fg_rgb, test_allocator,
+};
 #[cfg(all(feature = "std", ghostty_vt_terminal_owned))]
 pub use constants::GhosttySizeReportSize;
 #[cfg(all(feature = "std", ghostty_vt_terminal_owned))]

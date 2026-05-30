@@ -31,8 +31,8 @@ pub mod webgl;
 pub use atlas_texture::AtlasTexture;
 pub use backend::Backend;
 pub use cell::{
-    constraint_width, is_covering, no_min_contrast, CellAtlas, CellBg, CellKey, CellText,
-    CellTextBools, CellView,
+    constraint_width, is_covering, no_min_contrast, CellAtlas, CellBg, CellBgDraw, CellKey,
+    CellText, CellTextBools, CellView,
 };
 pub use cells::{rebuild_cells, CellSnapshot};
 pub use color::{
@@ -59,4 +59,4 @@ pub mod styled;
 pub mod text;
 
 pub use styled::{CellStyle, StyledCell, StyledCellSnapshot};
-pub use text::build_cell_texts;
+pub use text::{build_cell_backgrounds, build_cell_texts};

@@ -50,7 +50,10 @@ impl TermioSink for VtSink {
 pub mod rust_owned {
     use core::ffi::c_void;
 
-    use ghostty_vt::test_support::{terminal_cell_codepoint, terminal_cell_fg_rgb, test_allocator};
+    use ghostty_vt::test_support::{
+        terminal_cell_bg_rgb, terminal_cell_codepoint, terminal_cell_colors_rgb,
+        terminal_cell_fg_rgb, test_allocator,
+    };
 
     use super::super::harness::TermioSink;
 
@@ -145,6 +148,14 @@ pub mod rust_owned {
 
         pub fn cell_fg_rgb(&self, x: u16, y: u16) -> Option<[u8; 3]> {
             terminal_cell_fg_rgb(self.handle, x, y)
+        }
+
+        pub fn cell_bg_rgb(&self, x: u16, y: u16) -> Option<[u8; 3]> {
+            terminal_cell_bg_rgb(self.handle, x, y)
+        }
+
+        pub fn cell_colors_rgb(&self, x: u16, y: u16) -> Option<([u8; 3], [u8; 3])> {
+            terminal_cell_colors_rgb(self.handle, x, y)
         }
 
         pub fn contains_text(&self, needle: &str) -> bool {
@@ -443,6 +454,60 @@ mod rust_vt_tests {
         sink.bind_session(&mut termio);
         sink.write_terminal(b"\x1b[31mR");
         assert_eq!(sink.cell_fg_rgb(0, 0), Some([0xcc, 0x66, 0x66]));
+    }
+
+    #[test]
+    fn sgr_background_resolves_cell_rgb() {
+        use crate::{CommandBuilder, TermioLoop, Winsize};
+        use ghostty_config::DerivedStreamConfig;
+
+        let spec = CommandBuilder::new()
+            .path("/bin/sh")
+            .arg("sh")
+            .arg("-c")
+            .arg("cat")
+            .build()
+            .expect("spec");
+        let winsize = Winsize {
+            cols: 80,
+            rows: 24,
+            x_pixels: 0,
+            y_pixels: 0,
+        };
+        let mut termio =
+            TermioLoop::spawn(&spec, winsize, DerivedStreamConfig::default()).expect("spawn");
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
+        sink.bind_session(&mut termio);
+        sink.write_terminal(b"\x1b[42mG");
+        assert_eq!(sink.cell_bg_rgb(0, 0), Some([0xb5, 0xbd, 0x68]));
+    }
+
+    #[test]
+    fn sgr_inverse_swaps_fg_and_bg() {
+        use crate::{CommandBuilder, TermioLoop, Winsize};
+        use ghostty_config::DerivedStreamConfig;
+
+        let spec = CommandBuilder::new()
+            .path("/bin/sh")
+            .arg("sh")
+            .arg("-c")
+            .arg("cat")
+            .build()
+            .expect("spec");
+        let winsize = Winsize {
+            cols: 80,
+            rows: 24,
+            x_pixels: 0,
+            y_pixels: 0,
+        };
+        let mut termio =
+            TermioLoop::spawn(&spec, winsize, DerivedStreamConfig::default()).expect("spawn");
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
+        sink.bind_session(&mut termio);
+        sink.write_terminal(b"\x1b[31;7mI");
+        let (fg, bg) = sink.cell_colors_rgb(0, 0).expect("colors");
+        assert_eq!(fg, [0x1d, 0x1f, 0x21]);
+        assert_eq!(bg, [0xcc, 0x66, 0x66]);
     }
 
     #[test]

@@ -1,6 +1,7 @@
 //! CPU-side draw frame orchestration before GPU backends land.
 
 use crate::cell::CellText;
+use crate::cell::CellBgDraw;
 use crate::cells::{rebuild_cells, CellSnapshot};
 use crate::damage::{DamageRect, DamageState};
 use crate::size::GridSize;
@@ -12,6 +13,7 @@ pub struct FramePrep {
     pub dirty_rects: Vec<DamageRect>,
     pub populated_cells: usize,
     pub text_cells: Vec<CellText>,
+    pub bg_cells: Vec<CellBgDraw>,
 }
 
 /// Merge snapshot into damage and describe the next draw pass.
@@ -28,6 +30,7 @@ pub fn prepare_draw_frame(snapshot: &CellSnapshot, damage: &mut DamageState) -> 
         },
         populated_cells,
         text_cells: Vec::new(),
+        bg_cells: Vec::new(),
     }
 }
 

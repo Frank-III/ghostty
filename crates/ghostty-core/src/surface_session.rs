@@ -33,6 +33,7 @@ use ghostty_renderer::damage::{DamageRect, DamageState};
 use ghostty_renderer::frame::{finish_draw_frame, prepare_draw_frame, FramePrep};
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::build_cell_texts;
+use ghostty_renderer::build_cell_backgrounds;
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::size::GridSize;
 #[cfg(feature = "rust-vt")]
@@ -284,6 +285,18 @@ impl SurfaceSession {
             self.cell_width_px,
             self.cell_height_px,
         );
+        let renderer_cfg = ghostty_config::DerivedRendererConfig::from(self.config.config());
+        let default_bg = ghostty_renderer::color::Rgb::new(
+            renderer_cfg.background.r,
+            renderer_cfg.background.g,
+            renderer_cfg.background.b,
+        );
+        prep.bg_cells = build_cell_backgrounds(
+            &snap,
+            default_bg,
+            self.cell_width_px,
+            self.cell_height_px,
+        );
         self.last_frame = Some(prep.clone());
         prep
     }
@@ -314,11 +327,18 @@ impl SurfaceSession {
             for x in 0..ws.cols {
                 if let Some(cp) = self.cell_codepoint(x, y) {
                     snap.set(x, y, cp);
-                    if let Some([r, g, b]) = self.terminal.cell_fg_rgb(x, y) {
+                    if let Some(([fr, fg, fb], [br, bg, bb])) =
+                        self.terminal.cell_colors_rgb(x, y)
+                    {
                         snap.set_foreground(
                             x,
                             y,
-                            ghostty_renderer::color::Rgb::new(r, g, b),
+                            ghostty_renderer::color::Rgb::new(fr, fg, fb),
+                        );
+                        snap.set_background(
+                            x,
+                            y,
+                            ghostty_renderer::color::Rgb::new(br, bg, bb),
                         );
                     }
                 }
@@ -484,6 +504,10 @@ impl SurfaceSession {
 
     pub fn cell_fg_rgb(&self, x: u16, y: u16) -> Option<[u8; 3]> {
         self.terminal.cell_fg_rgb(x, y)
+    }
+
+    pub fn cell_bg_rgb(&self, x: u16, y: u16) -> Option<[u8; 3]> {
+        self.terminal.cell_bg_rgb(x, y)
     }
 
     pub fn poll_child_exit(&mut self) -> Option<u32> {

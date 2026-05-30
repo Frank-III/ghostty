@@ -248,3 +248,20 @@ fn cell_snapshot_captures_sgr_foreground() {
     assert_eq!(fg.g, 0x66);
     assert_eq!(fg.b, 0x66);
 }
+
+#[test]
+fn prepare_draw_includes_background_cells() {
+    let mut session = SurfaceSession::spawn(
+        AppConfig::default(),
+        SurfaceSessionOptions {
+            command: Some(echo_cat_command()),
+            ..Default::default()
+        },
+    )
+    .expect("spawn");
+
+    session.write_vt_input(b"\x1b[42mG").expect("write");
+    let prep = session.prepare_draw();
+    assert!(!prep.bg_cells.is_empty());
+    assert_eq!(prep.bg_cells[0].color[0..3], [0xb5, 0xbd, 0x68]);
+}

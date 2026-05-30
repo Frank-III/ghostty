@@ -56,6 +56,14 @@ impl CellTextBools {
     }
 }
 
+/// Background cell instance for GPU quads (`shaderpkg.CellBg` + grid position).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CellBgDraw {
+    pub grid_pos: [u16; 2],
+    pub color: CellBg,
+}
+
 /// Foreground cell shader parameter (`shaderpkg.CellText`).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

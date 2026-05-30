@@ -43,6 +43,7 @@ fn active_grid_ref(handle: *mut core::ffi::c_void, x: u16, y: u16) -> Option<cra
 fn resolve_style_color(
     terminal: &crate::terminal_types::Terminal,
     style_color: &crate::style::GhosttyStyleColor,
+    default: Option<crate::style::GhosttyColorRgb>,
 ) -> Option<[u8; 3]> {
     use crate::constants::{STYLE_COLOR_NONE, STYLE_COLOR_PALETTE, STYLE_COLOR_RGB};
 
@@ -58,13 +59,52 @@ fn resolve_style_color(
                 let c = terminal.colors.palette.current()[idx];
                 Some([c.r, c.g, c.b])
             }
-            STYLE_COLOR_NONE => terminal
-                .colors
-                .foreground
-                .get()
-                .map(|c| [c.r, c.g, c.b]),
+            STYLE_COLOR_NONE => default.map(|c| [c.r, c.g, c.b]),
             _ => None,
         }
+    }
+}
+
+#[cfg(feature = "std")]
+fn terminal_cell_colors(handle: *mut core::ffi::c_void, x: u16, y: u16) -> Option<([u8; 3], [u8; 3])> {
+    use core::mem;
+
+    use crate::early::GHOSTTY_SUCCESS;
+    use crate::style::GhosttyStyle;
+    use crate::terminal_owned::RustTerminalOwned;
+
+    unsafe {
+        let grid_ref = active_grid_ref(handle, x, y)?;
+        let mut style = mem::MaybeUninit::<GhosttyStyle>::uninit();
+        if crate::grid_ref::ghostty_rust_grid_ref_style_from_ref(
+            grid_ref.node,
+            grid_ref.x,
+            grid_ref.y,
+            style.as_mut_ptr(),
+        ) != GHOSTTY_SUCCESS
+        {
+            return None;
+        }
+        let style = style.assume_init();
+        let owned = &*(handle as *const RustTerminalOwned);
+        let terminal = &owned.terminal;
+        let palette0 = terminal.colors.palette.current()[0];
+        let default_fg = terminal
+            .colors
+            .foreground
+            .get()
+            .unwrap_or(palette0);
+        let default_bg = terminal
+            .colors
+            .background
+            .get()
+            .unwrap_or(palette0);
+        let mut fg = resolve_style_color(terminal, &style.fg_color, Some(default_fg))?;
+        let mut bg = resolve_style_color(terminal, &style.bg_color, Some(default_bg))?;
+        if style.inverse {
+            core::mem::swap(&mut fg, &mut bg);
+        }
+        Some((fg, bg))
     }
 }
 
@@ -104,26 +144,21 @@ pub fn terminal_cell_codepoint(handle: *mut core::ffi::c_void, x: u16, y: u16) -
 /// Resolve the effective foreground RGB for a cell on the active screen.
 #[cfg(feature = "std")]
 pub fn terminal_cell_fg_rgb(handle: *mut core::ffi::c_void, x: u16, y: u16) -> Option<[u8; 3]> {
-    use core::mem;
+    terminal_cell_colors(handle, x, y).map(|(fg, _)| fg)
+}
 
-    use crate::early::GHOSTTY_SUCCESS;
-    use crate::style::GhosttyStyle;
-    use crate::terminal_owned::RustTerminalOwned;
+/// Resolve the effective background RGB for a cell on the active screen.
+#[cfg(feature = "std")]
+pub fn terminal_cell_bg_rgb(handle: *mut core::ffi::c_void, x: u16, y: u16) -> Option<[u8; 3]> {
+    terminal_cell_colors(handle, x, y).map(|(_, bg)| bg)
+}
 
-    unsafe {
-        let grid_ref = active_grid_ref(handle, x, y)?;
-        let mut style = mem::MaybeUninit::<GhosttyStyle>::uninit();
-        if crate::grid_ref::ghostty_rust_grid_ref_style_from_ref(
-            grid_ref.node,
-            grid_ref.x,
-            grid_ref.y,
-            style.as_mut_ptr(),
-        ) != GHOSTTY_SUCCESS
-        {
-            return None;
-        }
-        let style = style.assume_init();
-        let owned = &*(handle as *const RustTerminalOwned);
-        resolve_style_color(&owned.terminal, &style.fg_color)
-    }
+/// Resolve effective foreground and background RGB for a cell.
+#[cfg(feature = "std")]
+pub fn terminal_cell_colors_rgb(
+    handle: *mut core::ffi::c_void,
+    x: u16,
+    y: u16,
+) -> Option<([u8; 3], [u8; 3])> {
+    terminal_cell_colors(handle, x, y)
 }

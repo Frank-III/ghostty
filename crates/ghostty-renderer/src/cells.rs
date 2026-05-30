@@ -9,6 +9,7 @@ pub struct CellSnapshot {
     pub grid: GridSize,
     pub codepoints: Vec<Option<u32>>,
     pub foregrounds: Vec<Option<crate::color::Rgb>>,
+    pub backgrounds: Vec<Option<crate::color::Rgb>>,
 }
 
 impl CellSnapshot {
@@ -18,6 +19,7 @@ impl CellSnapshot {
             grid,
             codepoints: vec![None; len],
             foregrounds: vec![None; len],
+            backgrounds: vec![None; len],
         }
     }
 
@@ -31,6 +33,13 @@ impl CellSnapshot {
     pub fn set_foreground(&mut self, x: u16, y: u16, color: crate::color::Rgb) {
         let idx = Self::index(self.grid, x, y);
         if let Some(slot) = self.foregrounds.get_mut(idx) {
+            *slot = Some(color);
+        }
+    }
+
+    pub fn set_background(&mut self, x: u16, y: u16, color: crate::color::Rgb) {
+        let idx = Self::index(self.grid, x, y);
+        if let Some(slot) = self.backgrounds.get_mut(idx) {
             *slot = Some(color);
         }
     }
