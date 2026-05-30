@@ -52,7 +52,8 @@ pub mod rust_owned {
 
     use ghostty_vt::test_support::{
         terminal_cell_bg_rgb, terminal_cell_codepoint, terminal_cell_colors_rgb,
-        terminal_cell_fg_rgb, terminal_cell_wide_raw, test_allocator,
+        terminal_cell_fg_rgb, terminal_cell_wide_raw, terminal_cursor_snapshot, test_allocator,
+        TerminalCursorSnapshot,
     };
 
     use super::super::harness::TermioSink;
@@ -157,6 +158,10 @@ pub mod rust_owned {
 
         pub fn cell_wide_raw(&self, x: u16, y: u16) -> Option<u8> {
             terminal_cell_wide_raw(self.handle, x, y)
+        }
+
+        pub fn cursor_snapshot(&self) -> TerminalCursorSnapshot {
+            terminal_cursor_snapshot(self.handle)
         }
 
         pub fn contains_text(&self, needle: &str) -> bool {
@@ -481,6 +486,15 @@ mod rust_vt_tests {
         assert_eq!(sink.cell_wide_raw(1, 0), Some(2));
     }
 
+    fn check_cursor_snapshot_after_write() {
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
+        sink.write_terminal(b"X");
+        assert_eq!(sink.cell_codepoint(0, 0), Some(b'X' as u32));
+        let snap = sink.cursor_snapshot();
+        assert!(snap.viewport_visible);
+        assert_eq!(snap.viewport_y, 0);
+    }
+
     fn check_sgr_inverse_swaps_fg_and_bg() {
         use crate::TermioLoop;
         use ghostty_config::DerivedStreamConfig;
@@ -530,6 +544,11 @@ mod rust_vt_tests {
             std::thread::sleep(Duration::from_millis(10));
         }
         assert!(sink.contains_text("termio-vt"));
+    }
+
+    #[test]
+    fn cursor_snapshot_after_direct_write() {
+        check_cursor_snapshot_after_write();
     }
 
     #[test]

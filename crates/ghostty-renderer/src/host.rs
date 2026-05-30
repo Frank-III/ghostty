@@ -55,11 +55,12 @@ impl HostRenderer {
         &mut self,
         prep: &FramePrep,
         damage: &mut DamageState,
+        default_bg: crate::color::Rgb,
     ) -> Result<DrawPassStats, GraphicsError> {
         match self {
-            Self::Metal(r) => r.present_frame(prep, damage),
-            Self::OpenGl(r) => r.present_frame(prep, damage),
-            Self::WebGl(r) => r.present_frame(prep, damage),
+            Self::Metal(r) => r.present_frame(prep, damage, default_bg),
+            Self::OpenGl(r) => r.present_frame(prep, damage, default_bg),
+            Self::WebGl(r) => r.present_frame(prep, damage, default_bg),
         }
     }
 

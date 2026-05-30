@@ -8,6 +8,8 @@ repository.workspace = true
 
 [dependencies]
 ghostty-foundation = { path = "../ghostty-foundation" }
+rustybuzz = "0.20.1"
+ttf-parser = { version = "0.25.1", features = ["gvar-alloc"] }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 freetype = "0.7"

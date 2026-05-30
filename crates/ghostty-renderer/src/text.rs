@@ -1,6 +1,6 @@
 //! Build GPU text instances from atlas glyphs (`renderer/cell.zig` subset).
 
-use ghostty_font::GlyphCache;
+use ghostty_font::{GlyphCache, ShapingSession};
 
 use crate::cell::{CellAtlas, CellBgDraw, CellText, CellTextBools};
 use crate::cells::CellSnapshot;
@@ -13,43 +13,112 @@ pub fn build_cell_texts(
     cell_width: u32,
     cell_height: u32,
 ) -> Vec<CellText> {
+    build_cell_texts_shaped(snapshot, cache, cell_width, cell_height, None)
+}
+
+/// Build foreground instances, optionally applying HarfBuzz shaping per row.
+pub fn build_cell_texts_shaped(
+    snapshot: &CellSnapshot,
+    cache: &GlyphCache,
+    cell_width: u32,
+    cell_height: u32,
+    shaper: Option<&ShapingSession>,
+) -> Vec<CellText> {
     let mut out = Vec::new();
     let cols = snapshot.grid.columns;
     let rows = snapshot.grid.rows;
     for y in 0..rows {
+        if let Some(session) = shaper.filter(|s| s.uses_harfbuzz()) {
+            let mut row_cps = Vec::new();
+            let mut row_indices = Vec::new();
+            for x in 0..cols {
+                let idx = usize::from(y) * usize::from(cols) + usize::from(x);
+                if snapshot.skip_text_at(idx) {
+                    continue;
+                }
+                if let Some(cp) = snapshot.codepoints.get(idx).and_then(|c| *c) {
+                    row_cps.push(cp);
+                    row_indices.push((x, idx));
+                }
+            }
+            if !row_cps.is_empty() {
+                let shaped = session.shape(&row_cps);
+                if shaped.len() == row_cps.len() {
+                    for (glyph, (x, idx)) in shaped.iter().zip(row_indices.iter()) {
+                        let cp = row_cps[glyph.cluster_start.min(row_cps.len().saturating_sub(1))];
+                        push_cell_text(
+                            snapshot,
+                            cache,
+                            *x,
+                            y,
+                            idx,
+                            cp,
+                            cell_width,
+                            cell_height,
+                            &mut out,
+                        );
+                    }
+                    continue;
+                }
+            }
+        }
+
         for x in 0..cols {
-            let Some(cp) = snapshot.codepoints[usize::from(y) * usize::from(cols) + usize::from(x)]
-            else {
+            let idx = usize::from(y) * usize::from(cols) + usize::from(x);
+            let Some(cp) = snapshot.codepoints.get(idx).and_then(|c| *c) else {
                 continue;
             };
-            let idx = usize::from(y) * usize::from(cols) + usize::from(x);
             if snapshot.skip_text_at(idx) {
                 continue;
             }
-            let Some(glyph) = cache.get(cp) else {
-                continue;
-            };
-            if glyph.width == 0 || glyph.height == 0 {
-                continue;
-            }
-            let fg = snapshot
-                .foregrounds
-                .get(idx)
-                .and_then(|c| *c)
-                .unwrap_or(Rgb::new(0xff, 0xff, 0xff));
-            out.push(CellText {
-                glyph_pos: [glyph.atlas_x, glyph.atlas_y],
-                glyph_size: [glyph.width, glyph.height],
-                bearings: [glyph.offset_x as i16, glyph.offset_y as i16],
-                grid_pos: [x, y],
-                color: shader_rgba(fg, 0xff),
-                atlas: CellAtlas::Grayscale,
-                bools: CellTextBools::default(),
-            });
+            push_cell_text(
+                snapshot,
+                cache,
+                x,
+                y,
+                &idx,
+                cp,
+                cell_width,
+                cell_height,
+                &mut out,
+            );
         }
     }
-    let _ = (cell_width, cell_height);
     out
+}
+
+fn push_cell_text(
+    snapshot: &CellSnapshot,
+    cache: &GlyphCache,
+    x: u16,
+    y: u16,
+    idx: &usize,
+    cp: u32,
+    cell_width: u32,
+    cell_height: u32,
+    out: &mut Vec<CellText>,
+) {
+    let Some(glyph) = cache.get(cp) else {
+        return;
+    };
+    if glyph.width == 0 || glyph.height == 0 {
+        return;
+    }
+    let fg = snapshot
+        .foregrounds
+        .get(*idx)
+        .and_then(|c| *c)
+        .unwrap_or(Rgb::new(0xff, 0xff, 0xff));
+    out.push(CellText {
+        glyph_pos: [glyph.atlas_x, glyph.atlas_y],
+        glyph_size: [glyph.width, glyph.height],
+        bearings: [glyph.offset_x as i16, glyph.offset_y as i16],
+        grid_pos: [x, y],
+        color: shader_rgba(fg, 0xff),
+        atlas: CellAtlas::Grayscale,
+        bools: CellTextBools::default(),
+    });
+    let _ = (cell_width, cell_height);
 }
 
 /// Build background draw instances for populated cells.

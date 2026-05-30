@@ -13,10 +13,12 @@
 
 pub mod atlas_texture;
 pub mod backend;
+pub mod bg_grid;
 pub mod cell;
 pub mod cells;
 pub mod color;
 pub mod cursor;
+pub mod cursor_draw;
 pub mod damage;
 pub mod draw_backend;
 pub mod draw_pass;
@@ -27,6 +29,7 @@ pub mod metal;
 pub mod opengl;
 pub mod size;
 pub mod state;
+pub mod uniforms;
 pub mod webgl;
 
 pub use atlas_texture::AtlasTexture;
@@ -42,6 +45,7 @@ pub use color::{
 pub use cursor::{
     resolve_style, CursorStyle, CursorStyleOptions, RenderCursorState, TerminalCursorStyle,
 };
+pub use cursor_draw::{build_cursor_draw, CursorDraw, CursorDrawInput};
 pub use damage::{DamageRect, DamageState};
 pub use draw_backend::BackendRenderer;
 pub use draw_pass::{issue_draw_pass, DrawPassStats};
@@ -50,7 +54,7 @@ pub use generic::{
     GenericRenderer, GenericRendererStub, GraphicsApi, GraphicsError, StubGraphicsApi,
 };
 pub use host::HostRenderer;
-pub use metal::{MetalGraphicsApi, MetalRenderer};
+pub use metal::{MetalGpuState, MetalGraphicsApi, MetalRenderer};
 pub use opengl::{OpenGlGraphicsApi, OpenGlRenderer};
 pub use size::{
     CellCount, CellSize, Coordinate, CoordinateSpace, GridSize, Padding, PaddingBalance,
@@ -61,4 +65,5 @@ pub mod styled;
 pub mod text;
 
 pub use styled::{CellStyle, StyledCell, StyledCellSnapshot};
-pub use text::{build_cell_backgrounds, build_cell_texts};
+pub use text::{build_cell_backgrounds, build_cell_texts, build_cell_texts_shaped};
+pub use uniforms::{CursorUniforms, FrameUniforms};

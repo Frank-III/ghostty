@@ -32,6 +32,10 @@ impl GlyphCache {
         Ok(glyph)
     }
 
+    pub fn insert(&mut self, cp: u32, glyph: Glyph) {
+        self.glyphs.insert(cp, glyph);
+    }
+
     pub fn warm_snapshot(
         &mut self,
         session: &FontSession,

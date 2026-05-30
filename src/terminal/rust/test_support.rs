@@ -190,3 +190,159 @@ pub fn terminal_cell_wide_raw(handle: *mut core::ffi::c_void, x: u16, y: u16) ->
         Some(wide as u8)
     }
 }
+
+/// Cursor fields for the renderer draw path (viewport-relative when visible).
+#[cfg(feature = "std")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TerminalCursorSnapshot {
+    pub viewport_visible: bool,
+    pub viewport_x: u16,
+    pub viewport_y: u16,
+    pub viewport_wide_tail: bool,
+    pub visible: bool,
+    pub blinking: bool,
+    pub password_input: bool,
+    /// Matches `constants::RENDER_CURSOR_STYLE_*` (bar=0, block=1, underline=2, hollow=3).
+    pub visual_style: u8,
+    pub cursor_rgb: Option<[u8; 3]>,
+}
+
+#[cfg(feature = "std")]
+impl Default for TerminalCursorSnapshot {
+    fn default() -> Self {
+        Self {
+            viewport_visible: false,
+            viewport_x: 0,
+            viewport_y: 0,
+            viewport_wide_tail: false,
+            visible: true,
+            blinking: false,
+            password_input: false,
+            visual_style: crate::constants::RENDER_CURSOR_STYLE_BLOCK as u8,
+            cursor_rgb: None,
+        }
+    }
+}
+
+/// Read cursor state for renderer style resolution and draw placement.
+#[cfg(feature = "std")]
+pub fn terminal_cursor_snapshot(handle: *mut core::ffi::c_void) -> TerminalCursorSnapshot {
+    use crate::constants::{
+        RENDER_CURSOR_STYLE_BAR, RENDER_CURSOR_STYLE_BLOCK, RENDER_CURSOR_STYLE_BLOCK_HOLLOW,
+        RENDER_CURSOR_STYLE_UNDERLINE,
+    };
+    use crate::cursor_style::CursorVisualStyle;
+    use crate::mode_def::ModeTag;
+    use crate::page_types::Wide;
+    use crate::point::PointTag;
+    use crate::terminal_owned::RustTerminalOwned;
+
+    unsafe {
+        let owned = &*(handle as *const RustTerminalOwned);
+        let term = &owned.terminal;
+        let visible = term.modes.get_by_tag(ModeTag {
+            value: 25,
+            ansi: false,
+        });
+        let blinking = term.modes.get_by_tag(ModeTag {
+            value: 12,
+            ansi: false,
+        });
+        let password_input = term.flags.password_input;
+        let cursor_rgb = term.colors.cursor.get().map(|c| [c.r, c.g, c.b]);
+
+        let screen = term.active();
+        if screen.is_null() {
+            return TerminalCursorSnapshot {
+                visible,
+                blinking,
+                password_input,
+                cursor_rgb,
+                ..TerminalCursorSnapshot::default()
+            };
+        }
+
+        let screen = &*screen;
+        let pages = screen.pages;
+        if pages.is_null() {
+            return TerminalCursorSnapshot {
+                visible,
+                blinking,
+                password_input,
+                cursor_rgb,
+                ..TerminalCursorSnapshot::default()
+            };
+        }
+        let pages = &*pages;
+        let cursor = &screen.cursor;
+
+        if cursor.page_pin.is_null() {
+            return TerminalCursorSnapshot {
+                visible,
+                blinking,
+                password_input,
+                cursor_rgb,
+                ..TerminalCursorSnapshot::default()
+            };
+        }
+
+        let visual_style = match cursor.cursor_style {
+            CursorVisualStyle::Bar => RENDER_CURSOR_STYLE_BAR,
+            CursorVisualStyle::Block => RENDER_CURSOR_STYLE_BLOCK,
+            CursorVisualStyle::Underline => RENDER_CURSOR_STYLE_UNDERLINE,
+            CursorVisualStyle::BlockHollow => RENDER_CURSOR_STYLE_BLOCK_HOLLOW,
+        } as u8;
+
+        let active_pin = *cursor.page_pin;
+        if active_pin.node.is_null() {
+            return TerminalCursorSnapshot {
+                visible,
+                blinking,
+                password_input,
+                visual_style: RENDER_CURSOR_STYLE_BLOCK as u8,
+                cursor_rgb,
+                viewport_visible: false,
+                ..TerminalCursorSnapshot::default()
+            };
+        }
+
+        let Some((vx, vy)) = pages.point_from_pin(PointTag::VIEWPORT, active_pin) else {
+            return TerminalCursorSnapshot {
+                visible,
+                blinking,
+                password_input,
+                visual_style,
+                cursor_rgb,
+                ..TerminalCursorSnapshot::default()
+            };
+        };
+
+        let mut viewport_wide_tail = false;
+        if vx > 0 {
+            let left = crate::highlight::Pin {
+                x: vx - 1,
+                y: active_pin.y,
+                node: active_pin.node,
+                garbage: active_pin.garbage,
+            };
+            if !left.node.is_null() {
+                let (_row, cell) = left.row_and_cell_ptr();
+                if !cell.is_null() && (*cell).wide() == Wide::Wide {
+                    viewport_wide_tail = true;
+                }
+            }
+        }
+
+        TerminalCursorSnapshot {
+            viewport_visible: true,
+            viewport_x: vx as u16,
+            viewport_y: vy as u16,
+            viewport_wide_tail,
+            visible,
+            blinking,
+            password_input,
+            visual_style,
+            cursor_rgb,
+        }
+    }
+}

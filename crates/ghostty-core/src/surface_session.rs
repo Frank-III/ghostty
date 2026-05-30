@@ -2,7 +2,7 @@
 //!
 //! Port target: subset of `Surface.zig` termio ownership without renderer/input.
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use ghostty_foundation::{FoundationError, FoundationResult};
 use ghostty_termio::{
@@ -23,13 +23,15 @@ use ghostty_font::metrics::{calc, FaceMetrics};
 #[cfg(feature = "rust-vt")]
 use ghostty_font::{
     descriptor_from_font_family, select_primary, Atlas, AtlasFormat, DesiredSize, DiscoveryError,
-    FontSession, GlyphCache, RenderOptions,
+    FontSession, GlyphCache, RenderOptions, ShapingSession,
 };
 use ghostty_renderer::build_cell_backgrounds;
 #[cfg(feature = "rust-vt")]
-use ghostty_renderer::build_cell_texts;
+use ghostty_renderer::build_cell_texts_shaped;
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::cells::CellSnapshot;
+#[cfg(feature = "rust-vt")]
+use ghostty_renderer::cursor_draw::{build_cursor_draw, CursorDrawInput};
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::damage::{DamageRect, DamageState};
 #[cfg(feature = "rust-vt")]
@@ -120,6 +122,12 @@ pub struct SurfaceSession {
     #[cfg(feature = "rust-vt")]
     render_opts: Option<RenderOptions>,
     #[cfg(feature = "rust-vt")]
+    shaping_session: Option<ShapingSession>,
+    #[cfg(feature = "rust-vt")]
+    cursor_blink_visible: bool,
+    #[cfg(feature = "rust-vt")]
+    focused: bool,
+    #[cfg(feature = "rust-vt")]
     atlas_upload_generation: usize,
     pending_title: Option<String>,
     pending_redraw: bool,
@@ -156,6 +164,15 @@ impl SurfaceSession {
                 thicken_strength: font.font_thicken_strength,
             }
         });
+        let shaping_session = font_session.as_ref().and_then(|_| {
+            let font = DerivedFontConfig::from(config.config());
+            select_primary(&descriptor_from_font_family(
+                font.font_family.as_deref(),
+                font.font_size,
+            ))
+            .ok()
+            .map(|discovered| ShapingSession::open_from_discovered(&discovered, font.font_size))
+        });
         let stream_config = ghostty_config::DerivedStreamConfig::from(config.config());
         let mut termio = TermioLoop::spawn(&spec, winsize, stream_config)?;
         let mut terminal = RustOwnedTerminalSink::new(winsize.cols, winsize.rows, scrollback)
@@ -182,6 +199,12 @@ impl SurfaceSession {
             glyph_cache: GlyphCache::default(),
             #[cfg(feature = "rust-vt")]
             render_opts,
+            #[cfg(feature = "rust-vt")]
+            shaping_session,
+            #[cfg(feature = "rust-vt")]
+            cursor_blink_visible: true,
+            #[cfg(feature = "rust-vt")]
+            focused: true,
             #[cfg(feature = "rust-vt")]
             atlas_upload_generation: 0,
             pending_title: None,
@@ -279,11 +302,12 @@ impl SurfaceSession {
         } else {
             prepare_draw_frame(&snap, &mut self.damage)
         };
-        prep.text_cells = build_cell_texts(
+        prep.text_cells = build_cell_texts_shaped(
             &snap,
             &self.glyph_cache,
             self.cell_width_px,
             self.cell_height_px,
+            self.shaping_session.as_ref(),
         );
         let renderer_cfg = ghostty_config::DerivedRendererConfig::from(self.config.config());
         let default_bg = ghostty_renderer::color::Rgb::new(
@@ -291,8 +315,47 @@ impl SurfaceSession {
             renderer_cfg.background.g,
             renderer_cfg.background.b,
         );
+        let default_fg = ghostty_renderer::color::Rgb::new(
+            renderer_cfg.foreground.r,
+            renderer_cfg.foreground.g,
+            renderer_cfg.foreground.b,
+        );
         prep.bg_cells =
             build_cell_backgrounds(&snap, default_bg, self.cell_width_px, self.cell_height_px);
+        if let (Some(session), Some(opts), Some(atlas)) = (
+            self.font_session.as_ref(),
+            self.render_opts.as_ref(),
+            self.font_atlas.as_mut(),
+        ) {
+            let cursor_snap = self.terminal.cursor_snapshot();
+            let cursor_input = CursorDrawInput {
+                viewport_visible: cursor_snap.viewport_visible,
+                viewport_x: cursor_snap.viewport_x,
+                viewport_y: cursor_snap.viewport_y,
+                viewport_wide_tail: cursor_snap.viewport_wide_tail,
+                visible: cursor_snap.visible,
+                blinking: cursor_snap.blinking,
+                password_input: cursor_snap.password_input,
+                visual_style: cursor_snap.visual_style,
+                cursor_rgb: cursor_snap.cursor_rgb,
+                focused: self.focused,
+                blink_visible: self.cursor_blink_visible,
+                preedit: false,
+            };
+            if let Some(cursor) = build_cursor_draw(
+                cursor_input,
+                &snap,
+                session,
+                &mut self.glyph_cache,
+                atlas,
+                opts,
+                default_fg,
+                default_bg,
+            ) {
+                prep.cursor_uniforms = cursor.uniforms;
+                prep.cursor_cell = Some(cursor.cell);
+            }
+        }
         self.last_frame = Some(prep.clone());
         prep
     }
@@ -300,8 +363,14 @@ impl SurfaceSession {
     /// Issue draw passes for the last [`prepare_draw`](Self::prepare_draw) and clear damage.
     #[cfg(feature = "rust-vt")]
     pub fn finish_draw(&mut self) {
+        let renderer_cfg = ghostty_config::DerivedRendererConfig::from(self.config.config());
+        let default_bg = ghostty_renderer::color::Rgb::new(
+            renderer_cfg.background.r,
+            renderer_cfg.background.g,
+            renderer_cfg.background.b,
+        );
         if let (Some(renderer), Some(prep)) = (&mut self.host_renderer, self.last_frame.take()) {
-            let _ = renderer.present_frame(&prep, &mut self.damage);
+            let _ = renderer.present_frame(&prep, &mut self.damage, default_bg);
             return;
         }
         finish_draw_frame(&mut self.damage);

@@ -31,12 +31,16 @@ pub mod atlas;
 pub mod glyph;
 pub mod glyph_cache;
 pub mod session;
+pub mod shaper;
 pub mod shaping;
+pub mod sprite;
 
 pub use atlas::{Atlas, AtlasError, AtlasFormat, AtlasRegion};
 pub use glyph::{Glyph, GlyphRenderError};
 pub use glyph_cache::GlyphCache;
 pub use session::{FontSession, FontSessionError};
+pub use shaper::{HarfBuzzShaper, ShapedGlyph};
 pub use shaping::{
     cluster_display_width, grapheme_display_width, grid_columns_from_wide_raw, ShapingSession,
 };
+pub use sprite::{render_cursor_sprite, CursorSprite};

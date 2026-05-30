@@ -9,6 +9,7 @@
 use crate::cell::{CellBgDraw, CellText};
 use crate::draw_pass::{draw_background_pass_stub, draw_text_pass_stub, DrawPassStats};
 use crate::size::Size;
+use crate::uniforms::{CursorUniforms, FrameUniforms};
 
 /// Metal / OpenGL / WebGL surface abstraction (`Renderer(GraphicsAPI)` hierarchy).
 ///
@@ -38,12 +39,18 @@ pub trait GraphicsApi: Sized {
         &mut self,
         size: &Size,
         cells: &[CellBgDraw],
+        _uniforms: &FrameUniforms,
     ) -> Result<(), GraphicsError> {
         draw_background_pass_stub(size, cells)
     }
 
     /// Foreground glyph instances (stub validates grid bounds).
-    fn draw_text_pass(&mut self, size: &Size, cells: &[CellText]) -> Result<(), GraphicsError> {
+    fn draw_text_pass(
+        &mut self,
+        size: &Size,
+        cells: &[CellText],
+        _cursor: Option<&CursorUniforms>,
+    ) -> Result<(), GraphicsError> {
         draw_text_pass_stub(size, cells)
     }
 

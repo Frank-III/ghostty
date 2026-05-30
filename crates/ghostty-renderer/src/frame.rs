@@ -14,6 +14,8 @@ pub struct FramePrep {
     pub populated_cells: usize,
     pub text_cells: Vec<CellText>,
     pub bg_cells: Vec<CellBgDraw>,
+    pub cursor_cell: Option<CellText>,
+    pub cursor_uniforms: Option<crate::uniforms::CursorUniforms>,
 }
 
 /// Merge snapshot into damage and describe the next draw pass.
@@ -31,6 +33,8 @@ pub fn prepare_draw_frame(snapshot: &CellSnapshot, damage: &mut DamageState) -> 
         populated_cells,
         text_cells: Vec::new(),
         bg_cells: Vec::new(),
+        cursor_cell: None,
+        cursor_uniforms: None,
     }
 }
 

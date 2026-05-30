@@ -493,7 +493,7 @@ pub use terminal_types::Terminal;
 #[cfg(feature = "std")]
 pub use test_support::{
     terminal_cell_bg_rgb, terminal_cell_codepoint, terminal_cell_colors_rgb, terminal_cell_fg_rgb,
-    terminal_cell_wide_raw, test_allocator,
+    terminal_cell_wide_raw, terminal_cursor_snapshot, test_allocator, TerminalCursorSnapshot,
 };
 #[cfg(feature = "std")]
 pub use tmux::control::{Notification, NotificationTag};

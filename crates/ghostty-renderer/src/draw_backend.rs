@@ -5,11 +5,13 @@ use std::sync::Mutex;
 use crate::atlas_texture::AtlasTexture;
 use crate::backend::Backend;
 use crate::cells::CellSnapshot;
+use crate::color::{shader_rgba, Rgb};
 use crate::damage::DamageState;
 use crate::draw_pass::{issue_draw_pass, DrawPassStats};
 use crate::frame::{finish_draw_frame, prepare_draw_frame, FramePrep};
 use crate::generic::{GenericRenderer, GraphicsApi, GraphicsError};
 use crate::size::Size;
+use crate::uniforms::FrameUniforms;
 
 /// Host renderer holding API state and the last prepared frame.
 pub struct BackendRenderer<A: GraphicsApi> {
@@ -72,12 +74,15 @@ impl<A: GraphicsApi> BackendRenderer<A> {
         &mut self,
         prep: &FramePrep,
         damage: &mut DamageState,
+        default_bg: Rgb,
     ) -> Result<DrawPassStats, GraphicsError> {
         let _lock = self
             .draw_mutex
             .lock()
             .map_err(|_| GraphicsError::DrawLockPoisoned)?;
-        let stats = issue_draw_pass(&mut self.api, &self.size, prep)?;
+        let uniforms = FrameUniforms::from_size(&self.size, shader_rgba(default_bg, 0xff));
+        let stats = issue_draw_pass(&mut self.api, &self.size, prep, &uniforms)?;
+        let _ = default_bg;
         self.last_draw_pass = Some(stats);
         self.frames_drawn = self.frames_drawn.saturating_add(1);
         finish_draw_frame(damage);
@@ -180,7 +185,9 @@ mod tests {
         assert_eq!(prep.populated_cells, 1);
         assert_eq!(renderer.frames_drawn, 0);
         assert!(!damage.is_dirty());
-        let stats = renderer.present_frame(&prep, &mut damage).unwrap();
+        let stats = renderer
+            .present_frame(&prep, &mut damage, Rgb::new(0, 0, 0))
+            .unwrap();
         assert_eq!(stats.text_instances, 0);
         assert_eq!(renderer.frames_drawn, 1);
     }
@@ -202,7 +209,9 @@ mod tests {
         let default_bg = Rgb::new(0x1a, 0x1a, 0x1a);
         let mut full_prep = prep;
         full_prep.bg_cells = build_cell_backgrounds(&snap, default_bg, 8, 16);
-        let stats = renderer.present_frame(&full_prep, &mut damage).unwrap();
+        let stats = renderer
+            .present_frame(&full_prep, &mut damage, default_bg)
+            .unwrap();
         assert_eq!(stats.bg_instances, 1);
         assert!(!damage.is_dirty());
     }

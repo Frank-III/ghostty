@@ -7,12 +7,14 @@ use crate::cell::{CellBgDraw, CellText};
 use crate::frame::FramePrep;
 use crate::generic::{GraphicsApi, GraphicsError};
 use crate::size::Size;
+use crate::uniforms::FrameUniforms;
 
 /// Counters from the most recent background + text draw passes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DrawPassStats {
     pub bg_instances: usize,
     pub text_instances: usize,
+    pub cursor_instances: usize,
 }
 
 /// Issue background then text draws for a prepared frame.
@@ -20,12 +22,21 @@ pub fn issue_draw_pass<A: GraphicsApi>(
     api: &mut A,
     size: &Size,
     prep: &FramePrep,
+    uniforms: &FrameUniforms,
 ) -> Result<DrawPassStats, GraphicsError> {
-    api.draw_background_pass(size, &prep.bg_cells)?;
-    api.draw_text_pass(size, &prep.text_cells)?;
+    api.draw_background_pass(size, &prep.bg_cells, uniforms)?;
+    let mut text_cells = prep.text_cells.clone();
+    if let Some(cursor) = &prep.cursor_cell {
+        match prep.cursor_uniforms {
+            Some(_) => text_cells.insert(0, *cursor),
+            None => text_cells.push(*cursor),
+        }
+    }
+    api.draw_text_pass(size, &text_cells, prep.cursor_uniforms.as_ref())?;
     Ok(DrawPassStats {
         bg_instances: prep.bg_cells.len(),
         text_instances: prep.text_cells.len(),
+        cursor_instances: usize::from(prep.cursor_cell.is_some()),
     })
 }
 
@@ -90,6 +101,10 @@ mod tests {
             color: shader_rgba(Rgb::new(0, 0, 0), 0xff),
         });
         let mut api = StubGraphicsApi;
-        issue_draw_pass(&mut api, &test_size(), &prep).unwrap();
+        let uniforms = crate::uniforms::FrameUniforms::from_size(
+            &test_size(),
+            crate::color::shader_rgba(crate::color::Rgb::new(0, 0, 0), 0xff),
+        );
+        issue_draw_pass(&mut api, &test_size(), &prep, &uniforms).unwrap();
     }
 }
