@@ -86,5 +86,5 @@ src/renderer/generic.zig	crates/ghostty-renderer/src/cells.rs + frame.rs + draw_
 src/renderer/Metal.zig	crates/ghostty-renderer/src/metal.rs + draw_backend.rs	Metal backend draw pass stub	partial-rust-ported	cargo test -p ghostty-renderer	Atlas upload + draw_pass stats; Metal pipelines deferred.
 src/renderer/OpenGL.zig	crates/ghostty-renderer/src/opengl.rs + draw_backend.rs	OpenGL backend draw pass stub	partial-rust-ported	cargo test -p ghostty-renderer	Atlas upload + draw_pass stats; GL pipelines deferred.
 src/renderer/WebGL.zig	crates/ghostty-renderer/src/webgl.rs + draw_backend.rs	WebGL backend draw pass stub	partial-rust-ported	cargo test -p ghostty-renderer	draw_snapshot + draw_pass; WASM GL deferred.
-src/font/shaper.zig	crates/ghostty-font/src/shaping.rs	grapheme/cluster width + ShapingSession stub	partial-rust-ported	cargo test -p ghostty-font	Uses foundation codepoint_width; HarfBuzz session hook deferred.
+src/font/shaper.zig	crates/ghostty-font/src/shaping.rs	grapheme/cluster width + wide grid columns	partial-rust-ported	cargo test -p ghostty-font	Uses foundation codepoint_width; VT Wide tag → grid columns for draw; HarfBuzz session hook deferred.
 src/renderer/Thread.zig	—	renderer thread / timers	not-started	—	Redraw coalescing and GTK app-thread draw path stay Zig until core integration.

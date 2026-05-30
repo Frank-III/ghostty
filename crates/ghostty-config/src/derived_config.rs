@@ -2,7 +2,9 @@
 //!
 //! Port target: `DerivedConfig` helpers in `src/config/Config.zig`.
 
-use crate::types::{ClipboardAccess, CursorStyle, OscColorReportFormat, RgbColor, ShellIntegration};
+use crate::types::{
+    ClipboardAccess, CursorStyle, OscColorReportFormat, RgbColor, ShellIntegration,
+};
 use crate::Config;
 
 /// Stream handler / termio parser fields (`termio.DerivedConfig` subset).

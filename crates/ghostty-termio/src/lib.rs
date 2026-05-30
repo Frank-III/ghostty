@@ -73,10 +73,6 @@ pub use stream::PtyStream;
 pub use thread::{TermioThreadEvent, TermioThreadHandle};
 
 #[cfg(unix)]
-pub use stream_handler::StreamHandler;
-#[cfg(unix)]
-pub use surface_mailbox::{ClipboardKind, SurfaceMailbox, SurfaceMessage};
-#[cfg(unix)]
 pub use renderer_mailbox::{RendererMailbox, RendererMessage};
 #[cfg(unix)]
 pub use shell_integration::{
@@ -84,6 +80,10 @@ pub use shell_integration::{
 };
 #[cfg(unix)]
 pub use spawn::{spawn_on_pty, spawn_pty_command, SpawnError, SpawnPtyError};
+#[cfg(unix)]
+pub use stream_handler::StreamHandler;
+#[cfg(unix)]
+pub use surface_mailbox::{ClipboardKind, SurfaceMailbox, SurfaceMessage};
 
 #[cfg(feature = "rust-vt")]
 pub use vt_sink::rust_owned::RustOwnedTerminalSink;

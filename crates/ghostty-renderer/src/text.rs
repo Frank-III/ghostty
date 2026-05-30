@@ -22,13 +22,16 @@ pub fn build_cell_texts(
             else {
                 continue;
             };
+            let idx = usize::from(y) * usize::from(cols) + usize::from(x);
+            if snapshot.skip_text_at(idx) {
+                continue;
+            }
             let Some(glyph) = cache.get(cp) else {
                 continue;
             };
             if glyph.width == 0 || glyph.height == 0 {
                 continue;
             }
-            let idx = usize::from(y) * usize::from(cols) + usize::from(x);
             let fg = snapshot
                 .foregrounds
                 .get(idx)
@@ -143,6 +146,23 @@ mod tests {
 
         let texts = build_cell_texts(&snap, &cache, 8, 16);
         assert_eq!(texts[0].color[0..3], [0x11, 0x22, 0x33]);
+    }
+
+    #[test]
+    fn build_instances_skip_spacer_tail() {
+        let grid = GridSize {
+            columns: 2,
+            rows: 1,
+        };
+        let mut snap = CellSnapshot::empty(grid);
+        snap.set(0, 0, 0x4e16);
+        snap.set_wide(0, 0, 1);
+        snap.set(1, 0, 0);
+        snap.set_wide(1, 0, 2);
+
+        let cache = GlyphCache::default();
+        let texts = build_cell_texts(&snap, &cache, 8, 16);
+        assert_eq!(texts.len(), 0);
     }
 
     #[test]

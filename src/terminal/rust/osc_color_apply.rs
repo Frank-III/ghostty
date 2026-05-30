@@ -54,8 +54,12 @@ fn apply_set(colors: &mut TerminalColors, ct: crate::osc_parser_color::ColoredTa
         ColorTarget::Palette(i) => {
             colors.palette.set(i, color);
         }
-        ColorTarget::Dynamic(DynamicColor::Foreground) => colors.foreground.set_override(Some(color)),
-        ColorTarget::Dynamic(DynamicColor::Background) => colors.background.set_override(Some(color)),
+        ColorTarget::Dynamic(DynamicColor::Foreground) => {
+            colors.foreground.set_override(Some(color))
+        }
+        ColorTarget::Dynamic(DynamicColor::Background) => {
+            colors.background.set_override(Some(color))
+        }
         ColorTarget::Dynamic(DynamicColor::Cursor) => colors.cursor.set_override(Some(color)),
         _ => {}
     }
@@ -232,7 +236,9 @@ mod tests {
     #[test]
     fn osc4_query_encodes_response() {
         let mut colors = TerminalColors::default_val();
-        colors.palette.set(0, rgb_to_ghostty(RGB::new(0x01, 0x02, 0x03)));
+        colors
+            .palette
+            .set(0, rgb_to_ghostty(RGB::new(0x01, 0x02, 0x03)));
         let parsed = parse_color_osc(ColorOscOp::Osc4, b"0;?", OscTerminator::St);
         let mut out = Vec::new();
         handle_color_requests(

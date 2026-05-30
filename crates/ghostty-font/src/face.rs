@@ -103,6 +103,18 @@ impl Default for RenderOptions {
     }
 }
 
+/// Pixel size of the raster canvas for one terminal cell (or wide span).
+pub fn render_cell_size(opts: &RenderOptions) -> (u32, u32) {
+    let cols = opts.cell_width.unwrap_or(1).max(1);
+    let w = opts
+        .grid_metrics
+        .cell_width
+        .saturating_mul(u32::from(cols))
+        .max(1);
+    let h = opts.grid_metrics.cell_height.max(1);
+    (w, h)
+}
+
 #[cfg(target_os = "macos")]
 pub mod platform {
     //! CoreText face loading. Port target: `src/font/face/coretext.zig`.
@@ -190,8 +202,7 @@ pub mod platform {
                 .font
                 .get_bounding_rects_for_glyphs(kCTFontOrientationHorizontal, &glyph);
 
-            let cell_w = opts.grid_metrics.cell_width.max(1);
-            let cell_h = opts.grid_metrics.cell_height.max(1);
+            let (cell_w, cell_h) = super::render_cell_size(opts);
             let pad = 2u32;
             let px_width = cell_w.saturating_add(pad);
             let px_height = cell_h.saturating_add(pad);
@@ -404,8 +415,7 @@ pub mod freetype {
                 return Ok(Glyph::empty());
             }
 
-            let cell_w = opts.grid_metrics.cell_width.max(1);
-            let cell_h = opts.grid_metrics.cell_height.max(1);
+            let (cell_w, cell_h) = super::render_cell_size(opts);
 
             let glyph_index = self.face.get_char_index(ch as u32);
             if glyph_index == 0 && ch != ' ' {

@@ -34,9 +34,18 @@ fn resolve_kitty_color(colors: &TerminalColors, key: Kind) -> Option<RGB> {
             let c = colors.palette.current()[i as usize];
             Some(crate::osc_color_apply::ghostty_to_rgb(c))
         }
-        Kind::Special(Special::Foreground) => colors.foreground.get().map(crate::osc_color_apply::ghostty_to_rgb),
-        Kind::Special(Special::Background) => colors.background.get().map(crate::osc_color_apply::ghostty_to_rgb),
-        Kind::Special(Special::Cursor) => colors.cursor.get().map(crate::osc_color_apply::ghostty_to_rgb),
+        Kind::Special(Special::Foreground) => colors
+            .foreground
+            .get()
+            .map(crate::osc_color_apply::ghostty_to_rgb),
+        Kind::Special(Special::Background) => colors
+            .background
+            .get()
+            .map(crate::osc_color_apply::ghostty_to_rgb),
+        Kind::Special(Special::Cursor) => colors
+            .cursor
+            .get()
+            .map(crate::osc_color_apply::ghostty_to_rgb),
         _ => None,
     }
 }

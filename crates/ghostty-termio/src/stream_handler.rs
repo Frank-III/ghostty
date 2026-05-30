@@ -101,7 +101,10 @@ impl StreamHandler {
     }
 
     pub fn clipboard_write_allowed(&self) -> bool {
-        !matches!(self.config.clipboard_write, ghostty_config::ClipboardAccess::Deny)
+        !matches!(
+            self.config.clipboard_write,
+            ghostty_config::ClipboardAccess::Deny
+        )
     }
 
     pub fn osc_color_report_enabled(&self) -> bool {

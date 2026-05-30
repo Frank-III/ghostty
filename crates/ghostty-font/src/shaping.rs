@@ -5,6 +5,16 @@
 
 use ghostty_foundation::unicode::codepoint_width;
 
+/// Map VT wide-cell tag (`page_types::Wide` as u8) to grid columns for drawing.
+/// Returns `0` for spacer tails (no foreground glyph).
+pub fn grid_columns_from_wide_raw(raw: u8) -> u8 {
+    match raw {
+        1 => 2,
+        2 => 0,
+        _ => 1,
+    }
+}
+
 /// Display width of a single codepoint in terminal cells (0, 1, or 2).
 #[inline]
 pub fn grapheme_display_width(cp: u32) -> u8 {
@@ -41,6 +51,14 @@ impl ShapingSession {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn grid_columns_from_wide() {
+        assert_eq!(grid_columns_from_wide_raw(0), 1);
+        assert_eq!(grid_columns_from_wide_raw(1), 2);
+        assert_eq!(grid_columns_from_wide_raw(2), 0);
+        assert_eq!(grid_columns_from_wide_raw(3), 1);
+    }
 
     #[test]
     fn ascii_width_one() {

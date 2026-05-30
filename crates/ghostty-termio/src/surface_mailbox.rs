@@ -26,10 +26,14 @@ pub enum SurfaceMessage {
     SetTitle(String),
     RedrawRequested,
     Close,
-    ChildExited { exit_code: u32 },
+    ChildExited {
+        exit_code: u32,
+    },
     ReportTitle,
     RingBell,
-    ClipboardRead { clipboard: ClipboardKind },
+    ClipboardRead {
+        clipboard: ClipboardKind,
+    },
     ClipboardWrite {
         clipboard: ClipboardKind,
         data: Vec<u8>,
@@ -80,9 +84,6 @@ mod tests {
     fn fifo_set_title() {
         let mut mb = SurfaceMailbox::new(4);
         mb.push(SurfaceMessage::SetTitle("hi".into())).unwrap();
-        assert_eq!(
-            mb.pop(),
-            Some(SurfaceMessage::SetTitle("hi".to_string()))
-        );
+        assert_eq!(mb.pop(), Some(SurfaceMessage::SetTitle("hi".to_string())));
     }
 }

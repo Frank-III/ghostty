@@ -332,6 +332,9 @@ impl SurfaceSession {
             for x in 0..ws.cols {
                 if let Some(cp) = self.cell_codepoint(x, y) {
                     snap.set(x, y, cp);
+                    if let Some(wide) = self.terminal.cell_wide_raw(x, y) {
+                        snap.set_wide(x, y, wide);
+                    }
                     if let Some(([fr, fg, fb], [br, bg, bb])) = self.terminal.cell_colors_rgb(x, y)
                     {
                         snap.set_foreground(x, y, ghostty_renderer::color::Rgb::new(fr, fg, fb));
@@ -379,7 +382,6 @@ impl SurfaceSession {
             return;
         }
         self.ensure_font_atlas();
-        let codepoints: Vec<u32> = snap.codepoints.iter().filter_map(|cp| *cp).collect();
         let Some(atlas) = self.font_atlas.as_mut() else {
             return;
         };
@@ -389,9 +391,19 @@ impl SurfaceSession {
         let Some(opts) = self.render_opts.as_ref() else {
             return;
         };
-        let _ = self
-            .glyph_cache
-            .warm_snapshot(session, atlas, codepoints, opts);
+        for (idx, cp) in snap.codepoints.iter().enumerate() {
+            let Some(cp) = *cp else { continue };
+            if snap.skip_text_at(idx) {
+                continue;
+            }
+            let cols = snap.grid_columns_at(idx);
+            if cols == 0 {
+                continue;
+            }
+            let mut cell_opts = *opts;
+            cell_opts.cell_width = Some(cols);
+            let _ = self.glyph_cache.ensure(session, atlas, cp, &cell_opts);
+        }
     }
 
     #[cfg(feature = "rust-vt")]

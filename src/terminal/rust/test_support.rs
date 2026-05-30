@@ -6,7 +6,11 @@ pub fn test_allocator() -> crate::allocator::GhosttyAllocator {
 }
 
 #[cfg(feature = "std")]
-fn active_grid_ref(handle: *mut core::ffi::c_void, x: u16, y: u16) -> Option<crate::selection::GhosttyGridRef> {
+fn active_grid_ref(
+    handle: *mut core::ffi::c_void,
+    x: u16,
+    y: u16,
+) -> Option<crate::selection::GhosttyGridRef> {
     use core::mem;
     use core::ptr;
 
@@ -19,10 +23,7 @@ fn active_grid_ref(handle: *mut core::ffi::c_void, x: u16, y: u16) -> Option<cra
         ptr::write(ptr::addr_of_mut!((*pt_ptr).tag), PointTag::ACTIVE);
         ptr::write(
             ptr::addr_of_mut!((*pt_ptr).value.active),
-            Coordinate {
-                x,
-                y: u32::from(y),
-            },
+            Coordinate { x, y: u32::from(y) },
         );
         let pt = pt.assume_init();
 
@@ -66,7 +67,11 @@ fn resolve_style_color(
 }
 
 #[cfg(feature = "std")]
-fn terminal_cell_colors(handle: *mut core::ffi::c_void, x: u16, y: u16) -> Option<([u8; 3], [u8; 3])> {
+fn terminal_cell_colors(
+    handle: *mut core::ffi::c_void,
+    x: u16,
+    y: u16,
+) -> Option<([u8; 3], [u8; 3])> {
     use core::mem;
 
     use crate::early::GHOSTTY_SUCCESS;
@@ -89,16 +94,8 @@ fn terminal_cell_colors(handle: *mut core::ffi::c_void, x: u16, y: u16) -> Optio
         let owned = &*(handle as *const RustTerminalOwned);
         let terminal = &owned.terminal;
         let palette0 = terminal.colors.palette.current()[0];
-        let default_fg = terminal
-            .colors
-            .foreground
-            .get()
-            .unwrap_or(palette0);
-        let default_bg = terminal
-            .colors
-            .background
-            .get()
-            .unwrap_or(palette0);
+        let default_fg = terminal.colors.foreground.get().unwrap_or(palette0);
+        let default_bg = terminal.colors.background.get().unwrap_or(palette0);
         let mut fg = resolve_style_color(terminal, &style.fg_color, Some(default_fg))?;
         let mut bg = resolve_style_color(terminal, &style.bg_color, Some(default_bg))?;
         if style.inverse {
@@ -161,4 +158,35 @@ pub fn terminal_cell_colors_rgb(
     y: u16,
 ) -> Option<([u8; 3], [u8; 3])> {
     terminal_cell_colors(handle, x, y)
+}
+
+/// Raw wide-cell tag (`page_types::Wide` as u8) for a grid cell.
+#[cfg(feature = "std")]
+pub fn terminal_cell_wide_raw(handle: *mut core::ffi::c_void, x: u16, y: u16) -> Option<u8> {
+    use crate::constants::CELL_DATA_WIDE;
+    use crate::early::GHOSTTY_SUCCESS;
+
+    unsafe {
+        let grid_ref = active_grid_ref(handle, x, y)?;
+        let mut cell: u64 = 0;
+        if crate::grid_ref::ghostty_rust_grid_ref_cell_from_ref(
+            grid_ref.node,
+            grid_ref.x,
+            grid_ref.y,
+            &mut cell,
+        ) != GHOSTTY_SUCCESS
+        {
+            return None;
+        }
+        let mut wide: i32 = 0;
+        if crate::cell::ghostty_rust_cell_get(
+            cell,
+            CELL_DATA_WIDE,
+            &mut wide as *mut i32 as *mut core::ffi::c_void,
+        ) != GHOSTTY_SUCCESS
+        {
+            return None;
+        }
+        Some(wide as u8)
+    }
 }

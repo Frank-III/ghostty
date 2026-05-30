@@ -52,7 +52,7 @@ pub mod rust_owned {
 
     use ghostty_vt::test_support::{
         terminal_cell_bg_rgb, terminal_cell_codepoint, terminal_cell_colors_rgb,
-        terminal_cell_fg_rgb, test_allocator,
+        terminal_cell_fg_rgb, terminal_cell_wide_raw, test_allocator,
     };
 
     use super::super::harness::TermioSink;
@@ -153,6 +153,10 @@ pub mod rust_owned {
 
         pub fn cell_colors_rgb(&self, x: u16, y: u16) -> Option<([u8; 3], [u8; 3])> {
             terminal_cell_colors_rgb(self.handle, x, y)
+        }
+
+        pub fn cell_wide_raw(&self, x: u16, y: u16) -> Option<u8> {
+            terminal_cell_wide_raw(self.handle, x, y)
         }
 
         pub fn contains_text(&self, needle: &str) -> bool {
@@ -470,6 +474,13 @@ mod rust_vt_tests {
         finish_termio(&mut termio, &mut sink);
     }
 
+    fn check_wide_cell_marks_spacer_tail() {
+        let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
+        sink.write_terminal("世".as_bytes());
+        assert_eq!(sink.cell_wide_raw(0, 0), Some(1));
+        assert_eq!(sink.cell_wide_raw(1, 0), Some(2));
+    }
+
     fn check_sgr_inverse_swaps_fg_and_bg() {
         use crate::TermioLoop;
         use ghostty_config::DerivedStreamConfig;
@@ -530,6 +541,7 @@ mod rust_vt_tests {
         check_osc_background_set_emits_color_change();
         check_sgr_foreground_resolves_cell_rgb();
         check_sgr_background_resolves_cell_rgb();
+        check_wide_cell_marks_spacer_tail();
         check_sgr_inverse_swaps_fg_and_bg();
         check_pty_output_reaches_rust_terminal();
     }

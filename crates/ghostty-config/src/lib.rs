@@ -38,6 +38,6 @@ pub use theme::{
     resolve_theme_path, theme_search_dirs, user_theme_dirs, user_themes_dir, ThemeResolveError,
 };
 pub use types::{
-    ClipboardAccess, ConfigPath, CursorStyle, MouseShiftCapture, OscColorReportFormat,
-    ReadableIo, RgbColor, ShellIntegration, WindowPadding,
+    ClipboardAccess, ConfigPath, CursorStyle, MouseShiftCapture, OscColorReportFormat, ReadableIo,
+    RgbColor, ShellIntegration, WindowPadding,
 };

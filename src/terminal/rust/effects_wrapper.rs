@@ -5,9 +5,8 @@ use core::ffi::c_void;
 pub type VtEffectFn = Option<unsafe extern "C" fn(*mut c_void)>;
 pub type VtDeviceAttributesFn = Option<unsafe extern "C" fn(*mut c_void, u8)>;
 pub type VtClipboardFn = Option<unsafe extern "C" fn(*mut c_void, u8, *const u8, usize)>;
-pub type VtQuerySizeFn = Option<
-    unsafe extern "C" fn(*mut c_void, *mut crate::constants::GhosttySizeReportSize) -> bool,
->;
+pub type VtQuerySizeFn =
+    Option<unsafe extern "C" fn(*mut c_void, *mut crate::constants::GhosttySizeReportSize) -> bool>;
 pub type VtWritePtyFn = Option<unsafe extern "C" fn(*mut c_void, *const u8, usize)>;
 pub type VtColorChangedFn = Option<unsafe extern "C" fn(*mut c_void, i32, u8, u8, u8)>;
 
@@ -125,11 +124,7 @@ impl GhosttyVtEffectWrapper {
         }
     }
 
-    pub unsafe fn dispatch_clipboard_contents(
-        wrapper: *mut c_void,
-        kind: u8,
-        data: &[u8],
-    ) {
+    pub unsafe fn dispatch_clipboard_contents(wrapper: *mut c_void, kind: u8, data: &[u8]) {
         unsafe {
             if wrapper.is_null() {
                 return;

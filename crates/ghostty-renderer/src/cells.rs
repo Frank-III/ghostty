@@ -10,6 +10,8 @@ pub struct CellSnapshot {
     pub codepoints: Vec<Option<u32>>,
     pub foregrounds: Vec<Option<crate::color::Rgb>>,
     pub backgrounds: Vec<Option<crate::color::Rgb>>,
+    /// VT wide tag per cell (`page_types::Wide` as u8); `0` = narrow.
+    pub wide_raw: Vec<u8>,
 }
 
 impl CellSnapshot {
@@ -20,7 +22,23 @@ impl CellSnapshot {
             codepoints: vec![None; len],
             foregrounds: vec![None; len],
             backgrounds: vec![None; len],
+            wide_raw: vec![0; len],
         }
+    }
+
+    pub fn set_wide(&mut self, x: u16, y: u16, raw: u8) {
+        let idx = Self::index(self.grid, x, y);
+        if let Some(slot) = self.wide_raw.get_mut(idx) {
+            *slot = raw;
+        }
+    }
+
+    pub fn grid_columns_at(&self, idx: usize) -> u8 {
+        ghostty_font::grid_columns_from_wide_raw(*self.wide_raw.get(idx).unwrap_or(&0))
+    }
+
+    pub fn skip_text_at(&self, idx: usize) -> bool {
+        self.wide_raw.get(idx).copied().unwrap_or(0) == 2
     }
 
     pub fn set(&mut self, x: u16, y: u16, cp: u32) {

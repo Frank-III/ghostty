@@ -15,10 +15,10 @@ mod build_info;
 mod bytes_util;
 #[cfg(all(feature = "std", ghostty_vt_terminal_owned))]
 mod cargo_link_stubs;
-mod effects_wrapper;
 mod cell;
 mod charsets;
 mod color;
+mod color_change_kind;
 mod color_palette;
 mod constants;
 mod csi;
@@ -27,6 +27,7 @@ mod dcs;
 mod device_attributes;
 mod device_status;
 mod early;
+mod effects_wrapper;
 mod event_key;
 mod event_key_action;
 mod event_key_codepoint;
@@ -61,6 +62,7 @@ mod key_options;
 mod key_setopt_bool;
 mod key_setopt_bool_write;
 mod kitty_color;
+mod kitty_color_apply;
 mod kitty_geometry;
 mod kitty_graphics;
 mod kitty_graphics_command;
@@ -120,14 +122,12 @@ mod mouse_viewport_report;
 mod mouse_write;
 mod mouse_x10;
 mod osc;
+mod osc_color_apply;
 mod osc_command_data;
 mod osc_command_data_write;
 mod osc_command_type;
 mod osc_encoding;
 mod osc_parser_color;
-mod osc_color_apply;
-mod kitty_color_apply;
-mod color_change_kind;
 mod osc_parser_conemu;
 mod osc_parser_kitty;
 mod osc_parser_misc;
@@ -480,6 +480,10 @@ pub(crate) use x11_color::*;
 
 #[cfg(feature = "std")]
 pub use allocator::{test_support_allocator, GhosttyAllocator, GhosttyAllocatorVtable};
+#[cfg(all(feature = "std", ghostty_vt_terminal_owned))]
+pub use constants::GhosttySizeReportSize;
+#[cfg(all(feature = "std", ghostty_vt_terminal_owned))]
+pub use effects_wrapper::GhosttyVtEffectWrapper;
 #[cfg(feature = "std")]
 pub use point::{Coordinate, PointC, PointTag};
 #[cfg(feature = "std")]
@@ -488,13 +492,9 @@ pub use selection::GhosttyGridRef;
 pub use terminal_types::Terminal;
 #[cfg(feature = "std")]
 pub use test_support::{
-    terminal_cell_bg_rgb, terminal_cell_codepoint, terminal_cell_colors_rgb,
-    terminal_cell_fg_rgb, test_allocator,
+    terminal_cell_bg_rgb, terminal_cell_codepoint, terminal_cell_colors_rgb, terminal_cell_fg_rgb,
+    terminal_cell_wide_raw, test_allocator,
 };
-#[cfg(all(feature = "std", ghostty_vt_terminal_owned))]
-pub use constants::GhosttySizeReportSize;
-#[cfg(all(feature = "std", ghostty_vt_terminal_owned))]
-pub use effects_wrapper::GhosttyVtEffectWrapper;
 #[cfg(feature = "std")]
 pub use tmux::control::{Notification, NotificationTag};
 #[cfg(feature = "std")]
