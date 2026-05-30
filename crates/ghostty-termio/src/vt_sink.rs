@@ -309,15 +309,35 @@ mod rust_vt_tests {
     use crate::harness::{TermioHarness, TermioSink};
     use crate::winsize::Winsize;
 
-    #[test]
-    fn direct_write_updates_grid() {
+    fn cat_spec() -> crate::CommandSpec {
+        CommandBuilder::new()
+            .path("/bin/sh")
+            .arg("sh")
+            .arg("-c")
+            .arg("cat")
+            .build()
+            .expect("spec")
+    }
+
+    fn finish_termio(termio: &mut crate::TermioLoop, sink: &mut RustOwnedTerminalSink) {
+        let _ = termio.shutdown();
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < deadline {
+            let _ = termio.tick(sink);
+            if termio.is_shutdown() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
+
+    fn check_direct_write_updates_grid() {
         let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
         sink.write_terminal(b"vt-e2e");
         assert!(sink.contains_text("vt-e2e"));
     }
 
-    #[test]
-    fn osc_title_reaches_stream_handler() {
+    fn check_osc_title_reaches_stream_handler() {
         use crate::StreamHandler;
         use ghostty_config::Config;
 
@@ -331,20 +351,10 @@ mod rust_vt_tests {
         ));
     }
 
-    #[test]
-    fn enquiry_response_reaches_terminal() {
-        use std::time::{Duration, Instant};
-
-        use crate::{CommandBuilder, TermioLoop, Winsize};
+    fn check_enquiry_response_reaches_terminal() {
+        use crate::TermioLoop;
         use ghostty_config::DerivedStreamConfig;
 
-        let spec = CommandBuilder::new()
-            .path("/bin/sh")
-            .arg("sh")
-            .arg("-c")
-            .arg("cat")
-            .build()
-            .expect("spec");
         let winsize = Winsize {
             cols: 80,
             rows: 24,
@@ -353,7 +363,7 @@ mod rust_vt_tests {
         };
         let mut config = DerivedStreamConfig::default();
         config.enquiry_response = "ENQ-OK".to_string();
-        let mut termio = TermioLoop::spawn(&spec, winsize, config).expect("spawn");
+        let mut termio = TermioLoop::spawn(&cat_spec(), winsize, config).expect("spawn");
         let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
         sink.bind_session(&mut termio);
         sink.write_terminal(&[0x05]);
@@ -361,6 +371,7 @@ mod rust_vt_tests {
         while Instant::now() < deadline {
             termio.tick(&mut sink).expect("tick");
             if sink.contains_text("ENQ-OK") {
+                finish_termio(&mut termio, &mut sink);
                 return;
             }
             std::thread::sleep(Duration::from_millis(5));
@@ -368,11 +379,8 @@ mod rust_vt_tests {
         panic!("enquiry response not received");
     }
 
-    #[test]
-    fn osc4_query_response_reaches_pty() {
-        use std::time::{Duration, Instant};
-
-        use crate::{CommandBuilder, TermioLoop, Winsize};
+    fn check_osc4_query_response_reaches_pty() {
+        use crate::TermioLoop;
         use ghostty_config::DerivedStreamConfig;
 
         // hexdump makes PTY write-back visible; raw `cat` would re-parse echoed OSC as
@@ -399,6 +407,7 @@ mod rust_vt_tests {
         while Instant::now() < deadline {
             termio.tick(&mut sink).expect("tick");
             if sink.contains_text_anywhere("rgb:") {
+                finish_termio(&mut termio, &mut sink);
                 return;
             }
             std::thread::sleep(Duration::from_millis(5));
@@ -406,18 +415,10 @@ mod rust_vt_tests {
         panic!("OSC 4 query response not received");
     }
 
-    #[test]
-    fn osc_background_set_emits_color_change() {
-        use crate::{CommandBuilder, TermioLoop, Winsize};
+    fn check_osc_background_set_emits_color_change() {
+        use crate::TermioLoop;
         use ghostty_config::DerivedStreamConfig;
 
-        let spec = CommandBuilder::new()
-            .path("/bin/sh")
-            .arg("sh")
-            .arg("-c")
-            .arg("cat")
-            .build()
-            .expect("spec");
         let winsize = Winsize {
             cols: 80,
             rows: 24,
@@ -425,7 +426,7 @@ mod rust_vt_tests {
             y_pixels: 0,
         };
         let mut termio =
-            TermioLoop::spawn(&spec, winsize, DerivedStreamConfig::default()).expect("spawn");
+            TermioLoop::spawn(&cat_spec(), winsize, DerivedStreamConfig::default()).expect("spawn");
         let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
         sink.bind_session(&mut termio);
         sink.write_terminal(b"\x1b]11;rgb:aa/bb/cc\x07");
@@ -436,20 +437,13 @@ mod rust_vt_tests {
             crate::SurfaceMessage::ColorChange { kind: -2, color }
                 if color.r == 0xaa && color.g == 0xbb && color.b == 0xcc
         )));
+        finish_termio(&mut termio, &mut sink);
     }
 
-    #[test]
-    fn sgr_foreground_resolves_cell_rgb() {
-        use crate::{CommandBuilder, TermioLoop, Winsize};
+    fn check_sgr_foreground_resolves_cell_rgb() {
+        use crate::TermioLoop;
         use ghostty_config::DerivedStreamConfig;
 
-        let spec = CommandBuilder::new()
-            .path("/bin/sh")
-            .arg("sh")
-            .arg("-c")
-            .arg("cat")
-            .build()
-            .expect("spec");
         let winsize = Winsize {
             cols: 80,
             rows: 24,
@@ -457,25 +451,18 @@ mod rust_vt_tests {
             y_pixels: 0,
         };
         let mut termio =
-            TermioLoop::spawn(&spec, winsize, DerivedStreamConfig::default()).expect("spawn");
+            TermioLoop::spawn(&cat_spec(), winsize, DerivedStreamConfig::default()).expect("spawn");
         let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
         sink.bind_session(&mut termio);
         sink.write_terminal(b"\x1b[31mR");
         assert_eq!(sink.cell_fg_rgb(0, 0), Some([0xcc, 0x66, 0x66]));
+        finish_termio(&mut termio, &mut sink);
     }
 
-    #[test]
-    fn sgr_background_resolves_cell_rgb() {
-        use crate::{CommandBuilder, TermioLoop, Winsize};
+    fn check_sgr_background_resolves_cell_rgb() {
+        use crate::TermioLoop;
         use ghostty_config::DerivedStreamConfig;
 
-        let spec = CommandBuilder::new()
-            .path("/bin/sh")
-            .arg("sh")
-            .arg("-c")
-            .arg("cat")
-            .build()
-            .expect("spec");
         let winsize = Winsize {
             cols: 80,
             rows: 24,
@@ -483,25 +470,18 @@ mod rust_vt_tests {
             y_pixels: 0,
         };
         let mut termio =
-            TermioLoop::spawn(&spec, winsize, DerivedStreamConfig::default()).expect("spawn");
+            TermioLoop::spawn(&cat_spec(), winsize, DerivedStreamConfig::default()).expect("spawn");
         let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
         sink.bind_session(&mut termio);
         sink.write_terminal(b"\x1b[42mG");
         assert_eq!(sink.cell_bg_rgb(0, 0), Some([0xb5, 0xbd, 0x68]));
+        finish_termio(&mut termio, &mut sink);
     }
 
-    #[test]
-    fn sgr_inverse_swaps_fg_and_bg() {
-        use crate::{CommandBuilder, TermioLoop, Winsize};
+    fn check_sgr_inverse_swaps_fg_and_bg() {
+        use crate::TermioLoop;
         use ghostty_config::DerivedStreamConfig;
 
-        let spec = CommandBuilder::new()
-            .path("/bin/sh")
-            .arg("sh")
-            .arg("-c")
-            .arg("cat")
-            .build()
-            .expect("spec");
         let winsize = Winsize {
             cols: 80,
             rows: 24,
@@ -509,17 +489,17 @@ mod rust_vt_tests {
             y_pixels: 0,
         };
         let mut termio =
-            TermioLoop::spawn(&spec, winsize, DerivedStreamConfig::default()).expect("spawn");
+            TermioLoop::spawn(&cat_spec(), winsize, DerivedStreamConfig::default()).expect("spawn");
         let mut sink = RustOwnedTerminalSink::new(80, 24, 10_000).expect("terminal");
         sink.bind_session(&mut termio);
         sink.write_terminal(b"\x1b[31;7mI");
         let (fg, bg) = sink.cell_colors_rgb(0, 0).expect("colors");
         assert_eq!(fg, [0x1d, 0x1f, 0x21]);
         assert_eq!(bg, [0xcc, 0x66, 0x66]);
+        finish_termio(&mut termio, &mut sink);
     }
 
-    #[test]
-    fn pty_output_reaches_rust_terminal() {
+    fn check_pty_output_reaches_rust_terminal() {
         let spec = CommandBuilder::new()
             .path("/bin/sh")
             .arg("sh")
@@ -547,5 +527,18 @@ mod rust_vt_tests {
             std::thread::sleep(Duration::from_millis(10));
         }
         assert!(sink.contains_text("termio-vt"));
+    }
+
+    #[test]
+    fn rust_vt_integration() {
+        check_direct_write_updates_grid();
+        check_osc_title_reaches_stream_handler();
+        check_enquiry_response_reaches_terminal();
+        check_osc4_query_response_reaches_pty();
+        check_osc_background_set_emits_color_change();
+        check_sgr_foreground_resolves_cell_rgb();
+        check_sgr_background_resolves_cell_rgb();
+        check_sgr_inverse_swaps_fg_and_bg();
+        check_pty_output_reaches_rust_terminal();
     }
 }
