@@ -1,0 +1,76 @@
+crates/ghostty-core/src/events.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 47-49,51-56
+docs/CI_RUST.md
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 65-66
+crates/ghostty-core/src/lib.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 28
+crates/ghostty-core/src/runtime.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 60-61
+crates/ghostty-renderer/src/draw_backend.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 9,22,35,58-59,63-75,80-92,113,122,125,159,179,181-184,187-207
+crates/ghostty-renderer/src/atlas_texture.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 47-50
+crates/ghostty-renderer/src/opengl.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 31-34
+crates/ghostty-font/src/shaping.rs
+  s_41b9ef08c838fc::t_fad65285bcb344 1-59
+crates/ghostty-ffi/src/lib.rs
+  s_41b9ef08c838fc::t_918704e6933321 578-580
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 11-13,567-577
+crates/ghostty-font/Cargo.toml
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 10
+crates/ghostty-core/src/surface_session.rs
+  s_41b9ef08c838fc::t_e6b72ba1a84ddf 303-306
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 28-30,294-295,300,308-313,335,337-338
+crates/ghostty-renderer/src/metal.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 31-34
+crates/ghostty-renderer/src/frame.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 4
+crates/ghostty-core/src/app.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 9,146,340
+src/build/GhosttyRust.zig
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 427
+crates/ghostty-core/src/action.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 243-246
+crates/ghostty-core/src/surface.rs
+  s_41b9ef08c838fc::t_d20bce410e7a01 207
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 27-29,41-42,55,153-154,157-170,199-206,208-210
+crates/ghostty-font/src/atlas.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 123
+crates/ghostty-renderer/src/lib.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 22,47
+crates/ghostty-renderer/src/draw_pass.rs
+  s_41b9ef08c838fc::t_219fa2118c8483 1-32,35-44,46-95
+  s_41b9ef08c838fc::t_6096f190fee2ac 33
+  s_41b9ef08c838fc::t_c088774f9210ee 34,45
+crates/ghostty-renderer/src/host.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 6,42-65,78-82
+crates/ghostty-renderer/src/generic.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 9-10,35-53,81,89,143-146
+crates/ghostty-font/src/face.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 124,256,336,459-462,468-471
+crates/ghostty-renderer/src/text.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 100-101,132-133
+crates/ghostty-font/src/lib.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 34,40
+crates/ghostty-core/tests/app_session.rs
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 161-183
+docs/PORTING_STATUS.tsv
+  s_41b9ef08c838fc::t_a00a598e4c3ab4 76,85-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "36d7ddab752b9172d89bf4d7a437f5112f843c3e",
+  "prompts": {},
+  "sessions": {
+    "s_41b9ef08c838fc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b12ea88d-51e2-4a05-8256-d84436fbef70",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
