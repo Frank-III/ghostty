@@ -1,0 +1,32 @@
+crates/ghostty-termio/src/loop.rs
+  s_6cee157524a3f1::t_1e6255386c5b60 3-4
+  s_6cee157524a3f1::t_2ec575f7eec7f3 116-131
+crates/ghostty-core/tests/surface_session.rs
+  s_6cee157524a3f1::t_4c99c40972070b 30
+crates/ghostty-termio/src/vt_sink.rs
+  s_6cee157524a3f1::t_39b65047eda4f9 323
+crates/ghostty-core/tests/surface_session_draw.rs
+  s_6cee157524a3f1::t_d1c89450d07e85 19
+docs/PORTING_STATUS.tsv
+  s_6cee157524a3f1::t_a5265b59b35bb0 49
+  s_6cee157524a3f1::t_20060875c906f2 73
+crates/ghostty-core/src/surface_session.rs
+  s_6cee157524a3f1::t_06cd7df6f38dd1 559
+  s_6cee157524a3f1::t_a09bb970414b8a 520-525
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7d2679993c8f07e487e21749d8ad4b1cdbb770a2",
+  "prompts": {},
+  "sessions": {
+    "s_6cee157524a3f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "35446356-b1a6-4b16-831a-75e5d384e046",
+        "model": "composer-2.5"
+      },
+      "human_author": "Frank Wang <1454884738@qq.com>"
+    }
+  }
+}
