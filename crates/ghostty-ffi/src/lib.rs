@@ -8,9 +8,9 @@ use core::ptr;
 
 use ghostty_core::{
     App, AppConfig, AppEvent, RuntimeAction, RuntimeActionCb, RuntimeClipboard,
-    RuntimeClipboardContent, RuntimeClipboardRequest, RuntimeCloseSurfaceCb,
-    RuntimeConfirmReadClipboardCb, RuntimeConfig, RuntimeReadClipboardCb, RuntimeTarget,
-    RuntimeTargetTag, RuntimeTargetU, RuntimeWakeupCb, RuntimeWriteClipboardCb, SurfaceEvent,
+    RuntimeClipboardContent, RuntimeClipboardRequest, RuntimeCloseSurfaceCb, RuntimeConfig,
+    RuntimeConfirmReadClipboardCb, RuntimeReadClipboardCb, RuntimeTarget, RuntimeTargetTag,
+    RuntimeTargetU, RuntimeWakeupCb, RuntimeWriteClipboardCb, SurfaceEvent,
 };
 
 /// Opaque app pointer (`ghostty_app_t`).
@@ -561,6 +561,20 @@ mod tests {
         assert_eq!(unsafe { ghostty_app_surface_count(app) }, 1);
         assert!(unsafe { ghostty_app_delete_surface(app, id) });
         assert_eq!(unsafe { ghostty_app_surface_count(app) }, 0);
+        unsafe { ghostty_app_free(app) };
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    #[test]
+    fn surface_prepare_finish_draw() {
+        let cfg = GhosttyRuntimeConfig::default();
+        let app = unsafe { ghostty_app_new(&cfg, ptr::null()) };
+        let id = unsafe { ghostty_app_create_surface(app) };
+        unsafe { ghostty_app_tick(app) };
+        let count = unsafe { ghostty_app_surface_prepare_draw(app, id) };
+        assert_ne!(count, usize::MAX);
+        unsafe { ghostty_app_surface_finish_draw(app, id) };
+        unsafe { ghostty_app_delete_surface(app, id) };
         unsafe { ghostty_app_free(app) };
     }
 

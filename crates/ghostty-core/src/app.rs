@@ -5,8 +5,8 @@
 
 use core::ffi::c_void;
 
-use crate::{AppConfig, AppEvent, RuntimeConfig, Surface, SurfaceId};
 use crate::events::SurfaceEvent;
+use crate::{AppConfig, AppEvent, RuntimeConfig, Surface, SurfaceId};
 
 #[cfg(all(unix, feature = "rust-vt"))]
 use crate::surface_session::{SurfaceSession, SurfaceSessionOptions};
@@ -143,8 +143,7 @@ impl App {
                     let Ok(payload) = std::ffi::CString::new(text.as_ref()) else {
                         return;
                     };
-                    let mime =
-                        std::ffi::CStr::from_bytes_with_nul(b"text/plain\0").expect("mime");
+                    let mime = std::ffi::CStr::from_bytes_with_nul(b"text/plain\0").expect("mime");
                     let content = crate::RuntimeClipboardContent {
                         mime: mime.as_ptr(),
                         data: payload.as_ptr(),
@@ -338,6 +337,7 @@ impl App {
                         event: SurfaceEvent::ChildExited { exit_code },
                     });
                 }
+                let _ = surface.present_if_pending();
             }
         }
 

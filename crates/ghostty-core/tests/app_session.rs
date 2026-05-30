@@ -158,6 +158,30 @@ fn redraw_dispatches_present_terminal_action() {
 }
 
 #[test]
+fn tick_auto_presents_on_session_redraw() {
+    let mut app = App::with_defaults(RuntimeConfig::default());
+    let id = app
+        .create_surface_with_options(SurfaceSessionOptions {
+            command: Some(printf_spec("draw")),
+            ..Default::default()
+        })
+        .expect("surface");
+
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while Instant::now() < deadline {
+        app.tick();
+        let surface = app.find_surface(id).unwrap();
+        if surface.contains_text("draw") && !surface.pending_present() {
+            cleanup_app(&mut app);
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    cleanup_app(&mut app);
+    panic!("expected redraw present path after terminal output");
+}
+
+#[test]
 fn set_title_dispatches_action_cb() {
     use std::sync::atomic::{AtomicU32, Ordering};
 

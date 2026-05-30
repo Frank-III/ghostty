@@ -24,6 +24,9 @@ pub struct Surface {
     focused: bool,
     #[cfg(all(unix, feature = "rust-vt"))]
     session: Option<SurfaceSession>,
+    /// Set when the session requests redraw; cleared after [`finish_draw`](Self::finish_draw).
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pending_present: bool,
 }
 
 impl Surface {
@@ -35,6 +38,8 @@ impl Surface {
             focused: false,
             #[cfg(all(unix, feature = "rust-vt"))]
             session: None,
+            #[cfg(all(unix, feature = "rust-vt"))]
+            pending_present: false,
         }
     }
 
@@ -47,6 +52,7 @@ impl Surface {
             userdata: core::ptr::null_mut(),
             focused: false,
             session: Some(session),
+            pending_present: false,
         }
     }
 
@@ -144,10 +150,24 @@ impl Surface {
     /// Take pending session events (title, redraw) after tick.
     #[cfg(all(unix, feature = "rust-vt"))]
     pub fn drain_session_events(&mut self) -> Vec<crate::SurfaceEvent> {
-        self.session
+        let events = self
+            .session
             .as_mut()
             .map(|s| s.drain_session_events())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        #[cfg(all(unix, feature = "rust-vt"))]
+        if events
+            .iter()
+            .any(|e| matches!(e, crate::SurfaceEvent::RedrawRequested))
+        {
+            self.pending_present = true;
+        }
+        events
+    }
+
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn pending_present(&self) -> bool {
+        self.pending_present
     }
 
     /// Visible grid snapshot for renderer rebuild (empty when no session).
@@ -176,6 +196,18 @@ impl Surface {
         if let Some(session) = self.session.as_mut() {
             session.finish_draw();
         }
+        self.pending_present = false;
+    }
+
+    /// Prepare + finish when the session last requested a redraw (headless path).
+    #[cfg(all(unix, feature = "rust-vt"))]
+    pub fn present_if_pending(&mut self) -> Option<usize> {
+        if !self.pending_present {
+            return None;
+        }
+        let count = self.prepare_draw()?;
+        self.finish_draw();
+        Some(count)
     }
 }
 

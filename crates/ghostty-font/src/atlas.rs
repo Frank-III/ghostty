@@ -120,8 +120,7 @@ impl Atlas {
         for row in 1..size_old.saturating_sub(1) {
             let src = row as usize * stride_old;
             let dst = row as usize * stride_new;
-            data_new[dst..dst + stride_old]
-                .copy_from_slice(&self.data[src..src + stride_old]);
+            data_new[dst..dst + stride_old].copy_from_slice(&self.data[src..src + stride_old]);
         }
 
         self.data = data_new;

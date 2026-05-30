@@ -57,9 +57,8 @@ pub struct RuntimeTarget {
 pub type RuntimeWakeupCb = Option<unsafe extern "C" fn(*mut c_void)>;
 pub type RuntimeReadClipboardCb =
     Option<unsafe extern "C" fn(*mut c_void, RuntimeClipboard, *mut c_void) -> bool>;
-pub type RuntimeConfirmReadClipboardCb = Option<
-    unsafe extern "C" fn(*mut c_void, *const c_char, *mut c_void, RuntimeClipboardRequest),
->;
+pub type RuntimeConfirmReadClipboardCb =
+    Option<unsafe extern "C" fn(*mut c_void, *const c_char, *mut c_void, RuntimeClipboardRequest)>;
 pub type RuntimeWriteClipboardCb = Option<
     unsafe extern "C" fn(
         *mut c_void,

@@ -3,6 +3,7 @@
 use crate::backend::Backend;
 use crate::cells::CellSnapshot;
 use crate::damage::DamageState;
+use crate::draw_pass::DrawPassStats;
 use crate::frame::FramePrep;
 use crate::generic::GraphicsError;
 use crate::metal::MetalRenderer;
@@ -38,6 +39,30 @@ impl HostRenderer {
         }
     }
 
+    pub fn prepare_snapshot(
+        &mut self,
+        snapshot: &CellSnapshot,
+        damage: &mut DamageState,
+    ) -> FramePrep {
+        match self {
+            Self::Metal(r) => r.prepare_snapshot(snapshot, damage),
+            Self::OpenGl(r) => r.prepare_snapshot(snapshot, damage),
+            Self::WebGl(r) => r.prepare_snapshot(snapshot, damage),
+        }
+    }
+
+    pub fn present_frame(
+        &mut self,
+        prep: &FramePrep,
+        damage: &mut DamageState,
+    ) -> Result<DrawPassStats, GraphicsError> {
+        match self {
+            Self::Metal(r) => r.present_frame(prep, damage),
+            Self::OpenGl(r) => r.present_frame(prep, damage),
+            Self::WebGl(r) => r.present_frame(prep, damage),
+        }
+    }
+
     pub fn draw_snapshot(
         &mut self,
         snapshot: &CellSnapshot,
@@ -47,6 +72,14 @@ impl HostRenderer {
             Self::Metal(r) => r.draw_snapshot(snapshot, damage),
             Self::OpenGl(r) => r.draw_snapshot(snapshot, damage),
             Self::WebGl(r) => r.draw_snapshot(snapshot, damage),
+        }
+    }
+
+    pub fn last_draw_pass(&self) -> Option<DrawPassStats> {
+        match self {
+            Self::Metal(r) => r.last_draw_pass,
+            Self::OpenGl(r) => r.last_draw_pass,
+            Self::WebGl(r) => r.last_draw_pass,
         }
     }
 

@@ -25,15 +25,15 @@ use ghostty_font::{
     descriptor_from_font_family, select_primary, Atlas, AtlasFormat, DesiredSize, DiscoveryError,
     FontSession, GlyphCache, RenderOptions,
 };
+use ghostty_renderer::build_cell_backgrounds;
+#[cfg(feature = "rust-vt")]
+use ghostty_renderer::build_cell_texts;
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::cells::CellSnapshot;
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::damage::{DamageRect, DamageState};
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::frame::{finish_draw_frame, prepare_draw_frame, FramePrep};
-#[cfg(feature = "rust-vt")]
-use ghostty_renderer::build_cell_texts;
-use ghostty_renderer::build_cell_backgrounds;
 #[cfg(feature = "rust-vt")]
 use ghostty_renderer::size::GridSize;
 #[cfg(feature = "rust-vt")]
@@ -291,21 +291,26 @@ impl SurfaceSession {
             renderer_cfg.background.g,
             renderer_cfg.background.b,
         );
-        prep.bg_cells = build_cell_backgrounds(
-            &snap,
-            default_bg,
-            self.cell_width_px,
-            self.cell_height_px,
-        );
+        prep.bg_cells =
+            build_cell_backgrounds(&snap, default_bg, self.cell_width_px, self.cell_height_px);
         self.last_frame = Some(prep.clone());
         prep
     }
 
-    /// Mark the last prepared frame as presented.
+    /// Issue draw passes for the last [`prepare_draw`](Self::prepare_draw) and clear damage.
     #[cfg(feature = "rust-vt")]
     pub fn finish_draw(&mut self) {
+        if let (Some(renderer), Some(prep)) = (&mut self.host_renderer, self.last_frame.take()) {
+            let _ = renderer.present_frame(&prep, &mut self.damage);
+            return;
+        }
         finish_draw_frame(&mut self.damage);
-        self.last_frame = None;
+    }
+
+    /// Statistics from the most recent GPU draw pass when a host renderer is attached.
+    #[cfg(feature = "rust-vt")]
+    pub fn last_draw_pass(&self) -> Option<ghostty_renderer::DrawPassStats> {
+        self.host_renderer.as_ref().and_then(|r| r.last_draw_pass())
     }
 
     /// Last frame prep from the most recent [`prepare_draw`](Self::prepare_draw).
@@ -327,19 +332,10 @@ impl SurfaceSession {
             for x in 0..ws.cols {
                 if let Some(cp) = self.cell_codepoint(x, y) {
                     snap.set(x, y, cp);
-                    if let Some(([fr, fg, fb], [br, bg, bb])) =
-                        self.terminal.cell_colors_rgb(x, y)
+                    if let Some(([fr, fg, fb], [br, bg, bb])) = self.terminal.cell_colors_rgb(x, y)
                     {
-                        snap.set_foreground(
-                            x,
-                            y,
-                            ghostty_renderer::color::Rgb::new(fr, fg, fb),
-                        );
-                        snap.set_background(
-                            x,
-                            y,
-                            ghostty_renderer::color::Rgb::new(br, bg, bb),
-                        );
+                        snap.set_foreground(x, y, ghostty_renderer::color::Rgb::new(fr, fg, fb));
+                        snap.set_background(x, y, ghostty_renderer::color::Rgb::new(br, bg, bb));
                     }
                 }
             }

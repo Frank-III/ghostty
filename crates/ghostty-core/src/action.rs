@@ -240,7 +240,10 @@ mod tests {
     #[test]
     fn set_title_layout() {
         assert_eq!(size_of::<RuntimeSetTitle>(), size_of::<*const c_char>());
-        assert!(size_of::<RuntimeAction>() >= size_of::<RuntimeActionTag>() + size_of::<RuntimeActionUnion>());
+        assert!(
+            size_of::<RuntimeAction>()
+                >= size_of::<RuntimeActionTag>() + size_of::<RuntimeActionUnion>()
+        );
     }
 
     #[test]

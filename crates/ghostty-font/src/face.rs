@@ -120,8 +120,8 @@ pub mod platform {
     use crate::discovery::DiscoveredFont;
     use crate::glyph::{Glyph, GlyphRenderError};
     use crate::metrics::{calc, FaceMetrics, Metrics};
-    use crate::RenderOptions;
     use crate::DesiredSize;
+    use crate::RenderOptions;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum FaceLoadError {
@@ -253,11 +253,7 @@ pub mod platform {
         let unichars: Vec<u16> = (32u16..127).collect();
         let mut glyphs = vec![0u16; COUNT];
         let ok = unsafe {
-            font.get_glyphs_for_characters(
-                unichars.as_ptr(),
-                glyphs.as_mut_ptr(),
-                COUNT as isize,
-            )
+            font.get_glyphs_for_characters(unichars.as_ptr(), glyphs.as_mut_ptr(), COUNT as isize)
         };
         if !ok {
             return font.x_height();
@@ -336,8 +332,8 @@ pub mod freetype {
     use crate::discovery::DiscoveredFont;
     use crate::glyph::{Glyph, GlyphRenderError};
     use crate::metrics::{calc, FaceMetrics, Metrics};
-    use crate::RenderOptions;
     use crate::DesiredSize;
+    use crate::RenderOptions;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum FaceLoadError {
@@ -460,13 +456,20 @@ pub mod freetype {
     fn max_ascii_advance(face: &freetype::Face) -> Option<f64> {
         let mut max = 0.0f64;
         for ch in 32u8..127 {
-            if face.load_char(ch as usize, freetype::face::LoadFlag::DEFAULT).is_err() {
+            if face
+                .load_char(ch as usize, freetype::face::LoadFlag::DEFAULT)
+                .is_err()
+            {
                 continue;
             }
             let advance = face.glyph().advance().x as f64 / 64.0;
             max = max.max(advance);
         }
-        if max > 0.0 { Some(max) } else { None }
+        if max > 0.0 {
+            Some(max)
+        } else {
+            None
+        }
     }
 
     /// Legacy stub type kept for callers not yet migrated to [`LoadedFace`].

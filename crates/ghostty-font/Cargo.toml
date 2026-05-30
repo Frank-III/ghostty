@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-# Config font-family keys will wire here in a later phase.
+ghostty-foundation = { path = "../ghostty-foundation" }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 freetype = "0.7"

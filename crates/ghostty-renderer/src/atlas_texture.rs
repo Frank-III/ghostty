@@ -44,7 +44,10 @@ mod tests {
     fn from_atlas_dimensions() {
         let mut atlas = Atlas::new(32, AtlasFormat::Grayscale);
         let region = atlas.reserve(4, 4).unwrap();
-        atlas.write_grayscale(region, &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+        atlas.write_grayscale(
+            region,
+            &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        );
         let tex = AtlasTexture::from_atlas(&atlas);
         assert_eq!(tex.size, 32);
         assert_eq!(tex.byte_len(), 32 * 32);

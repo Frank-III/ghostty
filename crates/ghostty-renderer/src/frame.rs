@@ -1,7 +1,7 @@
 //! CPU-side draw frame orchestration before GPU backends land.
 
-use crate::cell::CellText;
 use crate::cell::CellBgDraw;
+use crate::cell::CellText;
 use crate::cells::{rebuild_cells, CellSnapshot};
 use crate::damage::{DamageRect, DamageState};
 use crate::size::GridSize;

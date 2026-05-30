@@ -97,8 +97,8 @@ mod tests {
 
         let descriptor = ghostty_font::descriptor_from_font_family(Some("Menlo"), 12.0);
         let discovered = ghostty_font::select_primary(&descriptor).expect("discover");
-        let session = FontSession::open(&discovered, ghostty_font::DesiredSize::new(12.0))
-            .expect("open");
+        let session =
+            FontSession::open(&discovered, ghostty_font::DesiredSize::new(12.0)).expect("open");
         let mut atlas = Atlas::new(128, AtlasFormat::Grayscale);
         let opts = RenderOptions {
             grid_metrics: session.grid_metrics(),
@@ -129,8 +129,8 @@ mod tests {
 
         let descriptor = ghostty_font::descriptor_from_font_family(Some("Menlo"), 12.0);
         let discovered = ghostty_font::select_primary(&descriptor).expect("discover");
-        let session = FontSession::open(&discovered, ghostty_font::DesiredSize::new(12.0))
-            .expect("open");
+        let session =
+            FontSession::open(&discovered, ghostty_font::DesiredSize::new(12.0)).expect("open");
         let mut atlas = Atlas::new(128, AtlasFormat::Grayscale);
         let opts = RenderOptions {
             grid_metrics: session.grid_metrics(),

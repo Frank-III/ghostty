@@ -28,7 +28,10 @@ impl GraphicsApi for MetalGraphicsApi {
         Ok(())
     }
 
-    fn upload_atlas_texture(&mut self, tex: &crate::atlas_texture::AtlasTexture) -> Result<(), GraphicsError> {
+    fn upload_atlas_texture(
+        &mut self,
+        tex: &crate::atlas_texture::AtlasTexture,
+    ) -> Result<(), GraphicsError> {
         self.last_atlas_upload = Some(tex.clone());
         Ok(())
     }

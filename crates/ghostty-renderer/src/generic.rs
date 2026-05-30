@@ -6,6 +6,8 @@
 //! calling `draw_frame` from the renderer thread (`src/renderer/Thread.zig`). Future Rust
 //! glue must preserve that constraint on Linux.
 
+use crate::cell::{CellBgDraw, CellText};
+use crate::draw_pass::{draw_background_pass_stub, draw_text_pass_stub, DrawPassStats};
 use crate::size::Size;
 
 /// Metal / OpenGL / WebGL surface abstraction (`Renderer(GraphicsAPI)` hierarchy).
@@ -29,6 +31,25 @@ pub trait GraphicsApi: Sized {
         _tex: &crate::atlas_texture::AtlasTexture,
     ) -> Result<(), GraphicsError> {
         Ok(())
+    }
+
+    /// Background cell quads for the current frame (stub validates grid bounds).
+    fn draw_background_pass(
+        &mut self,
+        size: &Size,
+        cells: &[CellBgDraw],
+    ) -> Result<(), GraphicsError> {
+        draw_background_pass_stub(size, cells)
+    }
+
+    /// Foreground glyph instances (stub validates grid bounds).
+    fn draw_text_pass(&mut self, size: &Size, cells: &[CellText]) -> Result<(), GraphicsError> {
+        draw_text_pass_stub(size, cells)
+    }
+
+    /// Last draw pass statistics when the API records them (optional).
+    fn last_draw_pass(&self) -> Option<DrawPassStats> {
+        None
     }
 }
 
@@ -57,6 +78,7 @@ pub trait GenericRenderer: Sized {
 pub enum GraphicsError {
     NotImplemented(&'static str),
     DrawLockPoisoned,
+    InvalidDrawInstance,
 }
 
 impl std::fmt::Display for GraphicsError {
@@ -64,6 +86,7 @@ impl std::fmt::Display for GraphicsError {
         match self {
             GraphicsError::NotImplemented(name) => write!(f, "renderer not implemented: {name}"),
             GraphicsError::DrawLockPoisoned => write!(f, "renderer draw mutex poisoned"),
+            GraphicsError::InvalidDrawInstance => write!(f, "draw instance outside grid"),
         }
     }
 }
@@ -117,7 +140,10 @@ impl GraphicsApi for StubGraphicsApi {
         Ok(())
     }
 
-    fn upload_atlas_texture(&mut self, _tex: &crate::atlas_texture::AtlasTexture) -> Result<(), GraphicsError> {
+    fn upload_atlas_texture(
+        &mut self,
+        _tex: &crate::atlas_texture::AtlasTexture,
+    ) -> Result<(), GraphicsError> {
         Ok(())
     }
 }

@@ -62,7 +62,8 @@ cargo build -p ghostty-ffi --features rust-vt
 zig build -Drust-core-pilot=true -Demit-macos-app=false
 ```
 
-The `rust-core` step runs `cargo build -p ghostty-ffi --features rust-vt` with
+`coreStaticLibBuild` uses `cargo build` (not per-module `rustc`) as the primary
+artifact path. The `rust-core` step runs `cargo build -p ghostty-ffi --features rust-vt` with
 `RUSTFLAGS='--cfg ghostty_vt_terminal_owned'`. Cargo-only builds link `ghostty-vt`
 `cargo_link_stubs` (render-owned + wrapper symbols); no Zig VT object required for
 workspace `cargo build -p ghostty-ffi`. Artifact path: `coreStaticLibPath` in

@@ -25,7 +25,7 @@ pub use app_config::AppConfig;
 pub use events::{ActionTag, ActionTargetTag, AppEvent, SurfaceEvent};
 pub use runtime::{
     RuntimeActionCb, RuntimeClipboard, RuntimeClipboardContent, RuntimeClipboardRequest,
-    RuntimeCloseSurfaceCb, RuntimeConfirmReadClipboardCb, RuntimeConfig, RuntimeReadClipboardCb,
+    RuntimeCloseSurfaceCb, RuntimeConfig, RuntimeConfirmReadClipboardCb, RuntimeReadClipboardCb,
     RuntimeTarget, RuntimeTargetTag, RuntimeTargetU, RuntimeWakeupCb, RuntimeWriteClipboardCb,
 };
 pub use surface::Surface;

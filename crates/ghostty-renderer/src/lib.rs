@@ -19,6 +19,7 @@ pub mod color;
 pub mod cursor;
 pub mod damage;
 pub mod draw_backend;
+pub mod draw_pass;
 pub mod frame;
 pub mod generic;
 pub mod host;
@@ -43,6 +44,7 @@ pub use cursor::{
 };
 pub use damage::{DamageRect, DamageState};
 pub use draw_backend::BackendRenderer;
+pub use draw_pass::{issue_draw_pass, DrawPassStats};
 pub use frame::{finish_draw_frame, prepare_draw_frame, FramePrep};
 pub use generic::{
     GenericRenderer, GenericRendererStub, GraphicsApi, GraphicsError, StubGraphicsApi,

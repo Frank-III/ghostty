@@ -31,8 +31,10 @@ pub mod atlas;
 pub mod glyph;
 pub mod glyph_cache;
 pub mod session;
+pub mod shaping;
 
 pub use atlas::{Atlas, AtlasError, AtlasFormat, AtlasRegion};
 pub use glyph::{Glyph, GlyphRenderError};
 pub use glyph_cache::GlyphCache;
 pub use session::{FontSession, FontSessionError};
+pub use shaping::{cluster_display_width, grapheme_display_width, ShapingSession};
